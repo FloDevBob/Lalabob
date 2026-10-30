@@ -66,7 +66,7 @@ docs/hardware/           Protocoles MIDI des contrôleurs
 | Jalon | Contenu | État |
 | --- | --- | --- |
 | J0 | Fondations : projet, modules, tests, règles | Compile et se lance (30/10/2026) |
-| J1 | Moteur audio, grille à la souris, sortie audio | |
+| J1 | Moteur audio, grille à la souris, sortie audio | 🟡 code fini, essai matériel à faire |
 | J2 | Contrôleurs et LED, faders de l'APC | |
 | J3 | Colonnes lumière vers LightKey | |
 | J4 | Édition, documents, glisser-déposer — *utilisable en répétition* | |

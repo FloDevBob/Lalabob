@@ -28,8 +28,8 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - Projet XcodeGen, package `LalabobKit` (6 modules), modèle + validation, pilotes Launchpad / APC, fenêtre grille vide, tests, `CLAUDE.md`, ADR, skills.
 - Reste : `make test` vert sur Mac, fusion de la PR.
 
-### J1 — Moteur audio 🚧 (branche `j1/moteur-audio`)
-**Avancement** — étape 1/3 ✅ moteur + tests hors ligne · étape 2/3 ✅ branchement `ShowController` · étape 3 : interface (grille, sortie, Tout arrêter).
+### J1 — Moteur audio 🟡 code terminé, essai matériel à faire (branche `j1/moteur-audio`)
+**Avancement** — étape 1/3 ✅ moteur + tests hors ligne · étape 2/3 ✅ branchement `ShowController` · étape 3/3 ✅ interface (grille cliquable, sortie, Tout arrêter). **Reste : l'essai sur le vrai Mac de régie** (check-list ci-dessous), puis fusion de la PR.
 - `LalabobAudio` : implémentation AVAudioEngine de `AudioEngineControlling`.
   - Un `AVAudioPlayerNode` par pad actif, un `AVAudioMixerNode` par colonne (fader), un mixeur principal.
   - Lancer / relancer / pause / reprise / arrêter, boucle, élagage début–fin, fondus entrée / sortie.
@@ -40,6 +40,8 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - **Terminé quand** : 16 sons simultanés sans craquement, déclenchement immédiat, tests de rendu hors ligne (fondus, élagage) verts.
 - **Fait (étape 1)** : `AVAudioEngineController` (acteur), `ClipTiming`, `ClipRenderer` (élagage, fondus et gain « cuits » pour les sons < 30 s), `RetriggerAction`, `AudioOutputDevices` (CoreAudio), `SilentAudioEngine`. 32 tests verts (cible `LalabobAudioTests`, rendu hors ligne).
 - **Fait (étape 2)** : `ShowController` envoie ses commandes au moteur par une file unique (ordre garanti) ; mode Édition / Live (`press(at:)`), `stopAll`, `setColumnLevel` (borné 0…1, renvoyé à chaque changement d'onglet), `selectOutput` (mémorisée dans `UserDefaults`), état de lecture observable (`playback`), `loadTrialSounds()` (sons d'essai en attendant le glisser-déposer du J4). 12 tests verts (cible `LalabobEngineTests`, faux moteur).
+- **Fait (étape 3)** : en-tête avec sélecteur de sortie, bascule Édition / Live, « Tout arrêter » (Échap), bouton provisoire « Sons d'essai » (charge `Application Support/Lalabob/Audio` du conteneur de l'app) ; pads avec contour + halo + barre de progression (lecture), contour atténué + icône pause (pause) ; fader de colonne provisoire (curseur horizontal, le fader vertical viendra au J5) ; menu contextuel Pause / Arrêter. `App/` ne dépend que d'Engine et Design (types audio réexportés par `LalabobEngine/LiveAudio.swift`).
+- **Essai matériel J1 (à cocher)** : ☐ 16 sons simultanés sans craquement (Instruments si doute) ☐ déclenchement sans retard audible ☐ pause / reprise, relance, boucle, fondus, élagage (à régler dans `show.json` en attendant le J5) ☐ changement de sortie en cours de lecture ☐ débranchement de la sortie choisie : le son continue sur la sortie par défaut ☐ Échap coupe tout ☐ fader de colonne.
 - **Choix / limites connus** : fondu de sortie ignoré pour les boucles ; sons longs lus en flux avec fondus par volume du lecteur (pas de test hors ligne) ; « Tout arrêter » coupe net (pas de fondu) ; reprise après changement de sortie implémentée mais à essayer sur le vrai matériel ; en rendu hors ligne un `play()` peut démarrer un bloc trop tard sans pause préalable (géré dans `renderOffline`) — à surveiller en temps réel (latence de déclenchement).
 - **Note outillage** : `swift test` en terminal échoue (toolchain sans module Testing, cache bloqué par le bac à sable) → lancer les tests via Xcode (schéma `LalabobAudioTests`).
 
