@@ -33,6 +33,14 @@ struct ContentView: View {
         }
         .background(Surface.window)
         .focusedSceneValue(\.showController, controller)
+        .alert(
+            "Import impossible",
+            isPresented: Binding(get: { controller.importError != nil }, set: { if !$0 { controller.dismissImportError() } })
+        ) {
+            Button("OK") { controller.dismissImportError() }
+        } message: {
+            Text(controller.importError ?? "")
+        }
         .onAppear { controller.undoManager = undoManager }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { controller.undoManager = undoManager }
     }

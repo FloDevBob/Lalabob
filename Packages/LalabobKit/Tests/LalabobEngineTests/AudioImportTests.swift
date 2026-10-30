@@ -86,4 +86,34 @@ struct AudioImportTests {
         undo.undo()
         #expect(controller.pad(at: GridPosition(column: 0, row: 0)) == nil)
     }
+
+    @Test func aFailedDropIsReportedInsteadOfIgnored() throws {
+        let library = try tempDir()
+        let text = try makeFile("notes.txt", in: try tempDir())
+        let controller = ShowController(
+            audioDirectory: library, defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
+
+        #expect(!controller.dropAudioFile(text, at: GridPosition(column: 0, row: 0)))
+        #expect(controller.importError?.contains("notes.txt") == true)
+        controller.dismissImportError()
+        #expect(controller.importError == nil)
+
+        // Un dépôt réussi n'affiche rien.
+        let sound = try makeFile("rire.wav", in: try tempDir())
+        #expect(controller.dropAudioFile(sound, at: GridPosition(column: 0, row: 0)))
+        #expect(controller.importError == nil)
+    }
+
+    @Test func librarySelection() async throws {
+        let dir = try tempDir()
+        _ = try makeFile("rire.wav", in: dir)
+        let library = LibraryController(defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, securityScoped: false)
+        await library.addFavorite(dir)
+        let item = try #require(library.visibleItems.first)
+        library.selectItem(item.id)
+        #expect(library.selectedItem == item.id)
+        // Changer de dossier efface la sélection.
+        await library.addFavorite(try tempDir())
+        #expect(library.selectedItem == nil)
+    }
 }

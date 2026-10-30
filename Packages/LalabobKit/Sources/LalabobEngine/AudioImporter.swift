@@ -56,14 +56,29 @@ public enum AudioImporter {
 }
 
 extension ShowController {
+    public func dismissImportError() {
+        importError = nil
+    }
+
     /// Glisser un fichier son sur une case : copie le son dans le dossier du spectacle et crée le pad (annulable).
     @discardableResult
     public func dropAudioFile(_ url: URL, at position: GridPosition) -> Bool {
-        guard let audioDirectory, position.isValid, currentGrid.columns[position.column].kind == .audio else { return false }
+        guard let audioDirectory, position.isValid else { return false }
+        guard currentGrid.columns[position.column].kind == .audio else {
+            importError = "Les sons vont dans les colonnes sons, pas dans les colonnes lumière."
+            return false
+        }
         do {
             let name = try AudioImporter.importFile(at: url, into: audioDirectory)
             return place(AudioImporter.pad(forFileName: name), at: position)
         } catch {
+            let reason =
+                switch error {
+                case .unsupportedFormat: "ce format n'est pas pris en charge (WAV, AIFF, CAF, MP3, M4A, AAC, FLAC)"
+                case .notAFile: "ce n'est pas un fichier son, ou il est inaccessible"
+                case .copyFailed: "la copie dans le spectacle a échoué"
+                }
+            importError = "Impossible d'importer « \(url.lastPathComponent) » : \(reason)."
             return false
         }
     }

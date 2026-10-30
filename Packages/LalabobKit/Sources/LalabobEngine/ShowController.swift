@@ -36,6 +36,8 @@ public final class ShowController {
     public private(set) var outputDevices: [AudioOutputDevice] = []
     /// `nil` = sortie par défaut du système.
     public private(set) var selectedOutputUID: String?
+    /// Dernier import de son raté, à montrer à l'utilisateur (`nil` si rien à signaler).
+    public internal(set) var importError: String?
     /// Le contrôleur physique actuellement relié (Launchpad, APC), s'il y en a un.
     public private(set) var connectedController: ControllerModel?
     /// Dernier contrôleur relié (mémorisé) : donne les notes à envoyer à LightKey quand aucun n'est branché.

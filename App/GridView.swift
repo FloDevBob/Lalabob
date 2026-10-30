@@ -4,6 +4,7 @@ import LalabobEngine
 import LalabobModel
 import SwiftUI
 import UniformTypeIdentifiers
+import os
 
 /// La grille : 6 colonnes sons, puis 2 colonnes lumière dans une zone ambrée.
 /// Elle reçoit ⌘X / ⌘C / ⌘V / ⌫ quand elle a le focus (un clic sur un pad le lui donne).
@@ -247,6 +248,8 @@ struct PadView: View {
 /// Dépôt sur une case : un fichier son (Finder ou bibliothèque) crée le pad ; un pad le déplace ou l'échange ;
 /// avec ⌥, il le duplique.
 struct PadDropDelegate: DropDelegate {
+    private static let log = Logger(subsystem: "fr.lalabob.app", category: "drop")
+
     let position: GridPosition
     let controller: ShowController
     @Binding var highlight: DropHighlight?
@@ -262,9 +265,11 @@ struct PadDropDelegate: DropDelegate {
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        let copying = isPadDrag(info) && optionHeld
-        highlight = copying ? .copy : .move
-        return DropProposal(operation: copying ? .copy : .move)
+        let padDrag = isPadDrag(info)
+        highlight = padDrag && optionHeld ? .copy : .move
+        // Un fichier son est toujours copié dans le spectacle : proposer « copier ». Proposer « déplacer »
+        // à une source qui ne l'autorise pas (la bibliothèque, le Finder selon les cas) fait refuser le dépôt.
+        return DropProposal(operation: padDrag && !optionHeld ? .move : .copy)
     }
 
     func dropExited(info: DropInfo) {
@@ -277,8 +282,11 @@ struct PadDropDelegate: DropDelegate {
         let controller = controller
 
         if let provider = info.itemProviders(for: [.fileURL]).first {
-            _ = provider.loadDataRepresentation(for: .fileURL) { data, _ in
-                guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+            _ = provider.loadObject(ofClass: URL.self) { url, error in
+                guard let url else {
+                    Self.log.error("Dépôt d'un fichier illisible : \(error?.localizedDescription ?? "URL absente")")
+                    return
+                }
                 Task { @MainActor in controller.dropAudioFile(url, at: target) }
             }
             return true

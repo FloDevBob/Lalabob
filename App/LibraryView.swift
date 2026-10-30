@@ -80,7 +80,8 @@ struct LibraryView: View {
     }
 
     private func itemRow(_ item: AudioLibraryItem) -> some View {
-        HStack(spacing: 8) {
+        let isSelected = library.selectedItem == item.id
+        return HStack(spacing: 8) {
             Image(systemName: "waveform")
                 .foregroundStyle(Surface.lightAccent.opacity(0.8))
             Text(item.name)
@@ -98,8 +99,17 @@ struct LibraryView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
+        .background(isSelected ? Surface.panel : .clear, in: .rect(cornerRadius: 8))
+        .overlay {
+            if isSelected { RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.18)) }
+        }
         .contentShape(.rect)
-        .onDrag { NSItemProvider(contentsOf: item.url) ?? NSItemProvider() }
+        .onTapGesture { library.selectItem(item.id) }
+        .onDrag {
+            library.selectItem(item.id)
+            return NSItemProvider(object: item.url as NSURL)
+        }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }

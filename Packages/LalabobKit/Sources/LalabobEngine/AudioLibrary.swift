@@ -61,6 +61,8 @@ public final class LibraryController {
     public private(set) var favorites: [Favorite] = []
     public private(set) var currentFavorite: Favorite.ID?
     public private(set) var items: [AudioLibraryItem] = []
+    /// Son sélectionné dans la liste (surbrillance ; servira à la pré-écoute).
+    public private(set) var selectedItem: AudioLibraryItem.ID?
     public var query = ""
 
     public var visibleItems: [AudioLibraryItem] { AudioLibrary.filter(items, query: query) }
@@ -109,6 +111,7 @@ public final class LibraryController {
         if currentFavorite == id {
             currentFavorite = nil
             items = []
+            selectedItem = nil
         }
         save()
     }
@@ -119,8 +122,13 @@ public final class LibraryController {
         if securityScoped, !accessed.contains(favorite.url), favorite.url.startAccessingSecurityScopedResource() {
             accessed.insert(favorite.url)
         }
+        if currentFavorite != id { selectedItem = nil }
         currentFavorite = id
         items = await AudioLibrary.items(in: favorite.url)
+    }
+
+    public func selectItem(_ id: AudioLibraryItem.ID?) {
+        selectedItem = id
     }
 
     public func refresh() async {
