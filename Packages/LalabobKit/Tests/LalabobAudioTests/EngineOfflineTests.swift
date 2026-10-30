@@ -211,3 +211,28 @@ struct EngineOfflineTests {
         await engine.stop(UUID())
     }
 }
+
+@Suite("Moteur audio : édition pendant la lecture", .serialized)
+struct EngineEditingTests {
+    @Test func movingAPlayingPadToAnotherColumnKeepsItPlaying() async throws {
+        let dir = try makeTemporaryDirectory()
+        try writeTestFile(named: "a.wav", in: dir, duration: 2) { _ in 0.5 }
+        let pad = Pad(title: "P", tint: .rouge, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        var grid = PadGrid.empty(name: "T")
+        grid.columns[0].slots[0] = pad
+        let engine = AVAudioEngineController(output: .offline(sampleRate: 44100, maxFrames: 4096))
+        try await engine.configure(show: Show(name: "T", grids: [grid]), audioDirectory: dir)
+        await engine.setColumnLevel(1, level: 0.5)
+
+        await engine.trigger(pad.id)
+        _ = try await engine.renderOffline(frames: 4410)
+
+        // Le pad passe dans la colonne 2 (fader à 50 %) : il continue, au niveau de sa nouvelle colonne.
+        grid.columns[0].slots[0] = nil
+        grid.columns[1].slots[0] = pad
+        try await engine.configure(show: Show(name: "T", grids: [grid]), audioDirectory: dir)
+        #expect(await engine.state(of: pad.id).isActive)
+        let out = try await engine.renderOffline(frames: 4410)
+        #expect(abs(out[4000] - 0.25) < 0.001)
+    }
+}

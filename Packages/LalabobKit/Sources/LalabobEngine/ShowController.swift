@@ -43,6 +43,11 @@ public final class ShowController {
     /// Nom du contrôleur relié, pour l'affichage.
     public var connectedControllerName: String? { connectedController?.displayName }
 
+    /// Gestionnaire d'annulation de la fenêtre (⌘Z). Fourni par la vue.
+    @ObservationIgnored public weak var undoManager: UndoManager?
+    /// Pad copié (⌘C / ⌘X), collé avec un nouvel identifiant.
+    var clipboard: Pad?
+
     @ObservationIgnored private let audioDirectory: URL?
     @ObservationIgnored private let audio: any AudioEngineControlling
     @ObservationIgnored private let defaults: UserDefaults
@@ -215,6 +220,34 @@ public final class ShowController {
                 playback[event.pad] = event
             }
         }
+    }
+
+    // MARK: - Modification et annulation
+
+    /// Applique une modification au spectacle. `change` reçoit une copie et l'index de l'onglet affiché ;
+    /// il renvoie `false` pour ne rien faire. Une modification sans effet n'enregistre pas d'annulation.
+    @discardableResult
+    func commit(_ actionName: String, _ change: (inout Show, Int) -> Bool) -> Bool {
+        var updated = show
+        guard change(&updated, selectedGridIndex), updated != show else { return false }
+        apply(updated, actionName: actionName)
+        return true
+    }
+
+    private func apply(_ newShow: Show, actionName: String) {
+        let previous = show
+        show = newShow
+        if !show.grids.indices.contains(selectedGridIndex) { selectedGridIndex = show.grids.count - 1 }
+        syncAudio()
+
+        guard let undoManager else { return }
+        let isReplaying = undoManager.isUndoing || undoManager.isRedoing
+        if !isReplaying { undoManager.beginUndoGrouping() }
+        undoManager.registerUndo(withTarget: self) { controller in
+            MainActor.assumeIsolated { controller.apply(previous, actionName: actionName) }
+        }
+        undoManager.setActionName(actionName)
+        if !isReplaying { undoManager.endUndoGrouping() }
     }
 
     // MARK: - Synchronisation

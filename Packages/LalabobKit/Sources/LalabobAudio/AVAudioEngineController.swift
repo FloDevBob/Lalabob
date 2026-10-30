@@ -120,9 +120,22 @@ public actor AVAudioEngineController: AudioEngineControlling {
             }
         }
 
-        // Retire ce qui a disparu ou changé.
+        // Retire ce qui a disparu ou changé. Un pad seulement déplacé d'une colonne à l'autre continue de jouer :
+        // on rebranche son lecteur sur le mélangeur de sa nouvelle colonne.
         for (id, entry) in entries {
-            if let new = wanted[id], new.column == entry.column, new.clip == entry.clip { continue }
+            if let new = wanted[id], new.clip == entry.clip {
+                if new.column != entry.column {
+                    entries[id]?.column = new.column
+                    if let voice = voices[id], let moved = entries[id] {
+                        // Rebrancher un lecteur l'arrête : on le relance là où il en était (micro-coupure possible).
+                        let state = voice.state
+                        engine.disconnectNodeOutput(voice.player)
+                        engine.connect(voice.player, to: columnMixers[new.column], format: voice.format)
+                        resume(id, entry: moved, from: state, now: ProcessInfo.processInfo.systemUptime)
+                    }
+                }
+                continue
+            }
             dropVoice(id)
             entries[id] = nil
         }
@@ -454,8 +467,20 @@ public actor AVAudioEngineController: AudioEngineControlling {
         }
         for item in snapshot {
             guard let entry = entries[item.pad] else { continue }
-            startVoice(item.pad, entry: entry, offset: item.elapsed.truncatingRemainder(dividingBy: entry.clip.loops ? max(entry.timing.duration, 0.001) : .infinity))
-            if item.paused { togglePause(item.pad) }
+            resume(item.pad, entry: entry, from: item.paused ? .paused(elapsed: item.elapsed) : .playing(startedAt: now - item.elapsed), now: now)
         }
+    }
+
+    /// Relance une voix là où elle en était (lecture ou pause). Une boucle reprend dans son tour courant.
+    private func resume(_ pad: Pad.ID, entry: Entry, from state: PlaybackState, now: TimeInterval) {
+        let elapsed: TimeInterval
+        switch state {
+        case .idle: return
+        case .playing(let startedAt): elapsed = now - startedAt
+        case .paused(let pausedAt): elapsed = pausedAt
+        }
+        let offset = entry.clip.loops ? elapsed.truncatingRemainder(dividingBy: max(entry.timing.duration, 0.001)) : elapsed
+        startVoice(pad, entry: entry, offset: max(offset, 0))
+        if case .paused = state { togglePause(pad) }
     }
 }

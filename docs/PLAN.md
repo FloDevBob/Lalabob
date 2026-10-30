@@ -69,7 +69,10 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - **Essai réel (à cocher)** : ☐ LightKey voit « Lalabob Lumière » ☐ ajouter ce port à l'écoute dans LightKey avec le même mapping ☐ un clic à l'écran déclenche la cue ☐ un appui physique ne la déclenche qu'une fois.
 - Abandonné : faders lumière en CC (à rediscuter si besoin), retour LED de LightKey, comportements impulsion / bascule / maintenu côté Lalabob.
 
-### J4 — Édition et spectacles · palier « utilisable en répétition »
+### J4 — Édition et spectacles · palier « utilisable en répétition » 🚧 (branche `j4/edition-spectacles`, empilée sur `j3/lumiere`)
+**Avancement** — étape 1/4 ✅ édition + ⌘Z dans `ShowController` · étape 2 : format `.lalabob` + import des sons · étape 3 : interface (onglets, inspecteur minimal, glisser-déposer, raccourcis, bibliothèque) · étape 4 : document, sauvegarde auto, contrôleur partagé entre fenêtres.
+- **Fait (étape 1)** : `ShowEditing.swift` — placer (type de colonne vérifié), nouvelle cue, vider, déplacer / échanger, ⌥-dupliquer (case vide), couper / copier / coller (nouvel identifiant), ⌘D (case libre en dessous), inspecteur (titre, sous-titre, teinte, intensité LED ; 80 caractères max), onglets (ajouter ≤ 64, renommer, réordonner, supprimer sauf le dernier). Tout passe par `commit` : une annulation par opération, aucune si rien ne change, onglet affiché toujours valide. Moteur : un pad déplacé pendant sa lecture continue (relancé à sa position, micro-coupure possible). 24 tests Engine + 1 test audio.
+- Inspecteur minimal (décision du 30/10/2026) : titre, sous-titre, 16 pastilles de couleur, intensité LED, pour tous les pads (sons et lumière). Forme d'onde, élagage, fondus : J5.
 - Document `.lalabob` (`FileDocument`, paquet : `show.json` + dossier `Audio/` où les sons sont copiés), `Show.validate()` à l'ouverture.
 - Onglets de grilles (ajout, renommage, réordonnancement), raccourcis ⌘1…⌘9.
 - Bibliothèque de fichiers à gauche (signets de portée sandbox), recherche, glisser-déposer vers les pads.
