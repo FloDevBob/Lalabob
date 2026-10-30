@@ -83,6 +83,7 @@ extension ContentView {
     return ContentView()
         .environment(ShowController())
         .environment(LibraryController(securityScoped: false))
+        .environment(PreviewController())
         .frame(width: 1400, height: 900)
         .preferredColorScheme(.dark)
 }

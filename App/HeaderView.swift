@@ -6,6 +6,7 @@ import SwiftUI
 /// Barre d'en-tête : bibliothèque, logo, onglets de grilles, contrôleur, sortie audio, mode, Tout arrêter.
 struct HeaderView: View {
     @Environment(ShowController.self) private var controller
+    @Environment(PreviewController.self) private var preview
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Binding var showsLibrary: Bool
 
@@ -38,7 +39,10 @@ struct HeaderView: View {
             controllerStatus
             outputPicker
             LockButton()
-            Button("Tout arrêter", icon: .stop) { controller.stopAll() }
+            Button("Tout arrêter", icon: .stop) {
+                controller.stopAll()
+                preview.stop()
+            }
                 .keyboardShortcut(.escape, modifiers: [])
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
