@@ -149,8 +149,8 @@ struct PadView: View {
         .onTapGesture(perform: activate)
         .onDrag {
             guard pad != nil else { return NSItemProvider() }
-            controller.selection = position
             let token = PadDragToken.string(grid: controller.currentGrid.id, position: position)
+            PadDropDelegate.log.info("Glisser : départ de \(position.description, privacy: .public)")
             return NSItemProvider(object: token as NSString)
         }
         .onDrop(
@@ -252,7 +252,7 @@ struct PadView: View {
 /// Dépôt sur une case : un fichier son (Finder ou bibliothèque) crée le pad ; un pad le déplace ou l'échange ;
 /// avec ⌥, il le duplique.
 struct PadDropDelegate: DropDelegate {
-    private static let log = Logger(subsystem: "fr.lalabob.app", category: "drop")
+    static let log = Logger(subsystem: "fr.lalabob.app", category: "drop")
 
     let position: GridPosition
     let controller: ShowController
@@ -261,10 +261,13 @@ struct PadDropDelegate: DropDelegate {
     private var optionHeld: Bool { NSEvent.modifierFlags.contains(.option) }
 
     func validateDrop(info: DropInfo) -> Bool {
-        info.hasItemsConforming(to: [.fileURL, .plainText])
+        let valid = info.hasItemsConforming(to: [.fileURL, .plainText])
+        Self.log.info("Glisser : validation sur \(position.description, privacy: .public) → \(valid)")
+        return valid
     }
 
     func dropEntered(info: DropInfo) {
+        Self.log.info("Glisser : entrée sur \(position.description, privacy: .public)")
         highlight = isPadDrag(info) && optionHeld ? .copy : .move
     }
 
@@ -281,10 +284,13 @@ struct PadDropDelegate: DropDelegate {
 
     func performDrop(info: DropInfo) -> Bool {
         highlight = nil
+        Self.log.info("Glisser : dépôt sur \(position.description, privacy: .public), fichier \(info.hasItemsConforming(to: [.fileURL])), texte \(info.hasItemsConforming(to: [.plainText]))")
         let target = position
         let controller = controller
 
-        if let provider = info.itemProviders(for: [.fileURL]).first {
+        // `itemProviders(for:)` renvoie aussi des fournisseurs qui n'ont pas ce type : on vérifie chacun.
+        let providers = info.itemProviders(for: [.fileURL, .plainText])
+        if let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }) {
             _ = provider.loadObject(ofClass: URL.self) { url, error in
                 guard let url else {
                     Self.log.error("Dépôt d'un fichier illisible : \(error?.localizedDescription ?? "URL absente")")
@@ -294,18 +300,24 @@ struct PadDropDelegate: DropDelegate {
             }
             return true
         }
-        if let provider = info.itemProviders(for: [.plainText]).first {
+        if let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) }) {
             let duplicate = optionHeld
-            _ = provider.loadObject(ofClass: NSString.self) { object, _ in
-                guard let text = (object as? NSString).map({ $0 as String }) else { return }
+            _ = provider.loadObject(ofClass: NSString.self) { object, error in
+                guard let text = (object as? NSString).map({ $0 as String }) else {
+                    Self.log.error("Glisser : texte illisible (\(error?.localizedDescription ?? "rien", privacy: .public))")
+                    return
+                }
                 Task { @MainActor in
-                    guard let token = PadDragToken.parse(text), token.grid == controller.currentGrid.id else { return }
-                    if duplicate {
-                        controller.duplicatePad(from: token.position, to: target)
-                    } else {
-                        controller.movePad(from: token.position, to: target)
+                    guard let token = PadDragToken.parse(text), token.grid == controller.currentGrid.id else {
+                        Self.log.error("Glisser : jeton refusé « \(text, privacy: .public) »")
+                        return
                     }
-                    controller.selection = target
+                    let done =
+                        duplicate
+                        ? controller.duplicatePad(from: token.position, to: target)
+                        : controller.movePad(from: token.position, to: target)
+                    Self.log.info("Glisser : \(duplicate ? "duplication" : "déplacement", privacy: .public) \(token.position.description, privacy: .public) → \(target.description, privacy: .public) : \(done)")
+                    if done { controller.selection = target }
                 }
             }
             return true

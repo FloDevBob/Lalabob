@@ -70,6 +70,10 @@ struct HeaderView: View {
             ForEach(controller.outputDevices) { device in
                 Text(device.name).tag(String?.some(device.uid))
             }
+            // Sortie mémorisée mais pas (encore) branchée : elle doit garder une entrée dans la liste.
+            if let uid = controller.selectedOutputUID, !controller.outputDevices.contains(where: { $0.uid == uid }) {
+                Text("Sortie débranchée").tag(String?.some(uid))
+            }
         }
         .labelsHidden()
         .frame(width: 180)
