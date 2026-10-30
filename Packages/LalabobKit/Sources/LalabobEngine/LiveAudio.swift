@@ -13,3 +13,13 @@ extension ShowController {
         return ShowController(audio: AVAudioEngineController(), audioDirectory: audioDirectory)
     }
 }
+
+import LalabobMIDI
+
+extension ControllerSession {
+    /// Session reliée au vrai MIDI du Mac. `nil` si CoreMIDI n'est pas disponible.
+    public static func live(for controller: ShowController) -> ControllerSession? {
+        guard let transport = try? CoreMIDISession() else { return nil }
+        return ControllerSession(controller: controller, transport: transport)
+    }
+}

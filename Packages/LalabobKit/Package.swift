@@ -34,7 +34,10 @@ let package = Package(
 
         .testTarget(name: "LalabobModelTests", dependencies: ["LalabobModel"]),
         .testTarget(name: "LalabobMIDITests", dependencies: ["LalabobMIDI"]),
-        .testTarget(name: "LalabobEngineTests", dependencies: ["LalabobEngine", "LalabobAudio", "LalabobModel"]),
+        .testTarget(
+            name: "LalabobEngineTests",
+            dependencies: ["LalabobEngine", "LalabobAudio", "LalabobModel", "LalabobMIDI", "ControllerDrivers"]
+        ),
         .testTarget(name: "LalabobAudioTests", dependencies: ["LalabobAudio", "LalabobModel"]),
         .testTarget(name: "ControllerDriversTests", dependencies: ["ControllerDrivers", "LalabobModel", "LalabobMIDI"]),
     ],

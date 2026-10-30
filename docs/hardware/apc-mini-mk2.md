@@ -26,3 +26,9 @@ Les appuis arrivent en Note On sur le canal 1 (0 en interne).
 
 macOS permet à plusieurs applications d'écouter le même contrôleur : Lalabob et le logiciel qui pilote
 Apple Music lisent l'APC en même temps sans se gêner.
+
+## Relevés à faire au jalon 2 (essai matériel)
+
+- Nom réel du port vu par CoreMIDI : _à noter_ (la détection cherche « apc mini mk2 »).
+- Réponse à la requête d'identité : _à noter_ ; Lalabob vérifie seulement le fabricant Akai `47`.
+- Confirmer les CC 48 à 56 des faders ⚠︎ et les canaux de pulsation (le son en lecture utilise le canal 9).

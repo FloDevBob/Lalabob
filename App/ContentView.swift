@@ -28,6 +28,7 @@ struct ContentView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(Surface.textTertiary)
             Spacer()
+            controllerStatus
             outputPicker
             modePicker
             Button("Sons d'essai", systemImage: "folder") { controller.loadTrialSounds() }
@@ -41,6 +42,19 @@ struct ContentView: View {
         .padding(.trailing, 20)
         .frame(height: 52)
         .background(Surface.chrome)
+    }
+
+    private var controllerStatus: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(controller.connectedControllerName == nil ? Surface.textTertiary : Color.green)
+                .frame(width: 8, height: 8)
+            Text(controller.connectedControllerName ?? "Aucun contrôleur")
+                .font(.system(size: 12))
+                .foregroundStyle(Surface.textSecondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(controller.connectedControllerName.map { "\($0), connecté" } ?? "Aucun contrôleur connecté")
     }
 
     private var outputPicker: some View {

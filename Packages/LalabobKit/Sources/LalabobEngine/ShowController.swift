@@ -1,3 +1,4 @@
+import ControllerDrivers
 import Foundation
 import LalabobAudio
 import LalabobModel
@@ -34,6 +35,10 @@ public final class ShowController {
     public private(set) var outputDevices: [AudioOutputDevice] = []
     /// `nil` = sortie par défaut du système.
     public private(set) var selectedOutputUID: String?
+    /// Le contrôleur physique actuellement relié (Launchpad, APC), s'il y en a un.
+    public private(set) var connectedController: ControllerModel?
+    /// Nom du contrôleur relié, pour l'affichage.
+    public var connectedControllerName: String? { connectedController?.displayName }
 
     @ObservationIgnored private let audioDirectory: URL?
     @ObservationIgnored private let audio: any AudioEngineControlling
@@ -115,6 +120,21 @@ public final class ShowController {
             guard let pad = currentGrid[position], case .audio = pad.content else { return }
             commands.yield(.trigger(pad.id))
         }
+    }
+
+    /// Appui sur un pad du contrôleur : joue toujours, quel que soit le mode de l'écran.
+    func pressFromController(at position: GridPosition) {
+        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        commands.yield(.trigger(pad.id))
+    }
+
+    func setConnectedController(_ model: ControllerModel?) {
+        connectedController = model
+    }
+
+    /// Ce que les LED du contrôleur doivent montrer : le reflet de la grille affichée.
+    var ledStates: [GridPosition: LEDState] {
+        LEDPlanner.states(for: currentGrid, playback: playback)
     }
 
     public func togglePause(at position: GridPosition) {

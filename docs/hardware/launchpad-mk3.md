@@ -33,3 +33,8 @@ ne sont pas utilisés par Lalabob pour l'instant.
 - [ ] Octets modèle des Mini MK3 et Pro MK3.
 - [ ] Le Pro MK3 utilise bien la même grille 11–88 en mode Programmeur.
 - [ ] Rendu des couleurs RVB à côté de l'écran (ajuster si besoin dans `LaunchpadDriver.sevenBit`).
+
+## Relevés à faire au jalon 2 (essai matériel)
+
+- Noms réels des ports vus par CoreMIDI (`kMIDIPropertyDisplayName`) : _à noter_. La détection (`ControllerModel.detect(portName:)`) cherche « launchpad x », « mini mk3 », « pro mk3 » et écarte les ports contenant « DAW ».
+- Réponse à la requête d'identité (octets famille/produit) : _à noter_ ; Lalabob vérifie seulement le fabricant Novation `00 20 29`.

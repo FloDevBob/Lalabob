@@ -3,7 +3,14 @@ import SwiftUI
 
 @main
 struct LalabobApp: App {
-    @State private var controller = ShowController.live(audioDirectory: LalabobApp.trialAudioDirectory)
+    @State private var controller: ShowController
+    private let midiSession: ControllerSession?
+
+    init() {
+        let controller = ShowController.live(audioDirectory: LalabobApp.trialAudioDirectory)
+        _controller = State(initialValue: controller)
+        midiSession = ControllerSession.live(for: controller)
+    }
 
     /// Avant le jalon 4 (documents `.lalabob`), les sons d'essai se déposent dans le dossier de l'app :
     /// ~/Library/Containers/fr.flodevbob.Lalabob/Data/Library/Application Support/Lalabob/Audio
@@ -19,6 +26,7 @@ struct LalabobApp: App {
                 .frame(minWidth: 1100, minHeight: 720)
                 .task { await controller.observePlayback() }
                 .task { await controller.observeOutputDevices() }
+                .task { await midiSession?.run() }
         }
         .windowStyle(.hiddenTitleBar)
     }
