@@ -1,0 +1,16 @@
+# Projet Xcode généré par XcodeGen (source de vérité : project.yml)
+Lalabob.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Réglages locaux (identifiant d'équipe de signature)
+Config/Local.xcconfig
+
+# macOS
+.DS_Store

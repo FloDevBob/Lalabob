@@ -1,0 +1,4 @@
+// Réglages communs à toutes les configurations.
+// Les réglages propres à votre Mac (équipe de signature) vont dans Local.xcconfig,
+// qui n'est pas versionné. Copiez Local.xcconfig.example (ou lancez `make setup`).
+#include? "Local.xcconfig"

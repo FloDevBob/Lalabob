@@ -1,0 +1,4 @@
+// Copiez ce fichier en Config/Local.xcconfig (non versionné).
+// Identifiant d'équipe de votre compte Apple (gratuit « Personal Team » accepté).
+// Pour le trouver : `make team`, ou Xcode › Signing & Capabilities après avoir choisi l'équipe.
+DEVELOPMENT_TEAM =
