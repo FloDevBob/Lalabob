@@ -120,24 +120,25 @@ public actor AVAudioEngineController: AudioEngineControlling {
             }
         }
 
-        // Retire ce qui a disparu ou changé. Un pad seulement déplacé d'une colonne à l'autre continue de jouer :
-        // on rebranche son lecteur sur le mélangeur de sa nouvelle colonne.
+        // Un pad disparu s'arrête. Un pad déplacé continue sur le mélangeur de sa nouvelle colonne.
+        // Un pad dont les réglages changent garde le son en cours ; les nouveaux réglages valent au prochain appui.
         for (id, entry) in entries {
-            if let new = wanted[id], new.clip == entry.clip {
-                if new.column != entry.column {
-                    entries[id]?.column = new.column
-                    if let voice = voices[id], let moved = entries[id] {
-                        // Rebrancher un lecteur l'arrête : on le relance là où il en était (micro-coupure possible).
-                        let state = voice.state
-                        engine.disconnectNodeOutput(voice.player)
-                        engine.connect(voice.player, to: columnMixers[new.column], format: voice.format)
-                        resume(id, entry: moved, from: state, now: ProcessInfo.processInfo.systemUptime)
-                    }
-                }
+            guard let new = wanted[id] else {
+                dropVoice(id)
+                entries[id] = nil
                 continue
             }
-            dropVoice(id)
-            entries[id] = nil
+            if new.column != entry.column {
+                entries[id]?.column = new.column
+                if let voice = voices[id], let moved = entries[id] {
+                    // Rebrancher un lecteur l'arrête : on le relance là où il en était (micro-coupure possible).
+                    let state = voice.state
+                    engine.disconnectNodeOutput(voice.player)
+                    engine.connect(voice.player, to: columnMixers[new.column], format: voice.format)
+                    resume(id, entry: moved, from: state, now: ProcessInfo.processInfo.systemUptime)
+                }
+            }
+            if new.clip != entry.clip { entries[id] = nil }  // rechargé ci-dessous
         }
         // Charge ce qui est nouveau. Un fichier illisible n'empêche pas les autres.
         for (id, new) in wanted where entries[id] == nil {

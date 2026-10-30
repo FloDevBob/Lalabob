@@ -6,6 +6,7 @@ import LalabobModel
 public typealias PlaybackState = LalabobAudio.PlaybackState
 public typealias PlaybackEvent = LalabobAudio.PlaybackEvent
 public typealias AudioOutputDevice = LalabobAudio.AudioOutputDevice
+public typealias Waveform = LalabobAudio.Waveform
 
 extension ShowController {
     /// Spectacle relié à la vraie sortie audio du Mac (un moteur par fenêtre).
