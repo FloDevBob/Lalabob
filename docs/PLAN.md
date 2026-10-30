@@ -45,7 +45,9 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - **Choix / limites connus** : fondu de sortie ignoré pour les boucles ; sons longs lus en flux avec fondus par volume du lecteur (pas de test hors ligne) ; « Tout arrêter » coupe net (pas de fondu) ; reprise après changement de sortie implémentée mais à essayer sur le vrai matériel ; en rendu hors ligne un `play()` peut démarrer un bloc trop tard sans pause préalable (géré dans `renderOffline`) — à surveiller en temps réel (latence de déclenchement).
 - **Note outillage** : `swift test` en terminal échoue (toolchain sans module Testing, cache bloqué par le bac à sable) → lancer les tests via Xcode (schéma `LalabobAudioTests`).
 
-### J2 — Contrôleurs
+### J2 — Contrôleurs 🚧 (branche `j2/controleurs`, empilée sur `j1/moteur-audio`)
+**Avancement** — étape 1/3 ✅ détection (nom de port + fabricant) · étape 2 : session CoreMIDI · étape 3 : appuis, faders, LED, reconnexion.
+- **Fait (étape 1)** : `ControllerModel.detect(portName:)`, `isControlPort(named:)` (Launchpad : port MIDI, pas DAW), `isConsistent(with:)` (fabricant Novation `00 20 29` / Akai `47`). Les octets « famille » de la réponse d'identité ne sont pas encore connus : à relever sur le matériel (journaliser la réponse), puis à ajouter ici et dans `docs/hardware/`.
 - `LalabobMIDI` : session CoreMIDI dans un `actor` (sources, destinations, notifications de branchement).
 - Détection automatique par requête d'identité → `ControllerModel` → pilote.
 - Appui pad → `ShowController` → son ; LED synchronisées avec l'écran (RVB sur Launchpad, palette + canal sur APC).

@@ -63,6 +63,11 @@ public enum DeviceInquiry {
     public struct Reply: Equatable, Sendable {
         public let manufacturer: [UInt8]
         public let family: [UInt8]
+
+        public init(manufacturer: [UInt8], family: [UInt8]) {
+            self.manufacturer = manufacturer
+            self.family = family
+        }
     }
 
     public static func parseReply(_ bytes: [UInt8]) -> Reply? {
