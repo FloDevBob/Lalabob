@@ -48,8 +48,15 @@ MIDI vers LightKey. Sécurité de scène avant tout : **le son ne doit jamais s'
 Skills du dépôt : `lalabob-feature` (déroulé d'une tâche), `midi-driver` (pilote de contrôleur),
 `release-check` (avant une représentation).
 
-## Références
+## Où en est-on, que faire ensuite
 
-- Maquette : https://claude.ai/artifact/B82jshC6LzSB3FBxi7cAia
-- Plan d'implémentation : https://claude.ai/artifact/UZQWshXj9GUVkjtFMFBJcm
-- Protocoles matériels : `docs/hardware/`
+- **Plan, jalons, décisions** : @docs/PLAN.md — lire avant toute tâche ; le mettre à jour quand un jalon avance.
+- **Maquette décrite** (écrans, états, interactions) : @docs/DESIGN.md
+- Protocoles matériels : `docs/hardware/` ; décisions d'architecture : `docs/adr/`.
+- Liens d'origine (nécessitent un compte claude.ai) : maquette https://claude.ai/artifact/B82jshC6LzSB3FBxi7cAia,
+  plan https://claude.ai/artifact/UZQWshXj9GUVkjtFMFBJcm.
+
+## Dans l'agent d'Xcode
+
+- Compiler / lancer avec les outils Xcode ; les tests du cœur avec `make test` (ou le schéma du package LalabobKit).
+- Après une modification de `project.yml`, relancer `make project` dans le Terminal (XcodeGen), puis recharger le projet.
