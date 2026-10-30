@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct LalabobApp: App {
     @State private var controller: ShowController
+    @State private var library = LibraryController()
     private let midiSession: ControllerSession?
 
     init() {
@@ -22,6 +23,7 @@ struct LalabobApp: App {
         WindowGroup("Lalabob") {
             ContentView()
                 .environment(controller)
+                .environment(library)
                 .preferredColorScheme(.dark)
                 .frame(minWidth: 1100, minHeight: 720)
                 .task { await controller.observePlayback() }
@@ -29,5 +31,6 @@ struct LalabobApp: App {
                 .task { await midiSession?.run() }
         }
         .windowStyle(.hiddenTitleBar)
+        .commands { LalabobCommands() }
     }
 }

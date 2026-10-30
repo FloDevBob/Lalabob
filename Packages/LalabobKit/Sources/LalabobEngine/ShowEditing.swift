@@ -166,3 +166,35 @@ extension ShowController {
         }
     }
 }
+
+// MARK: - Libellés pour l'interface
+
+extension ShowController {
+    /// Nombre de pads d'un onglet (affiché sur l'onglet).
+    public func padCount(inGrid index: Int) -> Int {
+        guard show.grids.indices.contains(index) else { return 0 }
+        return show.grids[index].columns.flatMap(\.slots).compactMap { $0 }.count
+    }
+
+    /// « Bruitages · ligne 6 · note 61 » : nom de la colonne, ligne, et note du contrôleur s'il est connu.
+    public func positionLabel(for position: GridPosition) -> String {
+        guard position.isValid else { return "" }
+        var label = "\(currentGrid.columns[position.column].name) · ligne \(position.row + 1)"
+        if let model = connectedController ?? lastControllerModel {
+            label += " · note \(model.driver.note(for: position))"
+        }
+        return label
+    }
+
+    /// Ce son est-il déjà sur une grille du spectacle ? (point turquoise dans la bibliothèque)
+    public func usesAudioFile(named fileName: String) -> Bool {
+        let wanted = AudioClip.safeFileName(from: fileName)
+        return show.grids.contains { grid in
+            grid.columns.contains { column in
+                column.slots.contains { pad in
+                    if case .audio(let clip) = pad?.content { clip.fileName == wanted } else { false }
+                }
+            }
+        }
+    }
+}
