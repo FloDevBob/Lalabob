@@ -43,9 +43,9 @@ public enum Metrics {
     public static let panelCornerRadius: CGFloat = 18
 }
 
-/// Typographie. Fredoka (logotype) sera intégrée au jalon 5 ; en attendant, police arrondie système.
+/// Typographie : SF Pro partout, Fredoka pour le logo (appeler `Fonts.register()` au lancement).
 public enum Typography {
-    public static let logo = Font.system(size: 22, weight: .semibold, design: .rounded)
+    public static let logo = Font.custom(Fonts.logoFamily, size: 23).weight(.semibold)
     public static let padTitle = Font.system(size: 13, weight: .semibold)
     public static let padSubtitle = Font.system(size: 11.5)
     public static let mono = Font.system(size: 11, design: .monospaced)

@@ -9,7 +9,7 @@ Les valeurs de couleur et de dimension sont déjà dans `LalabobModel/Tint.swift
 - Mode sombre uniquement. Fond de fenêtre `#0E0F12`, panneaux `#121317` / `#15161B`, creux `#0B0C0F`.
 - Coins arrondis partout : pads 14 px, panneaux 18 px, boutons 8–12 px.
 - Texte : SF Pro (système) ; logo « Lalabob » en police très arrondie (Fredoka, à intégrer au J5).
-- Icônes : Phosphor, style **Fill** (arrondies, « joufflues ») ; projecteur dessiné sur mesure pour la lumière.
+- Icônes : **Iconoir**, style regular (trait 1,5) — ADR 0005 ; projecteur et cadenas ouvert dessinés sur mesure dans le même style.
 - Le texte d'un pad est une déclinaison très claire de sa teinte (`TintSpec.label`) sur un fond profond (`TintSpec.surface`) ; la couleur vive (`TintSpec.vivid`) est réservée aux LED et aux états actifs.
 
 ## Fenêtre principale (1600 × 1000 dans la maquette)
@@ -48,8 +48,9 @@ En-tête : pastille de la teinte, titre, sous-titre, position (« Bruitages · l
    déplaçables, courbes de fondu en pointillés, **tête de lecture** blanche qui avance.
 3. Couleur du pad : grille de 16 pastilles (fond + point vif), vélocités Novation / APC, segmenté d'intensité LED (Pastel, 100 %, 50 %, 25 %).
 
-**Pad lumière** : bouton Tester ; comportement Impulsion / Bascule / Maintenu (+ explication) ; retour LED ;
-traduction MIDI « Entrée (contrôleur, note) → Sortie (port Lalabob Lumière, note/canal/vélocité) » ; CC du fader ; couleur.
+**Pad lumière** (ADR 0004, pas de traduction) : bouton **Tester** (envoie la note du contrôleur sur « Lalabob Lumière ») ;
+rappel de la note reçue par LightKey (« Launchpad X · note 77 ») ; titre, sous-titre, couleur, intensité LED.
+Les comportements Impulsion / Bascule / Maintenu, le retour LED et la traduction MIDI de la maquette sont abandonnés.
 
 ## Interactions
 

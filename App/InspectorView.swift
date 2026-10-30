@@ -60,15 +60,15 @@ struct InspectorView: View {
             }
             Spacer()
             Group {
-                Button("Couper", systemImage: "scissors") { controller.cutSelection() }
+                Button("Couper", icon: .cut) { controller.cutSelection() }
                     .disabled(pad == nil)
-                Button("Copier", systemImage: "doc.on.doc") { controller.copySelection() }
+                Button("Copier", icon: .copy) { controller.copySelection() }
                     .disabled(pad == nil)
-                Button("Coller", systemImage: "doc.on.clipboard") { controller.pasteAtSelection() }
+                Button("Coller", icon: .paste) { controller.pasteAtSelection() }
                     .disabled(!controller.canPaste)
-                Button("Dupliquer", systemImage: "plus.square.on.square") { controller.duplicateSelection() }
+                Button("Dupliquer", icon: .duplicate) { controller.duplicateSelection() }
                     .disabled(pad == nil)
-                Button("Vider", systemImage: "trash") { controller.clearSelection() }
+                Button("Vider", icon: .trash) { controller.clearSelection() }
                     .disabled(pad == nil)
             }
             .labelStyle(.iconOnly)
@@ -136,7 +136,7 @@ struct InspectorView: View {
     @ViewBuilder
     private var emptyCell: some View {
         if controller.currentGrid.columns[position.column].kind == .light {
-            Button("Nouvelle cue", systemImage: "plus") { controller.newLightCue(at: position) }
+            Button("Nouvelle cue", icon: .plus) { controller.newLightCue(at: position) }
             Text("LightKey reçoit la note de cette case : réglez son mapping MIDI sur le contrôleur.")
                 .font(.system(size: 11.5))
                 .foregroundStyle(Surface.textTertiary)

@@ -59,7 +59,7 @@ extension ContentView {
     fileprivate var lockBanner: some View {
         if let notice = controller.lockNotice {
             HStack(spacing: 10) {
-                Image(systemName: "lock.fill")
+                Icon.lock.view(size: 15)
                 Text(notice)
                     .font(.system(size: 12.5, weight: .medium))
                 Button("Déverrouiller") { controller.isLocked = false }
@@ -79,7 +79,8 @@ extension ContentView {
 }
 
 #Preview {
-    ContentView()
+    Fonts.register()
+    return ContentView()
         .environment(ShowController())
         .environment(LibraryController(securityScoped: false))
         .frame(width: 1400, height: 900)

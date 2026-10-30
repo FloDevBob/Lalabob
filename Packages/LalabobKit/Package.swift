@@ -19,7 +19,8 @@ let package = Package(
         // Données pures : spectacle, grilles, pads, teintes. Aucune dépendance.
         .target(name: "LalabobModel"),
         // Jetons visuels (SwiftUI) dérivés de la maquette.
-        .target(name: "LalabobDesign", dependencies: ["LalabobModel"]),
+        // Icônes Iconoir, police Fredoka et leurs licences (ADR 0005).
+        .target(name: "LalabobDesign", dependencies: ["LalabobModel"], resources: [.process("Resources")]),
         // Messages MIDI (analyse / construction). CoreMIDI arrive au jalon 2.
         .target(name: "LalabobMIDI"),
         // Un pilote par contrôleur : notes ↔ cases, LED, faders.
@@ -33,6 +34,7 @@ let package = Package(
         ),
 
         .testTarget(name: "LalabobModelTests", dependencies: ["LalabobModel"]),
+        .testTarget(name: "LalabobDesignTests", dependencies: ["LalabobDesign"]),
         .testTarget(name: "LalabobMIDITests", dependencies: ["LalabobMIDI"]),
         .testTarget(
             name: "LalabobEngineTests",

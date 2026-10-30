@@ -1,3 +1,4 @@
+import LalabobDesign
 import LalabobEngine
 import SwiftUI
 
@@ -6,6 +7,10 @@ struct LalabobApp: App {
     @State private var library = LibraryController()
     /// Une seule session MIDI pour l'app, rattachée à la fenêtre active.
     @State private var midiSession = ControllerSession.live()
+
+    init() {
+        Fonts.register()  // Fredoka, pour le logo
+    }
 
     var body: some Scene {
         DocumentGroup(newDocument: { LalabobDocument() }) { file in

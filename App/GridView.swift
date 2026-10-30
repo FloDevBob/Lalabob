@@ -65,7 +65,7 @@ struct ColumnView: View {
         let column = controller.currentGrid.columns[index]
         VStack(spacing: Metrics.padSpacing) {
             HStack(spacing: 8) {
-                Image(systemName: column.kind == .audio ? "music.note" : "lightbulb.max.fill")
+                (column.kind == .audio ? Icon.music : Icon.spotlight).view(size: 16)
                     .foregroundStyle(column.kind == .audio ? Surface.textSecondary : Surface.lightAccent)
                 Text(column.name)
                     .font(.system(size: 12.5, weight: .semibold))
@@ -215,8 +215,8 @@ struct PadView: View {
             HStack(spacing: 4) {
                 Text(pad.title).font(Typography.padTitle).lineLimit(1)
                 Spacer(minLength: 0)
-                if case .paused = event?.state { Image(systemName: "pause.fill").font(.system(size: 10)) }
-                if case .playing = event?.state { Image(systemName: "waveform").font(.system(size: 10)) }
+                if case .paused = event?.state { Icon.pause.view(size: 12) }
+                if case .playing = event?.state { Icon.volume.view(size: 12) }
             }
             Text(pad.subtitle).font(Typography.padSubtitle).opacity(0.88).lineLimit(1)
         }
@@ -254,7 +254,7 @@ struct PadView: View {
     }
 
     private var empty: some View {
-        Label(kind == .audio ? "Déposer un son" : "Nouvelle cue", systemImage: "plus")
+        IconLabel(kind == .audio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
             .font(.system(size: 11.5))
             .foregroundStyle(Surface.textTertiary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

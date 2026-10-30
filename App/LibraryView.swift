@@ -18,7 +18,7 @@ struct LibraryView: View {
             HStack {
                 Text("Favoris").font(.system(size: 11, weight: .semibold)).foregroundStyle(Surface.textTertiary)
                 Spacer()
-                Button("Ajouter un dossier", systemImage: "plus") { choosingFolder = true }
+                Button("Ajouter un dossier", icon: .plus) { choosingFolder = true }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
                     .help("Ajouter un dossier de sons")
@@ -64,7 +64,7 @@ struct LibraryView: View {
         return Button {
             Task { await library.select(favorite.id) }
         } label: {
-            Label(favorite.name, systemImage: "folder.fill")
+            Label { Text(favorite.name) } icon: { Icon.folder.view(size: 15) }
                 .font(.system(size: 12.5))
                 .foregroundStyle(isCurrent ? Surface.textPrimary : Surface.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -82,7 +82,7 @@ struct LibraryView: View {
     private func itemRow(_ item: AudioLibraryItem) -> some View {
         let isSelected = library.selectedItem == item.id
         return HStack(spacing: 8) {
-            Image(systemName: "waveform")
+            Icon.wave.view(size: 15)
                 .foregroundStyle(Surface.lightAccent.opacity(0.8))
             Text(item.name)
                 .font(.system(size: 12.5))

@@ -16,7 +16,7 @@ struct HeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Button(showsLibrary ? "Masquer la bibliothèque" : "Afficher la bibliothèque", systemImage: "sidebar.left") {
+            Button(showsLibrary ? "Masquer la bibliothèque" : "Afficher la bibliothèque", icon: .sidebar) {
                 showsLibrary.toggle()
             }
             .labelStyle(.iconOnly)
@@ -38,7 +38,7 @@ struct HeaderView: View {
             controllerStatus
             outputPicker
             LockButton()
-            Button("Tout arrêter", systemImage: "stop.fill") { controller.stopAll() }
+            Button("Tout arrêter", icon: .stop) { controller.stopAll() }
                 .keyboardShortcut(.escape, modifiers: [])
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
@@ -92,7 +92,7 @@ struct LockButton: View {
         Button {
             controller.isLocked.toggle()
         } label: {
-            Label(locked ? "Verrouillé" : "Déverrouillé", systemImage: locked ? "lock.fill" : "lock.open.fill")
+            IconLabel(locked ? "Verrouillé" : "Déverrouillé", icon: locked ? .lock : .lockOpen, size: 15)
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.horizontal, 10)
                 .frame(height: 28)
@@ -121,7 +121,7 @@ struct GridTabsView: View {
                     tab(index: index, grid: grid)
                 }
                 if !controller.isLocked {
-                    Button("Nouvelle grille", systemImage: "plus") { controller.addGrid() }
+                    Button("Nouvelle grille", icon: .plus) { controller.addGrid() }
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
                         .help("Nouvelle grille (⌘T)")
