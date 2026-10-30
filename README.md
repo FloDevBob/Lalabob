@@ -69,6 +69,6 @@ docs/hardware/           Protocoles MIDI des contrôleurs
 | J1 | Moteur audio, grille à la souris, sortie audio | 🟡 code fini, essai matériel à faire |
 | J2 | Contrôleurs et LED, faders de l'APC | 🟡 code fini, essai matériel à faire |
 | J3 | Colonnes lumière vers LightKey | 🟡 code fini, essai LightKey à faire |
-| J4 | Édition, documents, glisser-déposer — *utilisable en répétition* | |
+| J4 | Édition, documents, glisser-déposer — *utilisable en répétition* | 🟡 code fini, essai réel à faire |
 | J5 | Inspecteur, forme d'onde, design final | |
 | J6 | Fiabilisation — *prêt pour le spectacle* | |

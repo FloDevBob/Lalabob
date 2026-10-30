@@ -56,6 +56,19 @@ targets:
         LSApplicationCategoryType: public.app-category.music
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: "© 2026 Lalabob"
+        # Document .lalabob : un paquet (dossier) avec show.json et Audio/.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: fr.flodevbob.lalabob.show
+            UTTypeDescription: Spectacle Lalabob
+            UTTypeConformsTo: [com.apple.package, public.composite-content]
+            UTTypeTagSpecification:
+              public.filename-extension: [lalabob]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Spectacle Lalabob
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSTypeIsPackage: true
+            LSItemContentTypes: [fr.flodevbob.lalabob.show]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.flodevbob.lalabob

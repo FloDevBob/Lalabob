@@ -6,7 +6,13 @@ import SwiftUI
 /// Barre d'en-tête : bibliothèque, logo, onglets de grilles, contrôleur, sortie audio, mode, Tout arrêter.
 struct HeaderView: View {
     @Environment(ShowController.self) private var controller
+    @Environment(\.documentConfiguration) private var documentConfiguration
     @Binding var showsLibrary: Bool
+
+    /// Nom du fichier du spectacle (sans « .lalabob »), ou « Nouveau spectacle » tant qu'il n'est pas enregistré.
+    private var showName: String {
+        documentConfiguration?.fileURL?.deletingPathExtension().lastPathComponent ?? controller.show.name
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -19,7 +25,7 @@ struct HeaderView: View {
             Text("Lalabob")
                 .font(Typography.logo)
                 .foregroundStyle(Surface.textPrimary)
-            Text(controller.show.name)
+            Text(showName)
                 .font(.system(size: 12))
                 .foregroundStyle(Surface.textTertiary)
                 .lineLimit(1)

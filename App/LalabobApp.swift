@@ -3,32 +3,18 @@ import SwiftUI
 
 @main
 struct LalabobApp: App {
-    @State private var controller: ShowController
     @State private var library = LibraryController()
-    private let midiSession: ControllerSession?
-
-    init() {
-        let controller = ShowController.live(audioDirectory: LalabobApp.trialAudioDirectory)
-        _controller = State(initialValue: controller)
-        midiSession = ControllerSession.live(for: controller)
-    }
-
-    /// Avant le jalon 4 (documents `.lalabob`), les sons d'essai se déposent dans le dossier de l'app :
-    /// ~/Library/Containers/fr.flodevbob.Lalabob/Data/Library/Application Support/Lalabob/Audio
-    private static var trialAudioDirectory: URL {
-        URL.applicationSupportDirectory.appending(path: "Lalabob/Audio", directoryHint: .isDirectory)
-    }
+    /// Une seule session MIDI pour l'app, rattachée à la fenêtre active.
+    @State private var midiSession = ControllerSession.live()
 
     var body: some Scene {
-        WindowGroup("Lalabob") {
-            ContentView()
-                .environment(controller)
+        DocumentGroup(newDocument: { LalabobDocument() }) { file in
+            DocumentWindow(document: file.document)
                 .environment(library)
+                .environment(\.midiSession, midiSession)
                 .preferredColorScheme(.dark)
                 .frame(minWidth: 1100, minHeight: 720)
-                .task { await controller.observePlayback() }
-                .task { await controller.observeOutputDevices() }
-                .task { await midiSession?.run() }
+                .onAppear { midiSession?.start() }
         }
         .windowStyle(.hiddenTitleBar)
         .commands { LalabobCommands() }

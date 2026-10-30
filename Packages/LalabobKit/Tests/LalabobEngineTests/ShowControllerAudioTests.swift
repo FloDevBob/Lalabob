@@ -194,27 +194,6 @@ struct ShowControllerAudioTests {
     }
 }
 
-@MainActor
-@Suite("Sons d'essai")
-struct TrialSoundsTests {
-    @Test func audioFilesFillTheSoundColumnsAndValidate() throws {
-        let names = ["b.wav", "a.mp3", "notes.txt", ".cache.wav", "c.aiff"]
-        let show = ShowController.trialShow(fileNames: names)
-        try show.validate()
-        let titles = show.grids[0].columns.flatMap(\.slots).compactMap { $0?.title }
-        #expect(titles == ["a", "b", "c"])  // triés, texte et fichiers cachés ignorés
-        #expect(show.grids[0].columns[6].slots.allSatisfy { $0 == nil })  // jamais dans les colonnes lumière
-    }
-
-    @Test func overflowIsTruncatedToTheSoundColumns() throws {
-        let names = (0..<80).map { "s\($0).wav" }
-        let show = ShowController.trialShow(fileNames: names)
-        try show.validate()
-        let count = show.grids[0].columns.flatMap(\.slots).compactMap { $0 }.count
-        #expect(count == 6 * PadGrid.size)
-    }
-}
-
 /// Attend qu'une condition devienne vraie.
 func waitUntil(timeout: TimeInterval = 2, _ condition: @Sendable () async -> Bool) async -> Bool {
     let deadline = Date().addingTimeInterval(timeout)

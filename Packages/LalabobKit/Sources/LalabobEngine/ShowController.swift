@@ -54,9 +54,10 @@ public final class ShowController {
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let commands: AsyncStream<AudioCommand>.Continuation
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "engine")
-    /// Clics à l'écran sur un pad lumière, transmis à LightKey par `ControllerSession`.
-    @ObservationIgnored let lightPresses: AsyncStream<GridPosition>
-    @ObservationIgnored private let lightPressContinuation: AsyncStream<GridPosition>.Continuation
+    /// Clics à l'écran sur un pad lumière : `ControllerSession` les transmet à LightKey quand cette fenêtre est active.
+    @ObservationIgnored var lightPressHandler: (@MainActor (GridPosition) -> Void)?
+    /// Appelé après chaque changement du spectacle (le document en garde une copie pour l'enregistrer).
+    @ObservationIgnored public var onShowChange: (@MainActor (Show) -> Void)?
 
     private enum AudioCommand: Sendable {
         case configure(Show)
@@ -81,7 +82,6 @@ public final class ShowController {
         self.defaults = defaults
         self.selectedOutputUID = defaults.string(forKey: Self.outputDefaultsKey)
         self.lastControllerModel = defaults.string(forKey: Self.controllerDefaultsKey).flatMap(ControllerModel.init(rawValue:))
-        (lightPresses, lightPressContinuation) = AsyncStream.makeStream(of: GridPosition.self, bufferingPolicy: .bufferingNewest(16))
 
         let (stream, continuation) = AsyncStream.makeStream(of: AudioCommand.self, bufferingPolicy: .unbounded)
         self.commands = continuation
@@ -134,7 +134,7 @@ public final class ShowController {
             guard let pad = currentGrid[position] else { return }
             switch pad.content {
             case .audio: commands.yield(.trigger(pad.id))
-            case .light: lightPressContinuation.yield(position)
+            case .light: lightPressHandler?(position)
             }
         }
     }
@@ -178,14 +178,16 @@ public final class ShowController {
         guard (0..<PadGrid.size).contains(column) else { return }
         let level = Gain.faderLevel(level)
         show.grids[selectedGridIndex].columns[column].level = level
+        onShowChange?(show)
         if show.grids[selectedGridIndex].columns[column].kind == .audio {
             commands.yield(.level(column: column, level: level))
         }
     }
 
-    /// Remplace le spectacle ouvert (ouverture d'un document, sons d'essai).
+    /// Remplace le spectacle ouvert (relecture d'un document).
     public func replaceShow(_ newShow: Show) {
         show = newShow
+        onShowChange?(show)
         selectedGridIndex = 0
         selection = nil
         playback = [:]
@@ -240,6 +242,7 @@ public final class ShowController {
         show = newShow
         if !show.grids.indices.contains(selectedGridIndex) { selectedGridIndex = show.grids.count - 1 }
         syncAudio()
+        onShowChange?(show)
 
         guard let undoManager else { return }
         let isReplaying = undoManager.isUndoing || undoManager.isRedoing
@@ -264,34 +267,7 @@ public final class ShowController {
         }
     }
 
-    // MARK: - Sons d'essai (avant le jalon 4 : pas encore de glisser-déposer)
-
-    /// Un spectacle d'une grille dont les colonnes sons sont remplies par les fichiers donnés
-    /// (triés par nom, colonne après colonne). Les fichiers qui ne sont pas des sons sont ignorés.
-    public nonisolated static func trialShow(fileNames: [String]) -> Show {
-        let sounds =
-            fileNames
-            .filter { AudioClip.isSafeFileName($0) && AudioImporter.supportedExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
-            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        let tints = Tint.allCases.filter { $0 != .blanc && $0 != .graphite }
-        var grid = PadGrid.empty(name: "Sons d'essai")
-        let soundColumns = (0..<PadGrid.size).filter { !PadGrid.defaultLightColumns.contains($0) }
-        for (index, name) in sounds.prefix(soundColumns.count * PadGrid.size).enumerated() {
-            let column = soundColumns[index / PadGrid.size]
-            grid.columns[column].slots[index % PadGrid.size] = Pad(
-                title: (name as NSString).deletingPathExtension,
-                tint: tints[index % tints.count],
-                content: .audio(clip: AudioClip(fileName: name))
-            )
-        }
-        return Show(name: "Sons d'essai", grids: [grid])
-    }
-
-    /// Remplit la grille avec les sons du dossier `Audio/`.
-    public func loadTrialSounds() {
-        guard let audioDirectory,
-            let names = try? FileManager.default.contentsOfDirectory(atPath: audioDirectory.path)
-        else { return }
-        replaceShow(Self.trialShow(fileNames: names))
+    deinit {
+        commands.finish()  // libère le moteur audio de cette fenêtre
     }
 }

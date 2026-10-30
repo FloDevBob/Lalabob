@@ -10,7 +10,11 @@ import os
 ///
 /// Débrancher le contrôleur n'interrompt jamais le son : la session oublie le contrôleur, rien d'autre.
 /// À rebranchement, elle refait la connexion complète (mode Programmeur, toutes les LED).
+///
+/// Une seule session pour toute l'app : elle est rattachée au spectacle de la fenêtre active (`attach`).
+/// Changer de fenêtre renvoie toutes les LED ; aucun son d'une autre fenêtre n'est arrêté.
 @MainActor
+@Observable
 public final class ControllerSession {
     private struct Active {
         var model: ControllerModel
@@ -24,15 +28,21 @@ public final class ControllerSession {
         var events: [MIDIEvent]
     }
 
-    private let controller: ShowController
-    private let transport: any MIDITransport
-    private let outbox: AsyncStream<Outgoing>.Continuation
-    private let log = Logger(subsystem: "fr.lalabob.app", category: "midi")
-    private var active: Active?
-    private var lastLEDs: [GridPosition: LEDState] = [:]
+    /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
+    public private(set) var attachedController: ShowController?
+    @ObservationIgnored private let transport: any MIDITransport
+    @ObservationIgnored private let outbox: AsyncStream<Outgoing>.Continuation
+    @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "midi")
+    @ObservationIgnored private var active: Active?
+    @ObservationIgnored private var lastLEDs: [GridPosition: LEDState] = [:]
 
-    public init(controller: ShowController, transport: any MIDITransport) {
-        self.controller = controller
+    /// Session rattachée à un seul spectacle (tests, aperçus).
+    public convenience init(controller: ShowController, transport: any MIDITransport) {
+        self.init(transport: transport)
+        attach(controller)
+    }
+
+    public init(transport: any MIDITransport) {
         self.transport = transport
 
         // Une seule file d'envoi : les messages partent dans l'ordre où on les a produits.
@@ -48,14 +58,42 @@ public final class ControllerSession {
         }
     }
 
-    /// À lancer une fois (`.task`) ; s'arrête avec la tâche qui l'appelle.
+    @ObservationIgnored private var runner: Task<Void, Never>?
+
+    /// Démarre la session pour toute la durée de l'app ; sans effet si elle tourne déjà.
+    public func start() {
+        guard runner == nil else { return }
+        runner = Task { await run() }
+    }
+
+    /// Fait tourner la session ; s'arrête avec la tâche qui l'appelle (tests).
     public func run() async {
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await self.watchTopology() }
             group.addTask { await self.watchInput() }
             group.addTask { await self.watchLEDs() }
-            group.addTask { await self.watchLightPresses() }
         }
+    }
+
+    // MARK: - Fenêtre active
+
+    /// Rattache la session au spectacle d'une fenêtre (devenue active). Les LED sont toutes renvoyées.
+    public func attach(_ controller: ShowController) {
+        guard attachedController !== controller else { return }
+        attachedController?.lightPressHandler = nil
+        attachedController = controller
+        controller.lightPressHandler = { [weak self] position in self?.sendLightPress(at: position) }
+        controller.setConnectedController(active?.model)
+        lastLEDs = [:]
+        pushLEDs()
+    }
+
+    /// Détache le spectacle d'une fenêtre qui se ferme (sans effet si ce n'est pas le spectacle rattaché).
+    public func detach(_ controller: ShowController) {
+        guard attachedController === controller else { return }
+        controller.lightPressHandler = nil
+        controller.setConnectedController(nil)
+        attachedController = nil
     }
 
     // MARK: - Branchements
@@ -73,7 +111,7 @@ public final class ControllerSession {
             await transport.stopListening(to: old.source)
             active = nil
             lastLEDs = [:]
-            controller.setConnectedController(nil)
+            attachedController?.setConnectedController(nil)
             log.info("Contrôleur débranché : \(old.model.displayName)")
         }
         guard let found else { return }
@@ -84,7 +122,7 @@ public final class ControllerSession {
         lastLEDs = [:]
         send(driver.connectionMessages)
         pushLEDs()
-        controller.setConnectedController(found.model)
+        attachedController?.setConnectedController(found.model)
         log.info("Contrôleur connecté : \(found.model.displayName)")
     }
 
@@ -116,9 +154,9 @@ public final class ControllerSession {
             for event in message.events {
                 switch active.driver.interpret(event) {
                 case .padPressed(let position, let velocity) where velocity > 0:
-                    controller.pressFromController(at: position)
+                    attachedController?.pressFromController(at: position)
                 case .columnFader(let column, let value):
-                    controller.setColumnLevel(column, level: value)
+                    attachedController?.setColumnLevel(column, level: value)
                 default:
                     break  // relâchement, messages inconnus
                 }
@@ -130,23 +168,21 @@ public final class ControllerSession {
 
     /// Clic à l'écran sur un pad lumière : la note que le contrôleur aurait envoyée part sur
     /// « Lalabob Lumière », où LightKey a le même mapping que sur le contrôleur.
-    private func watchLightPresses() async {
-        for await position in controller.lightPresses {
-            guard let model = active?.model ?? controller.lastControllerModel, position.isValid else {
-                log.notice("Clic lumière ignoré : aucun contrôleur connu pour choisir la note")
-                continue
-            }
-            let note = model.driver.note(for: position)
-            let transport = self.transport
-            let log = self.log
-            Task.detached {
-                do {
-                    try await transport.sendLighting([.noteOn(channel: 0, note: note, velocity: 127)])
-                    try await Task.sleep(for: .milliseconds(100))  // durée d'un appui bref
-                    try await transport.sendLighting([.noteOff(channel: 0, note: note, velocity: 0)])
-                } catch {
-                    log.error("Envoi vers LightKey échoué : \(error.localizedDescription)")
-                }
+    private func sendLightPress(at position: GridPosition) {
+        guard let model = active?.model ?? attachedController?.lastControllerModel, position.isValid else {
+            log.notice("Clic lumière ignoré : aucun contrôleur connu pour choisir la note")
+            return
+        }
+        let note = model.driver.note(for: position)
+        let transport = self.transport
+        let log = self.log
+        Task.detached {
+            do {
+                try await transport.sendLighting([.noteOn(channel: 0, note: note, velocity: 127)])
+                try await Task.sleep(for: .milliseconds(100))  // durée d'un appui bref
+                try await transport.sendLighting([.noteOff(channel: 0, note: note, velocity: 0)])
+            } catch {
+                log.error("Envoi vers LightKey échoué : \(error.localizedDescription)")
             }
         }
     }
@@ -154,13 +190,12 @@ public final class ControllerSession {
     // MARK: - LED
 
     private func watchLEDs() async {
-        for await _ in Observations({ [controller] in controller.ledStates }) { pushLEDs() }
+        for await _ in Observations({ [weak self] in self?.attachedController?.ledStates }) { pushLEDs() }
     }
 
     /// Envoie au contrôleur les LED qui ont changé depuis le dernier envoi.
     private func pushLEDs() {
-        guard let active else { return }
-        let desired = controller.ledStates
+        guard let active, let desired = attachedController?.ledStates else { return }
         let changes = LEDPlanner.changes(from: lastLEDs, to: desired)
         guard !changes.isEmpty else { return }
         lastLEDs = desired
