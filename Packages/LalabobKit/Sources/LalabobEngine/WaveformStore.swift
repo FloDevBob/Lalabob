@@ -81,3 +81,11 @@ extension ShowController {
         return try? await WaveformStore.shared.waveform(for: audioDirectory.appending(path: clip.fileName), buckets: buckets)
     }
 }
+
+extension ShowController {
+    /// « WAV · 44,1 kHz · stéréo » pour le son d'un pad, `nil` si le fichier est absent ou illisible.
+    public func fileDescription(for clip: AudioClip) -> String? {
+        guard let audioDirectory else { return nil }
+        return AudioFileInfo.describe(audioDirectory.appending(path: clip.fileName))
+    }
+}

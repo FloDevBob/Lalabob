@@ -7,13 +7,14 @@ func writeTestFile(
     in directory: URL,
     duration: TimeInterval,
     sampleRate: Double = 44100,
+    channels: AVAudioChannelCount = 2,
     value: (TimeInterval) -> Float
 ) throws {
-    let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
+    let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels)!
     let frames = AVAudioFrameCount(duration * sampleRate)
     let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames)!
     buffer.frameLength = frames
-    for channel in 0..<2 {
+    for channel in 0..<Int(channels) {
         let data = buffer.floatChannelData![channel]
         for i in 0..<Int(frames) { data[i] = value(Double(i) / sampleRate) }
     }
@@ -22,7 +23,7 @@ func writeTestFile(
         settings: [
             AVFormatIDKey: kAudioFormatLinearPCM,
             AVSampleRateKey: sampleRate,
-            AVNumberOfChannelsKey: 2,
+            AVNumberOfChannelsKey: channels,
             AVLinearPCMBitDepthKey: 32,
             AVLinearPCMIsFloatKey: true,
         ]

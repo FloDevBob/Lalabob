@@ -67,3 +67,24 @@ struct EngineSettingsChangeTests {
         #expect(abs(out[1000] - 0.5) < 0.001)  // le son en cours continue tel quel
     }
 }
+
+@Suite("Description d'un fichier son")
+struct AudioFileDescriptionTests {
+    @Test func stereoWAV() throws {
+        let dir = try makeTemporaryDirectory()
+        try writeTestFile(named: "a.wav", in: dir, duration: 0.1) { _ in 0 }
+        #expect(AudioFileInfo.describe(dir.appending(path: "a.wav")) == "WAV · 44,1 kHz · stéréo")
+    }
+
+    @Test func monoAt48k() throws {
+        let dir = try makeTemporaryDirectory()
+        try writeTestFile(named: "b.caf", in: dir, duration: 0.1, sampleRate: 48000, channels: 1) { _ in 0 }
+        #expect(AudioFileInfo.describe(dir.appending(path: "b.caf")) == "CAF · 48 kHz · mono")
+    }
+
+    @Test func unreadableFileHasNoDescription() throws {
+        let dir = try makeTemporaryDirectory()
+        try Data("x".utf8).write(to: dir.appending(path: "c.wav"))
+        #expect(AudioFileInfo.describe(dir.appending(path: "c.wav")) == nil)
+    }
+}
