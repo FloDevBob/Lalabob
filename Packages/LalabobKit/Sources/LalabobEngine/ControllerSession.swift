@@ -54,6 +54,7 @@ public final class ControllerSession {
             group.addTask { await self.watchTopology() }
             group.addTask { await self.watchInput() }
             group.addTask { await self.watchLEDs() }
+            group.addTask { await self.watchLightPresses() }
         }
     }
 
@@ -120,6 +121,31 @@ public final class ControllerSession {
                     controller.setColumnLevel(column, level: value)
                 default:
                     break  // relâchement, messages inconnus
+                }
+            }
+        }
+    }
+
+    // MARK: - Lumière
+
+    /// Clic à l'écran sur un pad lumière : la note que le contrôleur aurait envoyée part sur
+    /// « Lalabob Lumière », où LightKey a le même mapping que sur le contrôleur.
+    private func watchLightPresses() async {
+        for await position in controller.lightPresses {
+            guard let model = active?.model ?? controller.lastControllerModel, position.isValid else {
+                log.notice("Clic lumière ignoré : aucun contrôleur connu pour choisir la note")
+                continue
+            }
+            let note = model.driver.note(for: position)
+            let transport = self.transport
+            let log = self.log
+            Task.detached {
+                do {
+                    try await transport.sendLighting([.noteOn(channel: 0, note: note, velocity: 127)])
+                    try await Task.sleep(for: .milliseconds(100))  // durée d'un appui bref
+                    try await transport.sendLighting([.noteOff(channel: 0, note: note, velocity: 0)])
+                } catch {
+                    log.error("Envoi vers LightKey échoué : \(error.localizedDescription)")
                 }
             }
         }

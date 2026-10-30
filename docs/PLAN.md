@@ -60,11 +60,14 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - Reconnexion à chaud sans arrêter le son.
 - **Terminé quand** : sur chaque contrôleur disponible, un appui joue le bon son, les LED ont les couleurs de l'écran, les faders de l'APC bougent ceux de l'écran, y compris après débranchement. Points ⚠︎ de `docs/hardware/` vérifiés.
 
-### J3 — Lumière (LightKey)
-- Port MIDI virtuel « Lalabob Lumière » (sortie seule, pas de boucle).
-- Colonnes lumière : traduction note → message (`MIDIMessageSpec`) ; comportements impulsion / bascule / maintenu ; retour LED optionnel.
-- Faders des colonnes lumière envoyés en CC.
-- **Terminé quand** : LightKey voit le port, apprend les messages par son mapping MIDI et exécute les cues.
+### J3 — Lumière (LightKey) 🟡 code terminé, essai réel à faire (branche `j3/lumiere`, empilée sur `j2/controleurs`)
+**Décision du 30/10/2026 (ADR 0004)** : les notes des pads sont déjà mappées dans LightKey, qui écoute directement le contrôleur. **Pas de traduction.**
+- Appui physique sur un pad lumière : rien côté Lalabob (LightKey le reçoit). LED : couleur du pad, en permanence.
+- Clic à l'écran (Live) : la même note que le contrôleur est envoyée sur le port virtuel « Lalabob Lumière » (Note On 127, Note Off après 100 ms) ; note du contrôleur connecté ou du dernier connu.
+- Couleur des pads lumière : via l'inspecteur minimal du J4.
+- **Fait** : source virtuelle dans `CoreMIDISession` (identifiant unique conservé), `MIDITransport.sendLighting`, `ShowController.lightPresses` + `lastControllerModel`, `ControllerSession.watchLightPresses`. 6 tests (`LightingTests`).
+- **Essai réel (à cocher)** : ☐ LightKey voit « Lalabob Lumière » ☐ ajouter ce port à l'écoute dans LightKey avec le même mapping ☐ un clic à l'écran déclenche la cue ☐ un appui physique ne la déclenche qu'une fois.
+- Abandonné : faders lumière en CC (à rediscuter si besoin), retour LED de LightKey, comportements impulsion / bascule / maintenu côté Lalabob.
 
 ### J4 — Édition et spectacles · palier « utilisable en répétition »
 - Document `.lalabob` (`FileDocument`, paquet : `show.json` + dossier `Audio/` où les sons sont copiés), `Show.validate()` à l'ouverture.
@@ -91,4 +94,4 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 | Latence / craquements à forte charge | Test de charge dès J1, Instruments |
 | Comportements MIDI non documentés (APC surtout) | Pilotes isolés, messages enregistrés, essais matériels tôt |
 | Glisser-déposer SwiftUI limité (⌥ pour dupliquer) | Repli AppKit pour la grille si besoin |
-| Format MIDI attendu par LightKey | Message de sortie configurable par pad, essai réel au J3 |
+| Format MIDI attendu par LightKey | Sans objet : LightKey apprend les notes du contrôleur (ADR 0004) |

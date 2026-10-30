@@ -24,6 +24,7 @@ public enum InteractionMode: String, Sendable {
 @Observable
 public final class ShowController {
     public static let outputDefaultsKey = "audioOutputUID"
+    static let controllerDefaultsKey = "lastControllerModel"
 
     public private(set) var show: Show
     public var selectedGridIndex: Int
@@ -37,6 +38,8 @@ public final class ShowController {
     public private(set) var selectedOutputUID: String?
     /// Le contrôleur physique actuellement relié (Launchpad, APC), s'il y en a un.
     public private(set) var connectedController: ControllerModel?
+    /// Dernier contrôleur relié (mémorisé) : donne les notes à envoyer à LightKey quand aucun n'est branché.
+    public private(set) var lastControllerModel: ControllerModel?
     /// Nom du contrôleur relié, pour l'affichage.
     public var connectedControllerName: String? { connectedController?.displayName }
 
@@ -45,6 +48,9 @@ public final class ShowController {
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let commands: AsyncStream<AudioCommand>.Continuation
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "engine")
+    /// Clics à l'écran sur un pad lumière, transmis à LightKey par `ControllerSession`.
+    @ObservationIgnored let lightPresses: AsyncStream<GridPosition>
+    @ObservationIgnored private let lightPressContinuation: AsyncStream<GridPosition>.Continuation
 
     private enum AudioCommand: Sendable {
         case configure(Show)
@@ -68,6 +74,8 @@ public final class ShowController {
         self.audioDirectory = audioDirectory
         self.defaults = defaults
         self.selectedOutputUID = defaults.string(forKey: Self.outputDefaultsKey)
+        self.lastControllerModel = defaults.string(forKey: Self.controllerDefaultsKey).flatMap(ControllerModel.init(rawValue:))
+        (lightPresses, lightPressContinuation) = AsyncStream.makeStream(of: GridPosition.self, bufferingPolicy: .bufferingNewest(16))
 
         let (stream, continuation) = AsyncStream.makeStream(of: AudioCommand.self, bufferingPolicy: .unbounded)
         self.commands = continuation
@@ -117,8 +125,11 @@ public final class ShowController {
         case .edit:
             selection = position
         case .live:
-            guard let pad = currentGrid[position], case .audio = pad.content else { return }
-            commands.yield(.trigger(pad.id))
+            guard let pad = currentGrid[position] else { return }
+            switch pad.content {
+            case .audio: commands.yield(.trigger(pad.id))
+            case .light: lightPressContinuation.yield(position)
+            }
         }
     }
 
@@ -130,6 +141,10 @@ public final class ShowController {
 
     func setConnectedController(_ model: ControllerModel?) {
         connectedController = model
+        if let model {
+            lastControllerModel = model
+            defaults.set(model.rawValue, forKey: Self.controllerDefaultsKey)
+        }
     }
 
     /// Ce que les LED du contrôleur doivent montrer : le reflet de la grille affichée.

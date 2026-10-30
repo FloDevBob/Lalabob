@@ -18,6 +18,8 @@ actor FakeMIDITransport: MIDITransport {
     private var destinationPorts: [MIDIPort] = []
     private(set) var listening: Set<MIDIPortID> = []
     private(set) var sent: [(destination: MIDIPortID, events: [MIDIEvent])] = []
+    /// Ce qui est parti sur le port virtuel « Lalabob Lumière ».
+    private(set) var lighting: [MIDIEvent] = []
 
     init() {
         (incoming, incomingContinuation) = AsyncStream.makeStream(of: IncomingMIDI.self)
@@ -44,6 +46,7 @@ actor FakeMIDITransport: MIDITransport {
     func destinations() -> [MIDIPort] { destinationPorts }
     func listen(to source: MIDIPortID) { if sourcePorts.contains(where: { $0.id == source }) { listening.insert(source) } }
     func stopListening(to source: MIDIPortID) { listening.remove(source) }
+    func sendLighting(_ events: [MIDIEvent]) { lighting.append(contentsOf: events) }
     func send(_ events: [MIDIEvent], to destination: MIDIPortID) throws {
         guard destinationPorts.contains(where: { $0.id == destination }) else {
             throw MIDITransportError.destinationUnavailable

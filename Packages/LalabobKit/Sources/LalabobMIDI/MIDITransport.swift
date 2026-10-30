@@ -54,4 +54,7 @@ public protocol MIDITransport: Sendable {
     func stopListening(to source: MIDIPortID) async
 
     func send(_ events: [MIDIEvent], to destination: MIDIPortID) async throws
+
+    /// Émet des messages sur le port virtuel « Lalabob Lumière » (une source que LightKey écoute).
+    func sendLighting(_ events: [MIDIEvent]) async throws
 }

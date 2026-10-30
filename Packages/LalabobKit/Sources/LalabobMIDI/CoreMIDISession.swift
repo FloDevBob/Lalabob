@@ -13,6 +13,8 @@ public actor CoreMIDISession: MIDITransport {
     private var client = MIDIClientRef()
     private var inputPort = MIDIPortRef()
     private var outputPort = MIDIPortRef()
+    /// Source virtuelle « Lalabob Lumière » : sortie seule, Lalabob ne l'écoute jamais (pas de boucle).
+    private var lightingSource = MIDIEndpointRef()
     private var listening: Set<MIDIPortID> = []
 
     /// Décodeurs UMP, un par source (un SysEx peut arriver en plusieurs envois).
@@ -32,7 +34,10 @@ public actor CoreMIDISession: MIDITransport {
     }
     private let decoders = Decoders()
 
-    public init(clientName: String = "Lalabob") throws {
+    public static let lightingPortName = "Lalabob Lumière"
+    private static let lightingIDKey = "lightingPortUniqueID"
+
+    public init(clientName: String = "Lalabob", defaults: UserDefaults = .standard) throws {
         let (incoming, incomingContinuation) = AsyncStream.makeStream(of: IncomingMIDI.self, bufferingPolicy: .unbounded)
         let (changes, changesContinuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         self.incoming = incoming
@@ -66,9 +71,21 @@ public actor CoreMIDISession: MIDITransport {
         status = MIDIOutputPortCreate(client, "Sortie" as CFString, &output)
         guard status == noErr else { throw MIDITransportError.sendFailed(status) }
 
+        // Même identifiant unique qu'au lancement précédent : LightKey retrouve le port sans nouveau réglage.
+        var lighting = MIDIEndpointRef()
+        status = MIDISourceCreateWithProtocol(client, Self.lightingPortName as CFString, ._1_0, &lighting)
+        guard status == noErr else { throw MIDITransportError.sendFailed(status) }
+        let savedID = Int32(truncatingIfNeeded: defaults.integer(forKey: Self.lightingIDKey))
+        if savedID == 0 || MIDIObjectSetIntegerProperty(lighting, kMIDIPropertyUniqueID, savedID) != noErr {
+            var currentID: Int32 = 0
+            MIDIObjectGetIntegerProperty(lighting, kMIDIPropertyUniqueID, &currentID)
+            defaults.set(Int(currentID), forKey: Self.lightingIDKey)
+        }
+
         self.client = client
         self.inputPort = input
         self.outputPort = output
+        self.lightingSource = lighting
     }
 
     // MARK: - Ports
@@ -97,6 +114,17 @@ public actor CoreMIDISession: MIDITransport {
 
     public func send(_ events: [MIDIEvent], to destination: MIDIPortID) throws {
         guard let endpoint = Self.endpoint(for: destination) else { throw MIDITransportError.destinationUnavailable }
+        try Self.forEachEventList(events) { list in MIDISendEventList(outputPort, endpoint, list) }
+    }
+
+    public func sendLighting(_ events: [MIDIEvent]) throws {
+        try Self.forEachEventList(events) { list in MIDIReceivedEventList(lightingSource, list) }
+    }
+
+    /// Range les messages dans des listes UMP et appelle `deliver` pour chacune (une seule le plus souvent).
+    private static func forEachEventList(
+        _ events: [MIDIEvent], deliver: (UnsafePointer<MIDIEventList>) -> OSStatus
+    ) throws {
         let messages = events.flatMap { event -> [[UInt32]] in
             let words = UMP.encode(event)
             let size = UMPDecoder.wordCount(forMessageType: words.first.map { $0 >> 28 } ?? 2)
@@ -108,6 +136,11 @@ public actor CoreMIDISession: MIDITransport {
         defer { raw.deallocate() }
         let list = raw.bindMemory(to: MIDIEventList.self, capacity: 1)
 
+        func flush() throws {
+            let status = deliver(list)
+            guard status == noErr else { throw MIDITransportError.sendFailed(status) }
+        }
+
         // MIDIEventListAdd ne signale pas le débordement : on tient le compte des octets nous-mêmes.
         // Liste : 8 octets d'en-tête ; paquet : 8 (horodatage) + 4 (nombre de mots) + 4 par mot.
         let listHeader = 8
@@ -116,19 +149,14 @@ public actor CoreMIDISession: MIDITransport {
         for words in messages {
             let needed = 12 + words.count * 4
             if used + needed > capacity, used > listHeader {
-                try flush(list, to: endpoint)
+                try flush()
                 packet = MIDIEventListInit(list, ._1_0)
                 used = listHeader
             }
             packet = MIDIEventListAdd(list, capacity, packet, 0, words.count, words)
             used += needed
         }
-        if used > listHeader { try flush(list, to: endpoint) }
-    }
-
-    private func flush(_ list: UnsafePointer<MIDIEventList>, to endpoint: MIDIEndpointRef) throws {
-        let status = MIDISendEventList(outputPort, endpoint, list)
-        guard status == noErr else { throw MIDITransportError.sendFailed(status) }
+        if used > listHeader { try flush() }
     }
 
     // MARK: - CoreMIDI
