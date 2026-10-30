@@ -26,11 +26,11 @@ extension Show {
         guard grids.count <= Show.maximumGridCount else { throw .tooManyGrids(grids.count) }
 
         for (g, grid) in grids.enumerated() {
-            guard grid.columns.count == Grid.size else {
+            guard grid.columns.count == PadGrid.size else {
                 throw .wrongColumnCount(grid: g, count: grid.columns.count)
             }
             for (c, column) in grid.columns.enumerated() {
-                guard column.slots.count == Grid.size else {
+                guard column.slots.count == PadGrid.size else {
                     throw .wrongSlotCount(grid: g, column: c, count: column.slots.count)
                 }
                 guard (0...1).contains(column.level) else { throw .valueOutOfRange("niveau de colonne") }

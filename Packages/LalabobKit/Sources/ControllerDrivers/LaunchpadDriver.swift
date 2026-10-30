@@ -40,15 +40,15 @@ public struct LaunchpadDriver: ControllerDriver {
 
     public func note(for position: GridPosition) -> UInt8 {
         precondition(position.isValid)
-        let rowFromBottom = Grid.size - 1 - position.row
+        let rowFromBottom = PadGrid.size - 1 - position.row
         return UInt8((rowFromBottom + 1) * 10 + position.column + 1)
     }
 
     public func position(forNote note: UInt8) -> GridPosition? {
         let tens = Int(note) / 10
         let units = Int(note) % 10
-        guard (1...Grid.size).contains(tens), (1...Grid.size).contains(units) else { return nil }
-        return GridPosition(column: units - 1, row: Grid.size - tens)
+        guard (1...PadGrid.size).contains(tens), (1...PadGrid.size).contains(units) else { return nil }
+        return GridPosition(column: units - 1, row: PadGrid.size - tens)
     }
 
     public func interpret(_ event: MIDIEvent) -> ControllerInput? {

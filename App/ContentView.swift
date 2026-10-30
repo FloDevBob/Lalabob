@@ -36,7 +36,7 @@ struct ContentView: View {
 }
 
 struct GridView: View {
-    let grid: Grid
+    let grid: PadGrid
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -83,7 +83,7 @@ struct ColumnView: View {
             }
             .frame(height: 30)
 
-            ForEach(0..<Grid.size, id: \.self) { row in
+            ForEach(0..<PadGrid.size, id: \.self) { row in
                 PadView(pad: column.slots[row], kind: column.kind)
             }
         }

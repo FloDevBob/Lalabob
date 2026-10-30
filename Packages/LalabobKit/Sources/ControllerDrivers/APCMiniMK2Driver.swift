@@ -25,14 +25,14 @@ public struct APCMiniMK2Driver: ControllerDriver {
 
     public func note(for position: GridPosition) -> UInt8 {
         precondition(position.isValid)
-        let rowFromBottom = Grid.size - 1 - position.row
-        return UInt8(rowFromBottom * Grid.size + position.column)
+        let rowFromBottom = PadGrid.size - 1 - position.row
+        return UInt8(rowFromBottom * PadGrid.size + position.column)
     }
 
     public func position(forNote note: UInt8) -> GridPosition? {
-        guard note < UInt8(Grid.size * Grid.size) else { return nil }
-        let rowFromBottom = Int(note) / Grid.size
-        return GridPosition(column: Int(note) % Grid.size, row: Grid.size - 1 - rowFromBottom)
+        guard note < UInt8(PadGrid.size * PadGrid.size) else { return nil }
+        let rowFromBottom = Int(note) / PadGrid.size
+        return GridPosition(column: Int(note) % PadGrid.size, row: PadGrid.size - 1 - rowFromBottom)
     }
 
     public func interpret(_ event: MIDIEvent) -> ControllerInput? {

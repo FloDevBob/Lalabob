@@ -18,7 +18,7 @@ public final class ShowController {
         self.selectedGridIndex = 0
     }
 
-    public var currentGrid: Grid { show.grids[selectedGridIndex] }
+    public var currentGrid: PadGrid { show.grids[selectedGridIndex] }
 
     public func selectGrid(at index: Int) {
         guard show.grids.indices.contains(index) else { return }

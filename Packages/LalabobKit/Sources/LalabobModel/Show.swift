@@ -10,13 +10,13 @@ public struct GridPosition: Hashable, Codable, Sendable, CustomStringConvertible
         self.row = row
     }
 
-    public var isValid: Bool { (0..<Grid.size).contains(column) && (0..<Grid.size).contains(row) }
+    public var isValid: Bool { (0..<PadGrid.size).contains(column) && (0..<PadGrid.size).contains(row) }
 
     public var description: String { "(\(column), \(row))" }
 
     /// Toutes les positions, colonne par colonne, de haut en bas.
     public static var all: [GridPosition] {
-        (0..<Grid.size).flatMap { c in (0..<Grid.size).map { r in GridPosition(column: c, row: r) } }
+        (0..<PadGrid.size).flatMap { c in (0..<PadGrid.size).map { r in GridPosition(column: c, row: r) } }
     }
 }
 
@@ -28,9 +28,9 @@ public struct Show: Codable, Sendable, Equatable {
 
     public var formatVersion: Int
     public var name: String
-    public var grids: [Grid]
+    public var grids: [PadGrid]
 
-    public init(name: String, grids: [Grid]) {
+    public init(name: String, grids: [PadGrid]) {
         self.formatVersion = Show.currentFormatVersion
         self.name = name
         self.grids = grids
@@ -43,7 +43,7 @@ public struct Show: Codable, Sendable, Equatable {
 }
 
 /// Une grille : une « programmation » complète du contrôleur, 8 colonnes de 8 cases.
-public struct Grid: Codable, Sendable, Equatable, Identifiable {
+public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
     public static let size = 8
     /// Colonnes réservées à la lumière par défaut (les deux de droite).
     public static let defaultLightColumns: Set<Int> = [6, 7]
@@ -58,8 +58,8 @@ public struct Grid: Codable, Sendable, Equatable, Identifiable {
         self.columns = columns
     }
 
-    public static func empty(name: String) -> Grid {
-        Grid(
+    public static func empty(name: String) -> PadGrid {
+        PadGrid(
             name: name,
             columns: (0..<size).map { index in
                 Column.empty(
@@ -87,7 +87,7 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     public var kind: ColumnKind
     /// Niveau du fader, de 0 à 1.
     public var level: Double
-    /// Exactement `Grid.size` cases ; `nil` = case vide.
+    /// Exactement `PadGrid.size` cases ; `nil` = case vide.
     public var slots: [Pad?]
 
     public init(id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?]) {
@@ -99,7 +99,7 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     }
 
     public static func empty(name: String, kind: ColumnKind) -> Column {
-        Column(name: name, kind: kind, level: kind == .audio ? 0.8 : 1, slots: Array(repeating: nil, count: Grid.size))
+        Column(name: name, kind: kind, level: kind == .audio ? 0.8 : 1, slots: Array(repeating: nil, count: PadGrid.size))
     }
 }
 

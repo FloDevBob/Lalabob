@@ -3,6 +3,6 @@
 //
 // Plus tard, pour signer avec un identifiant Apple (gratuit « Personal Team » ou payant),
 // décommentez ces trois lignes et indiquez votre identifiant d'équipe (`make team`) :
-// CODE_SIGN_STYLE = Automatic
-// CODE_SIGN_IDENTITY = Apple Development
-// DEVELOPMENT_TEAM = XXXXXXXXXX
+// LALABOB_SIGN_STYLE = Automatic
+// LALABOB_SIGN_IDENTITY = Apple Development
+// LALABOB_TEAM = XXXXXXXXXX

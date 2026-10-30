@@ -6,7 +6,7 @@ import Testing
 struct ShowTests {
     @Test("Une grille vide fait 8 × 8, avec les deux colonnes de droite en lumière")
     func emptyGridShape() {
-        let grid = Grid.empty(name: "Test")
+        let grid = PadGrid.empty(name: "Test")
         #expect(grid.columns.count == 8)
         #expect(grid.columns.allSatisfy { $0.slots.count == 8 && $0.slots.allSatisfy { $0 == nil } })
         #expect(grid.columns.map(\.kind) == [.audio, .audio, .audio, .audio, .audio, .audio, .light, .light])

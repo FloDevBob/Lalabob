@@ -14,3 +14,7 @@ Config/Local.xcconfig
 
 # macOS
 .DS_Store
+
+# Fichiers générés par XcodeGen depuis project.yml
+App/Info.plist
+App/Lalabob.entitlements
