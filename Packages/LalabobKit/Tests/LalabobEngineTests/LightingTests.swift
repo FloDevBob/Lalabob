@@ -30,7 +30,7 @@ struct LightingTests {
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
             defaults: defaults)
-        controller.mode = .live
+        controller.isLocked = true
         let transport = FakeMIDITransport()
         let session = ControllerSession(controller: controller, transport: transport)
         let runner = Task { await session.run() }
@@ -100,7 +100,7 @@ struct LightingTests {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
-        rig.controller.mode = .edit
+        rig.controller.isLocked = false
 
         rig.controller.press(at: Self.light)
         try? await Task.sleep(for: .milliseconds(250))

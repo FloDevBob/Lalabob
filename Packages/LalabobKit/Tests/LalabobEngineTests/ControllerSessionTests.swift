@@ -83,7 +83,7 @@ struct ControllerSessionTests {
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
             defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
-        controller.mode = .edit  // un appui sur le contrôleur joue quand même
+        controller.isLocked = false  // déverrouillé : un appui sur le contrôleur joue quand même
         let transport = FakeMIDITransport()
         let session = ControllerSession(controller: controller, transport: transport)
         let runner = Task { await session.run() }

@@ -10,9 +10,9 @@ public typealias AudioOutputDevice = LalabobAudio.AudioOutputDevice
 extension ShowController {
     /// Spectacle relié à la vraie sortie audio du Mac (un moteur par fenêtre).
     /// `audioDirectory` : le dossier de travail des sons du document.
-    public static func live(show: Show, audioDirectory: URL) -> ShowController {
+    public static func live(show: Show, audioDirectory: URL, isLocked: Bool = false) -> ShowController {
         try? FileManager.default.createDirectory(at: audioDirectory, withIntermediateDirectories: true)
-        return ShowController(show: show, audio: AVAudioEngineController(), audioDirectory: audioDirectory)
+        return ShowController(show: show, audio: AVAudioEngineController(), audioDirectory: audioDirectory, isLocked: isLocked)
     }
 }
 

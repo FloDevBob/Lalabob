@@ -25,11 +25,14 @@ nonisolated final class LalabobDocument: ReferenceFileDocument {
     let workingAudio: URL
     /// Sons utilisés par des pads mais absents du paquet (signalés à l'ouverture).
     let missingAudio: [String]
+    /// Spectacle déjà enregistré : il s'ouvre verrouillé (prêt pour la scène) ; un nouveau s'ouvre déverrouillé.
+    let opensLocked: Bool
 
     init() {
         mirror = ShowMirror(.new())
         workingAudio = Self.makeWorkingDirectory()
         missingAudio = []
+        opensLocked = false
     }
 
     required init(configuration: ReadConfiguration) throws {
@@ -49,6 +52,7 @@ nonisolated final class LalabobDocument: ReferenceFileDocument {
         mirror = ShowMirror(contents.show)
         workingAudio = directory
         missingAudio = contents.missingAudio
+        opensLocked = true
     }
 
     func snapshot(contentType: UTType) throws -> Show {
@@ -116,7 +120,8 @@ struct DocumentWindow: View {
         }
         .onAppear {
             if controller == nil {
-                let created = ShowController.live(show: document.mirror.current, audioDirectory: document.workingAudio)
+                let created = ShowController.live(
+                    show: document.mirror.current, audioDirectory: document.workingAudio, isLocked: document.opensLocked)
                 let mirror = document.mirror
                 created.onShowChange = { mirror.update($0) }
                 controller = created

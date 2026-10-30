@@ -21,6 +21,8 @@ struct HeaderView: View {
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
+            .opacity(controller.isLocked ? 0 : 1)  // verrouillé : pas de bibliothèque
+            .disabled(controller.isLocked)
 
             Text("Lalabob")
                 .font(Typography.logo)
@@ -35,7 +37,7 @@ struct HeaderView: View {
 
             controllerStatus
             outputPicker
-            modePicker
+            LockButton()
             Button("Tout arrêter", systemImage: "stop.fill") { controller.stopAll() }
                 .keyboardShortcut(.escape, modifiers: [])
                 .buttonStyle(.borderedProminent)
@@ -79,15 +81,28 @@ struct HeaderView: View {
         .frame(width: 180)
         .help("Sortie audio")
     }
+}
 
-    private var modePicker: some View {
-        Picker("Mode", selection: Bindable(controller).mode) {
-            Text("Édition").tag(InteractionMode.edit)
-            Text("Live").tag(InteractionMode.live)
+/// Cadenas : fermé, le spectacle se joue mais ne se modifie pas (⌘L).
+struct LockButton: View {
+    @Environment(ShowController.self) private var controller
+
+    var body: some View {
+        let locked = controller.isLocked
+        Button {
+            controller.isLocked.toggle()
+        } label: {
+            Label(locked ? "Verrouillé" : "Déverrouillé", systemImage: locked ? "lock.fill" : "lock.open.fill")
+                .font(.system(size: 12.5, weight: .semibold))
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(locked ? Surface.panel : Surface.lightAccent.opacity(0.18), in: .rect(cornerRadius: 8))
+                .foregroundStyle(locked ? Surface.textSecondary : Surface.lightAccent)
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .frame(width: 140)
+        .buttonStyle(.plain)
+        .help(locked ? "Ouvrir le cadenas pour modifier le spectacle (⌘L)" : "Verrouiller le spectacle pour jouer sans risque (⌘L)")
+        .accessibilityLabel(locked ? "Spectacle verrouillé" : "Spectacle déverrouillé")
+        .accessibilityHint(locked ? "Déverrouille pour modifier" : "Verrouille pour jouer")
     }
 }
 
@@ -105,10 +120,12 @@ struct GridTabsView: View {
                 ForEach(Array(controller.show.grids.enumerated()), id: \.element.id) { index, grid in
                     tab(index: index, grid: grid)
                 }
-                Button("Nouvelle grille", systemImage: "plus") { controller.addGrid() }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .help("Nouvelle grille (⌘T)")
+                if !controller.isLocked {
+                    Button("Nouvelle grille", systemImage: "plus") { controller.addGrid() }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .help("Nouvelle grille (⌘T)")
+                }
             }
             .padding(.horizontal, 4)
         }
@@ -143,15 +160,34 @@ struct GridTabsView: View {
         .frame(height: 32)
         .background(isSelected ? Surface.panel : .clear, in: .rect(cornerRadius: 10))
         .contentShape(.rect(cornerRadius: 10))
-        .onTapGesture(count: 2) { startRenaming(grid) }
+        .onTapGesture(count: 2) {
+            if controller.isLocked { controller.notifyLocked() } else { startRenaming(grid) }
+        }
         .onTapGesture { controller.selectGrid(at: index) }
         .draggable(GridTabsView.dragToken(for: grid))
         .dropDestination(for: String.self) { items, _ in
+            guard !controller.isLocked else {
+                controller.notifyLocked()
+                return false
+            }
             guard let token = items.first, let source = sourceIndex(of: token) else { return false }
             controller.moveGrid(from: source, to: index)
             return true
         }
         .contextMenu {
+            if controller.isLocked {
+                Text("Spectacle verrouillé")
+            } else {
+                tabMenu(index: index, grid: grid)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityLabel("Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads")
+    }
+
+    @ViewBuilder
+    private func tabMenu(index: Int, grid: PadGrid) -> some View {
             Button("Renommer") { startRenaming(grid) }
             Button("Déplacer vers la gauche") { controller.moveGrid(from: index, to: index - 1) }
                 .disabled(index == 0)
@@ -160,10 +196,6 @@ struct GridTabsView: View {
             Divider()
             Button("Supprimer la grille", role: .destructive) { controller.removeGrid(at: index) }
                 .disabled(controller.show.grids.count == 1)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityLabel("Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads")
     }
 
     private static let dragPrefix = "lalabob-grid:"

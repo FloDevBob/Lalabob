@@ -7,7 +7,8 @@ import UniformTypeIdentifiers
 import os
 
 /// La grille : 6 colonnes sons, puis 2 colonnes lumière dans une zone ambrée.
-/// Elle reçoit ⌘X / ⌘C / ⌘V / ⌫ quand elle a le focus (un clic sur un pad le lui donne).
+/// Elle reçoit ⌘X / ⌘C / ⌘V / ⌫ quand elle a le focus (un clic sur un pad le lui donne) ;
+/// verrouillée, ces commandes sont refusées par `ShowController` avec un message.
 struct GridView: View {
     @Environment(ShowController.self) private var controller
     @FocusState private var focused: Bool
@@ -92,6 +93,20 @@ struct ColumnView: View {
     }
 }
 
+/// Le glisser d'un pad n'existe que déverrouillé (sinon le clic doit jouer sans hésitation).
+struct PadDragSource: ViewModifier {
+    let enabled: Bool
+    let provider: () -> NSItemProvider
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.onDrag(provider)
+        } else {
+            content
+        }
+    }
+}
+
 /// Ce qu'on glisse d'un pad à l'autre : la grille et la case d'origine, en texte.
 enum PadDragToken {
     private static let prefix = "lalabob-pad:"
@@ -146,13 +161,14 @@ struct PadView: View {
         }
         .overlay { dropOverlay }
         .contentShape(.rect(cornerRadius: Metrics.padCornerRadius))
-        .onTapGesture(perform: activate)
-        .onDrag {
-            guard pad != nil else { return NSItemProvider() }
+        // Verrouillé : un clic joue tout de suite. Déverrouillé : un clic sélectionne, un double-clic fait écouter.
+        .onTapGesture(count: 2) { controller.audition(at: position) }
+        .simultaneousGesture(TapGesture().onEnded(activate))
+        .modifier(PadDragSource(enabled: pad != nil && !controller.isLocked) {
             let token = PadDragToken.string(grid: controller.currentGrid.id, position: position)
             PadDropDelegate.log.info("Glisser : départ de \(position.description, privacy: .public)")
             return NSItemProvider(object: token as NSString)
-        }
+        })
         .onDrop(
             of: [.fileURL, .plainText],
             delegate: PadDropDelegate(position: position, controller: controller, highlight: $dropHighlight)
@@ -252,7 +268,7 @@ struct PadView: View {
 /// Dépôt sur une case : un fichier son (Finder ou bibliothèque) crée le pad ; un pad le déplace ou l'échange ;
 /// avec ⌥, il le duplique.
 struct PadDropDelegate: DropDelegate {
-    static let log = Logger(subsystem: "fr.lalabob.app", category: "drop")
+    nonisolated static let log = Logger(subsystem: "fr.lalabob.app", category: "drop")
 
     let position: GridPosition
     let controller: ShowController
@@ -261,6 +277,10 @@ struct PadDropDelegate: DropDelegate {
     private var optionHeld: Bool { NSEvent.modifierFlags.contains(.option) }
 
     func validateDrop(info: DropInfo) -> Bool {
+        guard !controller.isLocked else {
+            controller.notifyLocked()
+            return false
+        }
         let valid = info.hasItemsConforming(to: [.fileURL, .plainText])
         Self.log.info("Glisser : validation sur \(position.description, privacy: .public) → \(valid)")
         return valid

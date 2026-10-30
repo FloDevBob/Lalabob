@@ -23,7 +23,7 @@ struct EditingTests {
         let undo = UndoManager()
         undo.groupsByEvent = false
         controller.undoManager = undo
-        controller.mode = .edit
+        controller.isLocked = false
         return (controller, undo)
     }
 

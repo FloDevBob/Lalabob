@@ -3,7 +3,8 @@ import LalabobEngine
 import LalabobModel
 import SwiftUI
 
-/// Fenêtre principale : en-tête, bibliothèque à gauche, grille au centre, inspecteur en bas (mode Édition).
+/// Fenêtre principale : en-tête, bibliothèque à gauche, grille au centre, inspecteur en bas.
+/// Verrouillé (cadenas), la bibliothèque et l'inspecteur disparaissent : il ne reste que le jeu.
 struct ContentView: View {
     @Environment(ShowController.self) private var controller
     @Environment(\.undoManager) private var undoManager
@@ -14,7 +15,7 @@ struct ContentView: View {
             HeaderView(showsLibrary: $showsLibrary)
             Divider().overlay(Color.white.opacity(0.06))
             HStack(spacing: 0) {
-                if showsLibrary {
+                if showsLibrary && !controller.isLocked {
                     LibraryView()
                         .frame(width: 272)
                     Divider().overlay(Color.white.opacity(0.06))
@@ -24,7 +25,7 @@ struct ContentView: View {
                         GridView()
                             .padding(20)
                     }
-                    if controller.mode == .edit, let selection = controller.selection {
+                    if !controller.isLocked, let selection = controller.selection {
                         Divider().overlay(Color.white.opacity(0.06))
                         InspectorView(position: selection)
                     }
@@ -32,6 +33,7 @@ struct ContentView: View {
             }
         }
         .background(Surface.window)
+        .overlay(alignment: .top) { lockBanner }
         .focusedSceneValue(\.showController, controller)
         .alert(
             "Import impossible",
@@ -41,8 +43,38 @@ struct ContentView: View {
         } message: {
             Text(controller.importError ?? "")
         }
+        .task(id: controller.lockNotice) {
+            guard controller.lockNotice != nil else { return }
+            try? await Task.sleep(for: .seconds(3))
+            controller.dismissLockNotice()
+        }
         .onAppear { controller.undoManager = undoManager }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { controller.undoManager = undoManager }
+    }
+}
+
+extension ContentView {
+    /// Bandeau affiché quand on tente de modifier un spectacle verrouillé.
+    @ViewBuilder
+    fileprivate var lockBanner: some View {
+        if let notice = controller.lockNotice {
+            HStack(spacing: 10) {
+                Image(systemName: "lock.fill")
+                Text(notice)
+                    .font(.system(size: 12.5, weight: .medium))
+                Button("Déverrouiller") { controller.isLocked = false }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Surface.panel, in: .capsule)
+            .overlay(Capsule().stroke(Color.white.opacity(0.12)))
+            .foregroundStyle(Surface.textPrimary)
+            .padding(.top, 64)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .accessibilityAddTraits(.isStaticText)
+        }
     }
 }
 

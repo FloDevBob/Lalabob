@@ -86,12 +86,12 @@ extension ShowController {
     // MARK: - Presse-papiers (⌘X, ⌘C, ⌘V, ⌘D, ⌫)
 
     public func copySelection() {
-        guard let selection, let pad = pad(at: selection) else { return }
+        guard !refuseWhileLocked(), let selection, let pad = pad(at: selection) else { return }
         clipboard = pad
     }
 
     public func cutSelection() {
-        guard let selection else { return }
+        guard !refuseWhileLocked(), let selection else { return }
         copySelection()
         clearPad(at: selection)
     }
@@ -99,14 +99,14 @@ extension ShowController {
     /// Colle une copie du pad du presse-papiers dans la case sélectionnée (remplace son contenu).
     @discardableResult
     public func pasteAtSelection() -> Bool {
-        guard let selection, let clipboard else { return false }
+        guard !refuseWhileLocked(), let selection, let clipboard else { return false }
         return place(clipboard.duplicated(), at: selection)
     }
 
     /// Duplique le pad sélectionné dans la première case libre en dessous, et sélectionne la copie.
     @discardableResult
     public func duplicateSelection() -> Bool {
-        guard let selection, pad(at: selection) != nil else { return false }
+        guard !refuseWhileLocked(), let selection, pad(at: selection) != nil else { return false }
         let below = ((selection.row + 1)..<PadGrid.size).map { GridPosition(column: selection.column, row: $0) }
         guard let free = below.first(where: { pad(at: $0) == nil }), duplicatePad(from: selection, to: free) else {
             return false
@@ -121,7 +121,7 @@ extension ShowController {
         return clearPad(at: selection)
     }
 
-    public var canPaste: Bool { clipboard != nil }
+    public var canPaste: Bool { clipboard != nil && !isLocked }
 
     // MARK: - Onglets de grilles
 

@@ -72,7 +72,7 @@ struct ShowControllerAudioTests {
         let audio = RecordingAudioEngine()
         let (show, pad) = makeShow()
         let controller = makeController(audio, show: show)
-        controller.mode = .live
+        controller.isLocked = true
 
         controller.press(at: GridPosition(column: 0, row: 2))
         let sent = await commands(of: audio)
@@ -83,7 +83,7 @@ struct ShowControllerAudioTests {
         let audio = RecordingAudioEngine()
         let (show, _) = makeShow()
         let controller = makeController(audio, show: show)
-        controller.mode = .edit
+        controller.isLocked = false
 
         let position = GridPosition(column: 0, row: 2)
         controller.press(at: position)
@@ -96,7 +96,7 @@ struct ShowControllerAudioTests {
     @Test func clickOnEmptyCellOrInvalidPositionDoesNothing() async {
         let audio = RecordingAudioEngine()
         let controller = makeController(audio, show: .new())
-        controller.mode = .live
+        controller.isLocked = true
         controller.press(at: GridPosition(column: 3, row: 3))
         controller.press(at: GridPosition(column: 9, row: -1))
         try? await Task.sleep(for: .milliseconds(100))
@@ -110,7 +110,7 @@ struct ShowControllerAudioTests {
         grid.columns[6].slots[0] = Pad(title: "Flash", tint: .ambre, content: .light(cue: cue))
         let audio = RecordingAudioEngine()
         let controller = makeController(audio, show: Show(name: "S", grids: [grid]))
-        controller.mode = .live
+        controller.isLocked = true
         controller.press(at: GridPosition(column: 6, row: 0))
         try? await Task.sleep(for: .milliseconds(100))
         let sent = await audio.commands
@@ -121,7 +121,7 @@ struct ShowControllerAudioTests {
         let audio = RecordingAudioEngine()
         let (show, pad) = makeShow()
         let controller = makeController(audio, show: show)
-        controller.mode = .live
+        controller.isLocked = true
         let position = GridPosition(column: 0, row: 2)
 
         controller.press(at: position)

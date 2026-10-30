@@ -5,14 +5,6 @@ import LalabobModel
 import Observation
 import os
 
-/// Ce qu'un clic sur un pad provoque.
-public enum InteractionMode: String, Sendable {
-    /// Un clic sélectionne le pad.
-    case edit
-    /// Un clic agit comme un appui sur le contrôleur.
-    case live
-}
-
 /// Détient le spectacle ouvert : la seule source de vérité de l'app.
 ///
 /// L'écran et les LED du contrôleur en sont deux reflets. Toute modification passe par
@@ -29,7 +21,16 @@ public final class ShowController {
     public private(set) var show: Show
     public var selectedGridIndex: Int
     public var selection: GridPosition?
-    public var mode: InteractionMode = .live
+    /// Cadenas : verrouillé, le spectacle se joue (clic, contrôleur, faders, onglets) mais ne se modifie pas.
+    /// Verrouiller efface la sélection (l'inspecteur se ferme).
+    public var isLocked: Bool {
+        didSet {
+            if isLocked { selection = nil }
+            if !isLocked { lockNotice = nil }
+        }
+    }
+    /// Message à afficher quand on tente de modifier un spectacle verrouillé (`nil` sinon).
+    public private(set) var lockNotice: String?
 
     /// État de lecture des pads qui jouent ou sont en pause (les autres sont absents).
     public private(set) var playback: [Pad.ID: PlaybackEvent] = [:]
@@ -75,9 +76,11 @@ public final class ShowController {
         show: Show = .new(),
         audio: any AudioEngineControlling = SilentAudioEngine(),
         audioDirectory: URL? = nil,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        isLocked: Bool = false
     ) {
         self.show = show
+        self.isLocked = isLocked
         self.selectedGridIndex = 0
         self.audio = audio
         self.audioDirectory = audioDirectory
@@ -126,19 +129,45 @@ public final class ShowController {
 
     // MARK: - Commandes
 
-    /// Clic sur une case : appui en mode Live, sélection en mode Édition.
+    /// Clic sur une case : verrouillé, il joue (comme un appui sur le contrôleur) ;
+    /// déverrouillé, il sélectionne le pad sans le jouer (l'inspecteur s'ouvre).
     public func press(at position: GridPosition) {
         guard position.isValid else { return }
-        switch mode {
-        case .edit:
+        if isLocked {
+            play(at: position)
+        } else {
             selection = position
-        case .live:
-            guard let pad = currentGrid[position] else { return }
-            switch pad.content {
-            case .audio: commands.yield(.trigger(pad.id))
-            case .light: lightPressHandler?(position)
-            }
         }
+    }
+
+    /// Double-clic, déverrouillé : écouter le pad sans quitter l'édition. Verrouillé, chaque clic joue déjà.
+    public func audition(at position: GridPosition) {
+        guard position.isValid, !isLocked else { return }
+        play(at: position)
+    }
+
+    private func play(at position: GridPosition) {
+        guard let pad = currentGrid[position] else { return }
+        switch pad.content {
+        case .audio: commands.yield(.trigger(pad.id))
+        case .light: lightPressHandler?(position)
+        }
+    }
+
+    /// `true` (et message à l'écran) si le spectacle est verrouillé : l'appelant ne doit rien modifier.
+    func refuseWhileLocked() -> Bool {
+        guard isLocked else { return false }
+        lockNotice = "Spectacle verrouillé : ouvrez le cadenas (⌘L) pour le modifier."
+        return true
+    }
+
+    /// L'interface signale un geste d'édition tenté sur un spectacle verrouillé (glisser, renommer…).
+    public func notifyLocked() {
+        _ = refuseWhileLocked()
+    }
+
+    public func dismissLockNotice() {
+        lockNotice = nil
     }
 
     /// Appui sur un pad du contrôleur : joue toujours, quel que soit le mode de l'écran.
@@ -233,6 +262,7 @@ public final class ShowController {
     /// il renvoie `false` pour ne rien faire. Une modification sans effet n'enregistre pas d'annulation.
     @discardableResult
     func commit(_ actionName: String, _ change: (inout Show, Int) -> Bool) -> Bool {
+        guard !refuseWhileLocked() else { return false }
         var updated = show
         guard change(&updated, selectedGridIndex), updated != show else { return false }
         apply(updated, actionName: actionName)
@@ -250,7 +280,11 @@ public final class ShowController {
         let isReplaying = undoManager.isUndoing || undoManager.isRedoing
         if !isReplaying { undoManager.beginUndoGrouping() }
         undoManager.registerUndo(withTarget: self) { controller in
-            MainActor.assumeIsolated { controller.apply(previous, actionName: actionName) }
+            MainActor.assumeIsolated {
+                // ⌘Z ne passe pas par `commit` : verrouillé, on refuse ici (l'étape d'annulation est perdue).
+                guard !controller.refuseWhileLocked() else { return }
+                controller.apply(previous, actionName: actionName)
+            }
         }
         undoManager.setActionName(actionName)
         if !isReplaying { undoManager.endUndoGrouping() }

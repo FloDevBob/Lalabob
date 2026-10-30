@@ -63,7 +63,7 @@ extension ShowController {
     /// Glisser un fichier son sur une case : copie le son dans le dossier du spectacle et crée le pad (annulable).
     @discardableResult
     public func dropAudioFile(_ url: URL, at position: GridPosition) -> Bool {
-        guard let audioDirectory, position.isValid else { return false }
+        guard !refuseWhileLocked(), let audioDirectory, position.isValid else { return false }
         guard currentGrid.columns[position.column].kind == .audio else {
             importError = "Les sons vont dans les colonnes sons, pas dans les colonnes lumière."
             return false

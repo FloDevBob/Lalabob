@@ -18,7 +18,7 @@ Les valeurs de couleur et de dimension sont déjà dans `LalabobModel/Tint.swift
 De gauche à droite : bouton masquer la bibliothèque · logo « Lalabob » + nom du spectacle ·
 **onglets de grilles** au centre (pastille numérotée 1…n, nom, nombre de sons ; bouton +) ·
 **sélecteur de contrôleur** (nom du modèle + pastille verte « Connecté ») · **sélecteur de sortie audio** (à ajouter) ·
-bascule **Édition / Live** · bouton rouge **Tout arrêter** (raccourci Échap).
+**cadenas** Verrouillé / Déverrouillé (⌘L, remplace la bascule Édition / Live de la maquette) · bouton rouge **Tout arrêter** (raccourci Échap).
 
 ### Bibliothèque (colonne gauche, 272 px)
 Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dossier courant
@@ -53,7 +53,11 @@ traduction MIDI « Entrée (contrôleur, note) → Sortie (port Lalabob Lumière
 
 ## Interactions
 
-- Mode **Live** : un clic sur un pad agit comme un appui sur le contrôleur. Mode **Édition** : un clic sélectionne.
+- **Cadenas fermé** (verrouillé) : un clic sur un pad agit comme un appui sur le contrôleur. Bibliothèque et inspecteur
+  masqués ; glisser-déposer, presse-papiers, onglets et ⌘Z refusés, avec un bandeau « Spectacle verrouillé : ouvrez le cadenas (⌘L) ».
+  Faders, changement d'onglet, Tout arrêter et contrôleur restent actifs.
+- **Cadenas ouvert** : un clic sélectionne le pad (inspecteur) sans le jouer ; un double-clic le joue pour l'écouter.
+- Un spectacle déjà enregistré s'ouvre verrouillé ; un nouveau spectacle s'ouvre déverrouillé.
 - Glisser un fichier de la bibliothèque vers un pad : crée le pad (titre, sous-titre, couleur pré-remplis).
 - Glisser un pad sur une autre case : déplace ou échange. Avec ⌥ : duplique.
 - Les sons ne vont que dans les colonnes sons, les cues que dans les colonnes lumière.

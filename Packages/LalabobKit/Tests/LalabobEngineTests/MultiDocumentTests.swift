@@ -95,8 +95,8 @@ struct MultiDocumentTests {
             show: Show(name: "A", grids: [grid]), defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
         let b = ShowController(
             show: Show(name: "B", grids: [grid]), defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
-        a.mode = .live
-        b.mode = .live
+        a.isLocked = true
+        b.isLocked = true
         let transport = FakeMIDITransport()
         let session = ControllerSession(transport: transport)
         let runner = Task { await session.run() }

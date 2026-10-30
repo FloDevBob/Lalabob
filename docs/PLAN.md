@@ -77,6 +77,7 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - **Fait (étape 4)** : `DocumentGroup` + `LalabobDocument` (`ReferenceFileDocument`, type `fr.flodevbob.lalabob.show`, extension `.lalabob`, paquet déclaré dans `project.yml`). SwiftUI enregistre en arrière-plan : le document lit une copie verrouillée du spectacle (`ShowMirror`, tenue à jour par `ShowController.onShowChange`). Sons : copiés à l'ouverture dans un dossier de travail (caches de l'app), les imports y arrivent, l'enregistrement n'ajoute au paquet que les nouveaux. Sauvegarde automatique de macOS (déclenchée par l'annulation). Une fenêtre = un `ShowController` = un moteur audio ; une seule `ControllerSession` pour l'app, rattachée à la fenêtre active (`attach` / `detach`), sans arrêter les sons des autres fenêtres. Sons manquants signalés à l'ouverture. Boutons et dossier « Sons d'essai » retirés. 6 tests (`MultiDocumentTests`, `ShowMirrorTests`).
 - **Essai réel J4 (à cocher)** : ☐ nouveau spectacle → glisser des sons du Finder et de la bibliothèque → ⌘S → fermer → rouvrir : tout est là ☐ copier le `.lalabob` sur l'autre Mac et l'ouvrir ☐ ⌘Z / ⇧⌘Z sur chaque opération ☐ ⌥-glisser = copie ☐ onglets : ajout, renommage, réordonnancement, ⌘1…⌘9 ☐ deux spectacles ouverts : le contrôleur suit la fenêtre active, aucun son ne s'arrête en changeant de fenêtre ☐ sauvegarde automatique (quitter sans ⌘S puis rouvrir).
 - **Limites connues J4** : les niveaux de fader ne marquent pas le document comme modifié (enregistrés avec la modification suivante) ; à l'ouverture, les sons sont recopiés dans le dossier de travail (quelques secondes pour un très gros spectacle) ; les sons retirés de la grille restent dans le paquet ; pas de pré-écoute (J5).
+- **Cadenas (décision du 30/10/2026)** : remplace Édition / Live. Verrouillé = on joue (clic = appui), bibliothèque et inspecteur masqués, toute édition refusée **dans `ShowController`** (y compris ⌘Z) avec un bandeau ; déverrouillé = clic sélectionne, double-clic écoute. Spectacle enregistré → s'ouvre verrouillé ; nouveau → déverrouillé. ⌘L. 13 tests (`LockTests`). Couvre l'essentiel du « mode Spectacle » prévu au J6.
 - Inspecteur minimal (décision du 30/10/2026) : titre, sous-titre, 16 pastilles de couleur, intensité LED, pour tous les pads (sons et lumière). Forme d'onde, élagage, fondus : J5.
 - Document `.lalabob` (`FileDocument`, paquet : `show.json` + dossier `Audio/` où les sons sont copiés), `Show.validate()` à l'ouverture.
 - Onglets de grilles (ajout, renommage, réordonnancement), raccourcis ⌘1…⌘9.
@@ -91,7 +92,7 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - **Terminé quand** : l'app est fidèle à la maquette, validée côte à côte.
 
 ### J6 — Fiabilisation et livraison · palier « prêt pour le spectacle »
-- Mode Spectacle (édition verrouillée), tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
+- Mode Spectacle : fait au J4 sous forme de cadenas (voir J4) ; reste à verrouiller aussi la pré-écoute. Tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.
 - **Terminé quand** : une répétition générale se déroule sans incident.
 
