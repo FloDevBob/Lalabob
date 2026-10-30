@@ -34,6 +34,7 @@ let package = Package(
 
         .testTarget(name: "LalabobModelTests", dependencies: ["LalabobModel"]),
         .testTarget(name: "LalabobMIDITests", dependencies: ["LalabobMIDI"]),
+        .testTarget(name: "LalabobAudioTests", dependencies: ["LalabobAudio", "LalabobModel"]),
         .testTarget(name: "ControllerDriversTests", dependencies: ["ControllerDrivers", "LalabobModel", "LalabobMIDI"]),
     ],
     swiftLanguageModes: [.v6]
