@@ -130,29 +130,26 @@ struct PadView: View {
         let event = pad.flatMap { controller.playback[$0.id] }
         let isSelected = controller.selection == position
 
-        Button {
-            onPress()
-            controller.press(at: position)
-        } label: {
-            Group {
-                if let pad {
-                    filled(pad, event: event)
-                } else {
-                    empty
-                }
+        // Pas de `Button` : sur macOS il capte la souris et empêche le glisser de démarrer.
+        Group {
+            if let pad {
+                filled(pad, event: event)
+            } else {
+                empty
             }
-            .frame(height: Metrics.padHeight)
-            .overlay {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(.white, lineWidth: 2)
-                }
-            }
-            .overlay { dropOverlay }
-            .contentShape(.rect(cornerRadius: Metrics.padCornerRadius))
         }
-        .buttonStyle(.plain)
+        .frame(height: Metrics.padHeight)
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(.white, lineWidth: 2)
+            }
+        }
+        .overlay { dropOverlay }
+        .contentShape(.rect(cornerRadius: Metrics.padCornerRadius))
+        .onTapGesture(perform: activate)
         .onDrag {
-            guard controller.mode == .edit, pad != nil else { return NSItemProvider() }
+            guard pad != nil else { return NSItemProvider() }
+            controller.selection = position
             let token = PadDragToken.string(grid: controller.currentGrid.id, position: position)
             return NSItemProvider(object: token as NSString)
         }
@@ -166,8 +163,15 @@ struct PadView: View {
                 Button("Arrêter") { controller.stop(at: position) }
             }
         }
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind == .audio ? "Case vide" : "Case lumière vide"))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { activate() }
+    }
+
+    private func activate() {
+        onPress()
+        controller.press(at: position)
     }
 
     @ViewBuilder
@@ -265,11 +269,10 @@ struct PadDropDelegate: DropDelegate {
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        let padDrag = isPadDrag(info)
-        highlight = padDrag && optionHeld ? .copy : .move
-        // Un fichier son est toujours copié dans le spectacle : proposer « copier ». Proposer « déplacer »
-        // à une source qui ne l'autorise pas (la bibliothèque, le Finder selon les cas) fait refuser le dépôt.
-        return DropProposal(operation: padDrag && !optionHeld ? .move : .copy)
+        highlight = isPadDrag(info) && optionHeld ? .copy : .move
+        // Toujours « copier » : proposer « déplacer » à une source qui ne l'autorise pas fait refuser le dépôt
+        // en silence. Le geste réel (déplacer, échanger, dupliquer avec ⌥) est décidé par `performDrop`.
+        return DropProposal(operation: .copy)
     }
 
     func dropExited(info: DropInfo) {
