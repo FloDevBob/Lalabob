@@ -81,7 +81,7 @@ extension ShowController {
         }
     }
 
-    static let maximumTextLength = 80
+    nonisolated static let maximumTextLength = 80
 
     // MARK: - Presse-papiers (⌘X, ⌘C, ⌘V, ⌘D, ⌫)
 

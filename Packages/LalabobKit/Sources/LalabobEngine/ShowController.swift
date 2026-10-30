@@ -48,7 +48,8 @@ public final class ShowController {
     /// Pad copié (⌘C / ⌘X), collé avec un nouvel identifiant.
     var clipboard: Pad?
 
-    @ObservationIgnored private let audioDirectory: URL?
+    /// Dossier de travail des sons du spectacle (le futur `Audio/` du paquet).
+    @ObservationIgnored public private(set) var audioDirectory: URL?
     @ObservationIgnored private let audio: any AudioEngineControlling
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let commands: AsyncStream<AudioCommand>.Continuation
@@ -265,14 +266,12 @@ public final class ShowController {
 
     // MARK: - Sons d'essai (avant le jalon 4 : pas encore de glisser-déposer)
 
-    private nonisolated static let audioExtensions: Set<String> = ["wav", "wave", "aif", "aiff", "caf", "mp3", "m4a", "aac", "flac"]
-
     /// Un spectacle d'une grille dont les colonnes sons sont remplies par les fichiers donnés
     /// (triés par nom, colonne après colonne). Les fichiers qui ne sont pas des sons sont ignorés.
     public nonisolated static func trialShow(fileNames: [String]) -> Show {
         let sounds =
             fileNames
-            .filter { AudioClip.isSafeFileName($0) && audioExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
+            .filter { AudioClip.isSafeFileName($0) && AudioImporter.supportedExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
             .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
         let tints = Tint.allCases.filter { $0 != .blanc && $0 != .graphite }
         var grid = PadGrid.empty(name: "Sons d'essai")
