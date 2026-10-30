@@ -12,7 +12,7 @@ help: ## Affiche cette aide
 setup: ## Vérifie les outils et crée Config/Local.xcconfig
 	@command -v xcodegen >/dev/null || { echo "XcodeGen manquant : brew install xcodegen"; exit 1; }
 	@test -f Config/Local.xcconfig || { cp Config/Local.xcconfig.example Config/Local.xcconfig; \
-		echo "Config/Local.xcconfig créé : renseignez DEVELOPMENT_TEAM (voir 'make team')."; }
+		echo "Config/Local.xcconfig créé (signature locale par défaut, rien à remplir)."; }
 
 team: ## Affiche l'identifiant d'équipe de votre certificat Apple Development
 	@id=$$(security find-certificate -c "Apple Development" -p 2>/dev/null \

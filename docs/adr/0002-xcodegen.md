@@ -12,7 +12,8 @@ Le fichier `project.pbxproj` d'Xcode est illisible et source de conflits Git, su
 
 Le projet est décrit dans `project.yml` (lisible, relisible en PR) et généré par
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`make project`). `Lalabob.xcodeproj` n'est pas versionné.
-L'identifiant d'équipe de signature vit dans `Config/Local.xcconfig`, propre à chaque Mac et non versionné.
+La signature est locale par défaut (`CODE_SIGN_IDENTITY = -`, dans `Config/Base.xcconfig`) : aucun compte Apple n'est requis.
+Une signature avec identifiant Apple se configure dans `Config/Local.xcconfig`, propre à chaque Mac et non versionné.
 
 ## Conséquences
 

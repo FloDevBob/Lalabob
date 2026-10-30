@@ -1,4 +1,11 @@
 // Réglages communs à toutes les configurations.
-// Les réglages propres à votre Mac (équipe de signature) vont dans Local.xcconfig,
-// qui n'est pas versionné. Copiez Local.xcconfig.example (ou lancez `make setup`).
+
+// Signature locale (« Sign to Run Locally ») : aucun compte Apple n'est nécessaire.
+// L'app se lance sur ce Mac ; pour la copier sur un autre Mac, voir le README.
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+// Réglages propres à votre Mac (non versionnés), qui remplacent ceux ci-dessus.
+// Copiez Local.xcconfig.example (ou lancez `make setup`).
 #include? "Local.xcconfig"

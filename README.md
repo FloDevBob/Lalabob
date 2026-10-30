@@ -11,7 +11,7 @@ Application macOS native (SwiftUI, CoreMIDI, AVAudioEngine).
 ## Prérequis
 
 - Mac Apple Silicon sous macOS Tahoe 26.6 ou plus récent (pour Xcode 27).
-- [Xcode 27](https://developer.apple.com/xcode/) et un identifiant Apple (gratuit suffit).
+- [Xcode 27](https://developer.apple.com/xcode/). Aucun compte Apple n'est nécessaire : l'app est signée localement.
 - [Homebrew](https://brew.sh), puis `brew install xcodegen`.
 
 L'app elle-même tourne sur macOS 26 et 27.
@@ -22,11 +22,16 @@ L'app elle-même tourne sur macOS 26 et 27.
 git clone https://github.com/FloDevBob/Lalabob.git
 cd Lalabob
 make setup      # crée Config/Local.xcconfig
-make team       # affiche votre identifiant d'équipe : collez-le dans Config/Local.xcconfig
 make open       # génère le projet Xcode et l'ouvre
 ```
 
 Dans Xcode, choisissez le schéma **Lalabob** puis ⌘R.
+
+### Signature
+
+Par défaut, Lalabob est signé « pour une exécution locale » : il se lance sur le Mac qui l'a compilé,
+sans compte Apple. Pour l'installer sur un autre Mac de régie, le plus simple est de le compiler
+sur ce Mac aussi. Pour signer avec un identifiant Apple plus tard, voir `Config/Local.xcconfig.example`.
 
 > Le projet Xcode est **généré** à partir de `project.yml` et n'est pas versionné.
 > Pour changer un réglage de cible, éditez `project.yml` puis `make project`.

@@ -7,8 +7,9 @@ description: Vérifications avant de livrer une version de Lalabob pour une rép
 
 1. `main` est à jour, `make test` passe, `make build` en configuration Release passe.
 2. Numéro de version incrémenté dans `project.yml` (`MARKETING_VERSION`, `CURRENT_PROJECT_VERSION`).
-3. Archive signée (équipe « Personal Team ») installée sur **chaque** Mac de régie (macOS 26 et 27) ;
-   au premier lancement : Réglages › Confidentialité et sécurité › « Ouvrir quand même ».
+3. App compilée sur **chaque** Mac de régie (macOS 26 et 27) depuis le même commit
+   (signature locale, pas de compte Apple). Si un compte est configuré plus tard : archive signée et,
+   au premier lancement sur un autre Mac, Réglages › Confidentialité et sécurité › « Ouvrir quand même ».
 4. Essais en conditions réelles, sur chaque contrôleur disponible :
    - [ ] 16 sons simultanés sans craquement ;
    - [ ] relance, pause, « Tout arrêter » (Échap) ;

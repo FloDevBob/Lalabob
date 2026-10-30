@@ -1,4 +1,8 @@
 // Copiez ce fichier en Config/Local.xcconfig (non versionné).
-// Identifiant d'équipe de votre compte Apple (gratuit « Personal Team » accepté).
-// Pour le trouver : `make team`, ou Xcode › Signing & Capabilities après avoir choisi l'équipe.
-DEVELOPMENT_TEAM =
+// Par défaut, Lalabob est signé localement, sans compte Apple : rien à remplir ici.
+//
+// Plus tard, pour signer avec un identifiant Apple (gratuit « Personal Team » ou payant),
+// décommentez ces trois lignes et indiquez votre identifiant d'équipe (`make team`) :
+// CODE_SIGN_STYLE = Automatic
+// CODE_SIGN_IDENTITY = Apple Development
+// DEVELOPMENT_TEAM = XXXXXXXXXX
