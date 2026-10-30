@@ -16,4 +16,19 @@ public enum Gain {
         guard level.isFinite else { return 0 }
         return min(max(level, 0), 1)
     }
+
+    /// Valeur d'un fader en décibels (le niveau est une amplitude linéaire), `nil` sous le seuil de silence.
+    public static func decibels(forLevel level: Double) -> Double? {
+        let level = faderLevel(level)
+        guard level > 0 else { return nil }
+        let db = 20 * log10(level)
+        return db > silenceFloorDB ? db : nil
+    }
+
+    /// « −6,0 dB », « 0,0 dB », « −∞ dB » (virgule et vrai signe moins, comme dans l'interface).
+    public static func formatDecibels(level: Double) -> String {
+        guard let db = decibels(forLevel: level) else { return "−∞ dB" }
+        let text = abs(db).formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "fr_FR")))
+        return (db < -0.05 ? "−" : "") + (db < -0.05 ? text : "0,0") + " dB"
+    }
 }

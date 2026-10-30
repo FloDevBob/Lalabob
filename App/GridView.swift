@@ -83,10 +83,11 @@ struct ColumnView: View {
             }
 
             if column.kind == .audio {
-                // Fader provisoire (horizontal) ; le fader vertical de la maquette arrive au jalon 5.
-                Slider(value: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }), in: 0...1)
-                    .controlSize(.small)
-                    .accessibilityLabel("Volume de \(column.name)")
+                VerticalFader(
+                    name: column.name,
+                    level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) })
+                )
+                .padding(.top, 4)
             }
         }
         .frame(minWidth: 110, maxWidth: .infinity)
@@ -216,7 +217,7 @@ struct PadView: View {
                 Text(pad.title).font(Typography.padTitle).lineLimit(1)
                 Spacer(minLength: 0)
                 if case .paused = event?.state { Icon.pause.view(size: 12) }
-                if case .playing = event?.state { Icon.volume.view(size: 12) }
+                if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
             }
             Text(pad.subtitle).font(Typography.padSubtitle).opacity(0.88).lineLimit(1)
         }

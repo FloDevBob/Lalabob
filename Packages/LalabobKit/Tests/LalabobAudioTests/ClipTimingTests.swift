@@ -27,6 +27,30 @@ struct GainTests {
     }
 }
 
+@Suite("Affichage des niveaux")
+struct LevelDisplayTests {
+    @Test func unityIsZeroDecibels() {
+        #expect(Gain.decibels(forLevel: 1) == 0)
+        #expect(Gain.formatDecibels(level: 1) == "0,0 dB")
+    }
+
+    @Test func halfIsAboutMinusSix() {
+        #expect(abs((Gain.decibels(forLevel: 0.5) ?? 0) + 6.0206) < 0.001)
+        #expect(Gain.formatDecibels(level: 0.5) == "−6,0 dB")
+    }
+
+    @Test func silenceAndInvalidLevelsShowMinusInfinity() {
+        #expect(Gain.decibels(forLevel: 0) == nil)
+        #expect(Gain.formatDecibels(level: 0) == "−∞ dB")
+        #expect(Gain.formatDecibels(level: .nan) == "−∞ dB")
+        #expect(Gain.formatDecibels(level: 0.0005) == "−∞ dB")  // sous −60 dB
+    }
+
+    @Test func levelsAboveOneAreClamped() {
+        #expect(Gain.formatDecibels(level: 3) == "0,0 dB")
+    }
+}
+
 @Suite("ClipTiming")
 struct ClipTimingTests {
     @Test func defaultsCoverTheWholeFile() {
