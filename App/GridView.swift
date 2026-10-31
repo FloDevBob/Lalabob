@@ -250,10 +250,15 @@ struct PadView: View {
     }
 
     private var empty: some View {
-        IconLabel(kind == .audio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
-            .font(.system(size: 11.5))
-            .foregroundStyle(Surface.textTertiary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Verrouillé, l'invitation à déposer n'a pas de sens : la case reste, discrète, sans texte.
+        Group {
+            if !controller.isLocked {
+                IconLabel(kind == .audio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Surface.textTertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(
                 RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                     .strokeBorder(Surface.emptyPadStroke, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))

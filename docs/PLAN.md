@@ -192,3 +192,4 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 - **Couleurs dans le menu contextuel (31/10/2026)** : le sous-menu « Couleur » propose les 16 teintes avec leur pastille (fond + point vif,
   dessinée en image car un menu n'affiche pas de vue SwiftUI), coche sur la teinte en cours, et un sous-menu « Intensité de la LED ».
   Rendu à vérifier à l'œil (les pastilles doivent rester en couleur).
+- **Cases vides verrouillé (01/11/2026)** : plus de « Déposer un son » / « Nouvelle cue » quand le spectacle est verrouillé ; la case garde sa bordure pointillée discrète.
