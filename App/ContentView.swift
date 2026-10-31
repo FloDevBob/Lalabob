@@ -25,7 +25,8 @@ struct ContentView: View {
                         GridView()
                             .padding(20)
                     }
-                    if !controller.isLocked, let selection = controller.selection {
+                    // Déverrouillé : le pad sélectionné. Verrouillé : le son lancé (version en lecture seule).
+                    if let selection = controller.selection, showsInspector(for: selection) {
                         Divider().overlay(Color.white.opacity(0.06))
                         InspectorView(position: selection)
                     }
@@ -54,6 +55,13 @@ struct ContentView: View {
 }
 
 extension ContentView {
+    /// Verrouillé, le panneau ne s'affiche que pour un son (les cases vides et les cues n'ont rien à y piloter).
+    fileprivate func showsInspector(for position: GridPosition) -> Bool {
+        guard controller.isLocked else { return true }
+        guard let pad = controller.pad(at: position), case .audio = pad.content else { return false }
+        return true
+    }
+
     /// Bandeau affiché quand on tente de modifier un spectacle verrouillé.
     @ViewBuilder
     fileprivate var lockBanner: some View {

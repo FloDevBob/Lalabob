@@ -174,12 +174,7 @@ struct PadView: View {
             of: [.fileURL, .plainText],
             delegate: PadDropDelegate(position: position, controller: controller, highlight: $dropHighlight)
         )
-        .contextMenu {
-            if pad != nil, kind == .audio {
-                Button("Pause / Reprendre") { controller.togglePause(at: position) }
-                Button("Arrêter") { controller.stop(at: position) }
-            }
-        }
+        .contextMenu { PadContextMenu(position: position) }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind == .audio ? "Case vide" : "Case lumière vide"))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)

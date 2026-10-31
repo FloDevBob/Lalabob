@@ -11,6 +11,8 @@ import SwiftUI
 /// - Bande du bas (pad son) : jauge de volume du pad (dB) et forme d'onde pleine largeur avec élagage ;
 ///   les fondus se règlent sur l'onde (puces sous la courbe, poignée de durée).
 /// Aucune information n'apparaît deux fois ; les groupes sans rapport sont séparés par un filet.
+/// Verrouillé, une version en lecture seule du même panneau reste affichée pour le son lancé : lecture, pause, stop et
+/// tête de lecture se pilotent, mais couleur, actions, textes, volume, boucle, fondus et élagage ne se modifient pas.
 struct InspectorView: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -34,6 +36,8 @@ struct InspectorView: View {
                             onLive: { controller.previewGain(at: position, $0) },
                             onCommit: { controller.setGain(at: position, $0) })
                             .frame(width: 46)
+                            .allowsHitTesting(!controller.isLocked)
+                            .opacity(controller.isLocked ? 0.55 : 1)
                         WaveformEditor(
                             position: position, clip: clip, tint: pad.tint,
                             event: controller.playback[pad.id], waveform: waveform
@@ -80,6 +84,7 @@ struct InspectorView: View {
 
 /// Pad son : transport | titre | (espace) nom du fichier | nouvel appui | couleur, actions.
 private struct AudioHeader: View {
+    @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad
     let clip: AudioClip
@@ -99,13 +104,31 @@ private struct AudioHeader: View {
                 .frame(maxWidth: 150, alignment: .trailing)
                 .layoutPriority(-1)
                 .help("Fichier d'origine : \(clip.fileName)")
-            HeaderDivider()
-            RetriggerControl(position: position, clip: clip)
-            HeaderDivider()
-            ColorPopoverButton(position: position, pad: pad)
-            PadActionsMenu(position: position, hasPad: true)
+            if controller.isLocked {
+                HeaderDivider()
+                TintSwatch(tint: pad.tint)
+            } else {
+                HeaderDivider()
+                RetriggerControl(position: position, clip: clip)
+                HeaderDivider()
+                ColorPopoverButton(position: position, pad: pad)
+                PadActionsMenu(position: position, hasPad: true)
+            }
         }
         .padding(.horizontal, 14)
+    }
+}
+
+/// Pastille de la teinte, sans action (panneau verrouillé).
+private struct TintSwatch: View {
+    let tint: Tint
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(tint.surfaceColor)
+            .frame(width: 20, height: 20)
+            .overlay { Circle().fill(tint.vividColor).frame(width: 10, height: 10) }
+            .accessibilityLabel("Couleur du pad : \(tint.displayName)")
     }
 }
 
@@ -165,6 +188,8 @@ private struct TitleFields: View {
     @State private var draft = ""
     @FocusState private var focused: Bool
 
+    private var isEditable: Bool { !controller.isLocked }
+
     private enum Field { case title, subtitle }
 
     var body: some View {
@@ -180,6 +205,7 @@ private struct TitleFields: View {
         }
         .help(controller.positionLabel(for: position))
         .onChange(of: position) { editing = nil }
+        .onChange(of: controller.isLocked) { editing = nil }
         .onChange(of: focused) { wasFocused, isFocused in
             if wasFocused, !isFocused { commit() }
         }
@@ -204,8 +230,8 @@ private struct TitleFields: View {
                 .foregroundStyle(text.isEmpty ? Surface.textTertiary : color)
                 .lineLimit(1)
                 .truncationMode(.tail)
-                .help(hint)
-                .onTapGesture(count: 2) { start(field) }
+                .help(isEditable ? hint : "")
+                .onTapGesture(count: 2) { if isEditable { start(field) } }
         }
     }
 
@@ -245,7 +271,7 @@ private struct TransportControls: View {
             // Lecture, pause, stop et boucle forment un seul bloc.
             HStack(spacing: 4) {
                 Button {
-                    controller.audition(at: position)
+                    controller.playPad(at: position)
                 } label: {
                     (isPlaying ? Icon.restart : Icon.play).view(size: 13)
                         .frame(width: 32, height: 32)
@@ -271,6 +297,7 @@ private struct TransportControls: View {
                 groupButton(.loop, label: "Boucle", active: clip.loops, tint: Surface.loopAccent) {
                     controller.setLoops(at: position, !clip.loops)
                 }
+                .disabled(controller.isLocked)
                 .accessibilityValue(clip.loops ? "activée" : "désactivée")
             }
             .padding(.horizontal, 4)
@@ -438,22 +465,7 @@ private struct PadActionsMenu: View {
 
     var body: some View {
         Menu {
-            Button("Couper", icon: .cut) { controller.cutSelection() }
-                .keyboardShortcut("x", modifiers: .command)
-                .disabled(!hasPad)
-            Button("Copier", icon: .copy) { controller.copySelection() }
-                .keyboardShortcut("c", modifiers: .command)
-                .disabled(!hasPad)
-            Button("Coller", icon: .paste) { controller.pasteAtSelection() }
-                .keyboardShortcut("v", modifiers: .command)
-                .disabled(!controller.canPaste)
-            Button("Dupliquer", icon: .duplicate) { controller.duplicateSelection() }
-                .keyboardShortcut("d", modifiers: .command)
-                .disabled(!hasPad)
-            Divider()
-            Button("Vider", icon: .trash) { controller.clearSelection() }
-                .keyboardShortcut(.delete, modifiers: .command)
-                .disabled(!hasPad)
+            PadEditActions(position: position, hasPad: hasPad)
         } label: {
             Icon.more.view(size: 18)
                 .frame(width: 30, height: 30)
@@ -465,6 +477,109 @@ private struct PadActionsMenu: View {
         .foregroundStyle(Surface.textSecondary)
         .help("Actions sur le pad (\(controller.positionLabel(for: position)))")
         .accessibilityLabel("Actions du pad")
+    }
+}
+
+/// Les cinq actions d'édition avec leurs raccourcis : menu « ⋯ » du panneau et menu contextuel des pads.
+/// Elles agissent sur la sélection ; `position` devient la sélection au moment de l'action (clic droit sur un pad
+/// qui n'était pas sélectionné).
+struct PadEditActions: View {
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
+    let hasPad: Bool
+
+    var body: some View {
+        Button("Couper", icon: .cut) { act { controller.cutSelection() } }
+            .keyboardShortcut("x", modifiers: .command)
+            .disabled(!hasPad)
+        Button("Copier", icon: .copy) { act { controller.copySelection() } }
+            .keyboardShortcut("c", modifiers: .command)
+            .disabled(!hasPad)
+        Button("Coller", icon: .paste) { act { controller.pasteAtSelection() } }
+            .keyboardShortcut("v", modifiers: .command)
+            .disabled(!controller.canPaste)
+        Button("Dupliquer", icon: .duplicate) { act { controller.duplicateSelection() } }
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(!hasPad)
+        Divider()
+        Button("Vider", icon: .trash) { act { controller.clearSelection() } }
+            .keyboardShortcut(.delete, modifiers: .command)
+            .disabled(!hasPad)
+    }
+
+    private func act(_ action: () -> Void) {
+        controller.selection = position
+        action()
+    }
+}
+
+/// Menu contextuel d'un pad de la grille : les principales actions du panneau du bas.
+/// Verrouillé, seules les commandes de lecture restent (le reste serait refusé).
+struct PadContextMenu: View {
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
+
+    var body: some View {
+        let pad = controller.pad(at: position)
+        let locked = controller.isLocked
+        if let pad {
+            switch pad.content {
+            case .audio(let clip):
+                audioItems(pad: pad, clip: clip, locked: locked)
+            case .light:
+                if !locked {
+                    Button("Tester", icon: .spotlight) { controller.audition(at: position) }
+                    Divider()
+                    colorMenu(pad: pad)
+                }
+            }
+            if !locked {
+                Divider()
+                PadEditActions(position: position, hasPad: true)
+            }
+        } else if !locked {
+            PadEditActions(position: position, hasPad: false)
+        }
+    }
+
+    @ViewBuilder
+    private func audioItems(pad: Pad, clip: AudioClip, locked: Bool) -> some View {
+        let state = controller.playback[pad.id]?.state
+        let isPlaying: Bool = if case .playing = state { true } else { false }
+        let isPaused = state?.isPausedState ?? false
+        Button(isPlaying ? "Relancer" : "Lecture", icon: isPlaying ? .restart : .play) {
+            controller.playPad(at: position)
+        }
+        Button(isPaused ? "Reprendre" : "Pause", icon: .pause) { controller.togglePause(at: position) }
+            .disabled(state == nil)
+        Button("Arrêter", icon: .stop) { controller.stop(at: position) }
+            .disabled(state == nil)
+        if !locked {
+            Divider()
+            Toggle(
+                "Boucle",
+                isOn: Binding(get: { clip.loops }, set: { controller.setLoops(at: position, $0) }))
+            Picker(
+                "Nouvel appui",
+                selection: Binding(get: { clip.retrigger }, set: { controller.setRetrigger(at: position, $0) })
+            ) {
+                Text("Relancer").tag(RetriggerBehavior.restart)
+                Text("Arrêter").tag(RetriggerBehavior.stop)
+            }
+            colorMenu(pad: pad)
+        }
+    }
+
+    private func colorMenu(pad: Pad) -> some View {
+        Menu("Couleur") {
+            Picker(
+                "Couleur",
+                selection: Binding(get: { pad.tint }, set: { controller.updatePad(at: position, tint: $0) })
+            ) {
+                ForEach(Tint.allCases, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            .pickerStyle(.inline)
+        }
     }
 }
 

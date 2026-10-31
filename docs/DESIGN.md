@@ -75,3 +75,10 @@ bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il
 - ⌘X / ⌘C / ⌘V / ⌘D / ⌫ / ⌘Z ; Échap = Tout arrêter ; Espace = pause du pad sélectionné.
 
 **Retouches du 31/10/2026** : cliquer ou glisser sur l'onde déplace la tête de lecture ; les actions du pad (Couper, Copier, Coller, Dupliquer, Vider) sont dans un menu à trois petits points qui affiche leurs raccourcis (⌘X ⌘C ⌘V ⌘D ⌘⌫).
+
+**Menu contextuel d'un pad** (clic droit) : Lecture / Relancer, Pause / Reprendre, Arrêter, Boucle, Nouvel appui, Couleur,
+puis Couper, Copier, Coller, Dupliquer, Vider avec leurs raccourcis. Verrouillé : seulement la lecture.
+
+**Panneau du bas verrouillé** : même disposition, en lecture seule, affiché pour le dernier son lancé (il apparaît dès le
+lancement d'une piste). Actifs : lecture / relance, pause, stop, tête de lecture sur l'onde. Figés ou masqués : titre et
+sous-titre, couleur, actions, nouvel appui, volume du pad, boucle, fondus, élagage.

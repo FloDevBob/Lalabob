@@ -175,3 +175,13 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   Le menu « Actions » devient un menu **trois petits points** (icône `more`) qui affiche ses raccourcis : ⌘X, ⌘C, ⌘V, ⌘D, ⌘⌫.
   Tests : `SeekTests` (10), `ClipSettingsTests` (+4), `ClipEditingTests` (+2). **À essayer** : les raccourcis du menu ne
   doivent pas gêner l'édition du titre / sous-titre (⌘C / ⌘V dans un champ).
+- **Menu contextuel des pads et panneau verrouillé (31/10/2026)** : (a) clic droit sur un pad de la grille =
+  menu avec les principales actions du panneau — Lecture / Relancer, Pause / Reprendre, Arrêter, Boucle, Nouvel appui,
+  Couleur, puis Couper / Copier / Coller / Dupliquer / Vider avec leurs raccourcis (⌘X ⌘C ⌘V ⌘D ⌘⌫) ; le pad cliqué devient la
+  sélection au moment de l'action. Case vide : Coller. Pad lumière : Tester, Couleur, actions. (b) **Panneau du bas en mode
+  verrouillé**, version lecture seule : il s'affiche **dès qu'un son est lancé** (clic, contrôleur physique ou menu) et montre
+  ce son ; lecture / relance, pause, stop et tête de lecture (clic ou glisser sur l'onde) restent actifs ; couleur, actions,
+  « Nouvel appui », titre et sous-titre (plus de double-clic), volume du pad, boucle, fondus et élagage sont figés ou masqués.
+  `ShowController.playPad(at:)` (lecture sans refus quand verrouillé) ; `seek` n'est plus refusé verrouillé (il ne modifie pas le
+  spectacle) ; verrouillé, un son lancé devient la sélection. 6 tests (`LockTests`). **À essayer** : clic droit sur un pad non
+  sélectionné puis ⌘C / ⌘V ; en mode verrouillé, lancer un son au contrôleur et voir le panneau apparaître.

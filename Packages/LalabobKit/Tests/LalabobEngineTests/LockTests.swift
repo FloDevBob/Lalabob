@@ -82,9 +82,9 @@ struct LockTests {
         let (controller, _, pad) = makeController(locked: true, audio: audio)
 
         controller.press(at: Self.a)
-        #expect(controller.selection == nil)
         #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
 
+        controller.selection = nil
         controller.isLocked = false
         let triggersBefore = await audio.commands.filter { $0 == .trigger(pad.id) }.count
         controller.press(at: Self.a)
@@ -148,5 +148,56 @@ struct LockTests {
         undo.undo()
         #expect(controller.pad(at: Self.a) == nil)  // ⌘Z verrouillé : rien ne change
         #expect(controller.lockNotice != nil)
+    }
+
+    // MARK: - Panneau du bas en mode verrouillé
+
+    @Test func lockedClickSelectsTheAudioPadItPlays() {
+        let (controller, _, _) = makeController(locked: true)
+        #expect(controller.selection == nil)
+        controller.press(at: Self.a)
+        #expect(controller.selection == Self.a)
+    }
+
+    @Test func lockedClickOnAnEmptyCellKeepsTheSelection() {
+        let (controller, _, _) = makeController(locked: true)
+        controller.press(at: Self.a)
+        controller.press(at: Self.b)
+        #expect(controller.selection == Self.a)
+    }
+
+    @Test func aPadStartedFromTheControllerIsSelectedWhenLocked() {
+        let (controller, _, _) = makeController(locked: true)
+        controller.pressFromController(at: Self.a)
+        #expect(controller.selection == Self.a)
+    }
+
+    @Test func aPadStartedFromTheControllerDoesNotStealTheSelectionWhenUnlocked() {
+        let (controller, _, _) = makeController(locked: false)
+        controller.pressFromController(at: Self.a)
+        #expect(controller.selection == nil)
+    }
+
+    @Test func playPadWorksWhenLockedWithoutNotice() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: true, audio: audio)
+        controller.playPad(at: Self.a)
+        try? await Task.sleep(for: .milliseconds(150))
+        let sent = await audio.commands
+        #expect(sent.contains(.trigger(pad.id)))
+        #expect(controller.lockNotice == nil)
+    }
+
+    @Test func seekWorksWhenLockedBecauseItDoesNotEditTheShow() async {
+        let audio = RecordingAudioEngine()
+        let (controller, undo, _) = makeController(locked: true, audio: audio)
+        let before = controller.show
+        controller.seek(at: Self.a, toFileTime: 1, fileDuration: 10)
+        try? await Task.sleep(for: .milliseconds(150))
+        let sent = await audio.commands
+        #expect(sent.contains { if case .seek = $0 { true } else { false } })
+        #expect(controller.show == before)
+        #expect(!undo.canUndo)
+        #expect(controller.lockNotice == nil)
     }
 }

@@ -133,8 +133,8 @@ public final class ShowController {
 
     // MARK: - Commandes
 
-    /// Clic sur une case : verrouillé, il joue (comme un appui sur le contrôleur) ;
-    /// déverrouillé, il sélectionne le pad sans le jouer (l'inspecteur s'ouvre).
+    /// Clic sur une case : verrouillé, il joue (comme un appui sur le contrôleur) et sélectionne le son lancé, pour que
+    /// le panneau du bas (version verrouillée) le montre ; déverrouillé, il sélectionne le pad sans le jouer.
     public func press(at position: GridPosition) {
         guard position.isValid else { return }
         if isLocked {
@@ -150,10 +150,18 @@ public final class ShowController {
         play(at: position)
     }
 
+    /// Lecture d'un pad depuis le panneau du bas : marche aussi verrouillé (c'est du jeu, pas de l'édition).
+    public func playPad(at position: GridPosition) {
+        guard position.isValid else { return }
+        play(at: position)
+    }
+
     private func play(at position: GridPosition) {
         guard let pad = currentGrid[position] else { return }
         switch pad.content {
-        case .audio: commands.yield(.trigger(pad.id))
+        case .audio:
+            commands.yield(.trigger(pad.id))
+            if isLocked { selection = position }
         case .light: lightPressHandler?(position)
         }
     }
@@ -169,9 +177,9 @@ public final class ShowController {
 
     /// Déplace la tête de lecture d'un pad (clic ou glisser sur la forme d'onde). `fileTime` : point cliqué, en secondes
     /// dans le fichier ; il est ramené à la partie élaguée. Le son joue de là, ou reste en pause là, ou démarre de là
-    /// s'il était arrêté. Ignoré si le spectacle est verrouillé ou si la case n'a pas de son.
+    /// s'il était arrêté. Marche aussi verrouillé (le spectacle n'est pas modifié) ; ignoré si la case n'a pas de son.
     public func seek(at position: GridPosition, toFileTime fileTime: TimeInterval, fileDuration: TimeInterval) {
-        guard !isLocked, let pad = pad(at: position), case .audio(let clip) = pad.content else { return }
+        guard let pad = pad(at: position), case .audio(let clip) = pad.content else { return }
         commands.yield(.seek(pad.id, clip.playbackOffset(atFileTime: fileTime, fileDuration: fileDuration)))
     }
 
@@ -195,6 +203,7 @@ public final class ShowController {
     func pressFromController(at position: GridPosition) {
         guard let pad = pad(at: position), case .audio = pad.content else { return }
         commands.yield(.trigger(pad.id))
+        if isLocked { selection = position }
     }
 
     func setConnectedController(_ model: ControllerModel?) {

@@ -8,6 +8,7 @@ import SwiftUI
 /// - une puce « Fondu » en bas à gauche (entrée) et en bas à droite (sortie) : un clic l'active ;
 /// - une fois actif, une poignée au bout de la courbe pointillée en règle la durée, et une croix le retire.
 /// Un glisser = une seule modification annulable (⌘Z), enregistrée au relâchement.
+/// Verrouillé, poignées et puces disparaissent : il reste la forme d'onde et la tête de lecture.
 struct WaveformEditor: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -43,13 +44,18 @@ struct WaveformEditor: View {
                     Canvas { context, size in drawWave(in: &context, size: size) }
                     trimmedShade(width: width)
                     fadeCurves(width: width, height: height)
-                    trimHandle(at: start, width: width, height: height, isStart: true)
-                    trimHandle(at: end, width: width, height: height, isStart: false)
-                    fadeHandle(isIn: true, width: width, height: height)
-                    fadeHandle(isIn: false, width: width, height: height)
+                    // Verrouillé : seule la lecture se pilote (tête de lecture) ; élagage et fondus sont en lecture seule.
+                    if !controller.isLocked {
+                        trimHandle(at: start, width: width, height: height, isStart: true)
+                        trimHandle(at: end, width: width, height: height, isStart: false)
+                        fadeHandle(isIn: true, width: width, height: height)
+                        fadeHandle(isIn: false, width: width, height: height)
+                    }
                     playhead(width: width, height: height)
-                    fadeChip(isIn: true, width: width, height: height)
-                    fadeChip(isIn: false, width: width, height: height)
+                    if !controller.isLocked {
+                        fadeChip(isIn: true, width: width, height: height)
+                        fadeChip(isIn: false, width: width, height: height)
+                    }
                 }
                 .coordinateSpace(.named("wave"))
                 .contentShape(.rect)

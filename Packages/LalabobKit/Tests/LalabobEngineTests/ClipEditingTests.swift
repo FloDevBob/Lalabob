@@ -153,15 +153,13 @@ struct ClipEditingTests {
         #expect(await waitUntil { await audio.commands.contains(.seek(pad.id, 0)) })
     }
 
-    @Test func seekIsIgnoredWhenLockedOnEmptyCellsAndOnLightPads() async {
+    @Test func seekIsIgnoredOnEmptyCellsAndOnLightPads() async {
         let audio = RecordingAudioEngine()
         var grid = PadGrid.empty(name: "G")
         grid[Self.a] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
-            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, isLocked: true)
-        controller.seek(at: Self.a, toFileTime: 1, fileDuration: 10)
-        controller.isLocked = false
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
         controller.seek(at: GridPosition(column: 3, row: 3), toFileTime: 1, fileDuration: 10)
         controller.seek(at: GridPosition(column: 6, row: 0), toFileTime: 1, fileDuration: 10)
         try? await Task.sleep(for: .milliseconds(150))
