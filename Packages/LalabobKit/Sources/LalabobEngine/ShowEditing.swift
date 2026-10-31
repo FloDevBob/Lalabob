@@ -83,42 +83,163 @@ extension ShowController {
 
     nonisolated static let maximumTextLength = 80
 
-    // MARK: - Presse-papiers (⌘X, ⌘C, ⌘V, ⌘D, ⌫)
+    // MARK: - Sélection multiple : presse-papiers (⌘X, ⌘C, ⌘V, ⌘D, ⌫), déplacer, copier en bloc
+
+    /// Positions sélectionnées qui contiennent un pad, colonne par colonne, de haut en bas.
+    private var selectedFilledPositions: [GridPosition] {
+        selectedPositions.filter { pad(at: $0) != nil }.sorted { ($0.column, $0.row) < ($1.column, $1.row) }
+    }
+
+    /// Nombre de pads (cases non vides) dans la sélection.
+    public var selectedPadCount: Int { selectedFilledPositions.count }
 
     public func copySelection() {
-        guard !refuseWhileLocked(), let selection, let pad = pad(at: selection) else { return }
-        clipboard = pad
+        guard !refuseWhileLocked() else { return }
+        let filled = selectedFilledPositions
+        guard let left = filled.map(\.column).min(), let top = filled.map(\.row).min() else { return }
+        clipboard = filled.compactMap { position in
+            pad(at: position).map {
+                ClipboardEntry(pad: $0, columnOffset: position.column - left, rowOffset: position.row - top)
+            }
+        }
     }
 
     public func cutSelection() {
-        guard !refuseWhileLocked(), let selection else { return }
+        guard !refuseWhileLocked() else { return }
         copySelection()
-        clearPad(at: selection)
+        clearSelection()
     }
 
-    /// Colle une copie du pad du presse-papiers dans la case sélectionnée (remplace son contenu).
+    /// Colle des copies des pads du presse-papiers à partir du coin haut-gauche de la sélection, en gardant leur
+    /// disposition. Ce qui sort de la grille ou tombe dans une colonne d'un autre type (son / lumière) est ignoré,
+    /// le reste est collé ; une seule annulation. `false` si rien n'a pu être collé.
     @discardableResult
     public func pasteAtSelection() -> Bool {
-        guard !refuseWhileLocked(), let selection, let clipboard else { return false }
-        return place(clipboard.duplicated(), at: selection)
+        guard !refuseWhileLocked(), let clipboard,
+            let column = selectedPositions.map(\.column).min(), let row = selectedPositions.map(\.row).min()
+        else { return false }
+        return commit("Coller") { show, grid in
+            var placedAny = false
+            for entry in clipboard {
+                let target = GridPosition(column: column + entry.columnOffset, row: row + entry.rowOffset)
+                guard target.isValid, show.grids[grid].columns[target.column].kind == entry.pad.kind else { continue }
+                show.grids[grid][target] = entry.pad.duplicated()
+                placedAny = true
+            }
+            return placedAny
+        }
     }
 
-    /// Duplique le pad sélectionné dans la première case libre en dessous, et sélectionne la copie.
+    /// Duplique chaque pad sélectionné dans la première case libre en dessous de lui, et sélectionne les copies.
     @discardableResult
     public func duplicateSelection() -> Bool {
-        guard !refuseWhileLocked(), let selection, pad(at: selection) != nil else { return false }
-        let below = ((selection.row + 1)..<PadGrid.size).map { GridPosition(column: selection.column, row: $0) }
-        guard let free = below.first(where: { pad(at: $0) == nil }), duplicatePad(from: selection, to: free) else {
-            return false
+        guard !refuseWhileLocked() else { return false }
+        let sources = selectedFilledPositions
+        guard !sources.isEmpty else { return false }
+        var copies: [GridPosition] = []
+        let done = commit("Dupliquer") { show, grid in
+            for source in sources {
+                guard let original = show.grids[grid][source] else { continue }
+                let free = ((source.row + 1)..<PadGrid.size)
+                    .map { GridPosition(column: source.column, row: $0) }
+                    .first { show.grids[grid][$0] == nil }
+                guard let free else { continue }
+                show.grids[grid][free] = original.duplicated()
+                copies.append(free)
+            }
+            return !copies.isEmpty
         }
-        self.selection = free
-        return true
+        if done { selectPositions(copies) }
+        return done
     }
 
+    /// Vide toutes les cases sélectionnées (une seule annulation).
     @discardableResult
     public func clearSelection() -> Bool {
-        guard let selection else { return false }
-        return clearPad(at: selection)
+        let targets = selectedPositions
+        guard !targets.isEmpty else { return false }
+        return commit("Vider") { show, grid in
+            var changed = false
+            for position in targets where position.isValid && show.grids[grid][position] != nil {
+                show.grids[grid][position] = nil
+                changed = true
+            }
+            return changed
+        }
+    }
+
+    /// Glisser un pad. Seul : déplace ou échange (voir `movePad`). S'il fait partie d'une sélection de plusieurs
+    /// pads, tout le groupe suit du même décalage (une case sélectionnée ou libre en destination ; refusé si le
+    /// groupe sortirait de la grille, changerait de type de colonne ou écraserait un pad hors sélection).
+    /// La sélection suit les pads déplacés.
+    @discardableResult
+    public func moveSelection(from source: GridPosition, to target: GridPosition) -> Bool {
+        guard selectedPositions.contains(source), selectedPositions.count > 1 else {
+            let done = movePad(from: source, to: target)
+            if done { selection = target }
+            return done
+        }
+        let columnShift = target.column - source.column
+        let rowShift = target.row - source.row
+        guard columnShift != 0 || rowShift != 0 else { return false }
+        let moving = selectedFilledPositions
+        let done = commit("Déplacer les pads") { show, grid in
+            let staying = Set(moving)
+            var plan: [(from: GridPosition, to: GridPosition, pad: Pad)] = []
+            for from in moving {
+                let to = GridPosition(column: from.column + columnShift, row: from.row + rowShift)
+                guard to.isValid, let pad = show.grids[grid][from],
+                    show.grids[grid].columns[to.column].kind == pad.kind
+                else { return false }
+                if show.grids[grid][to] != nil, !staying.contains(to) { return false }
+                plan.append((from, to, pad))
+            }
+            for step in plan { show.grids[grid][step.from] = nil }
+            for step in plan { show.grids[grid][step.to] = step.pad }
+            return true
+        }
+        if done { shiftSelection(columns: columnShift, rows: rowShift, anchor: source) }
+        return done
+    }
+
+    /// ⌥-glisser : copie le groupe sélectionné du même décalage, dans des cases libres (refusé sinon).
+    /// Un pad seul est copié comme avant (`duplicatePad`). La sélection passe sur les copies.
+    @discardableResult
+    public func duplicateSelection(from source: GridPosition, to target: GridPosition) -> Bool {
+        guard selectedPositions.contains(source), selectedPositions.count > 1 else {
+            let done = duplicatePad(from: source, to: target)
+            if done { selection = target }
+            return done
+        }
+        let columnShift = target.column - source.column
+        let rowShift = target.row - source.row
+        guard columnShift != 0 || rowShift != 0 else { return false }
+        let moving = selectedFilledPositions
+        let done = commit("Copier les pads") { show, grid in
+            var plan: [(to: GridPosition, pad: Pad)] = []
+            for from in moving {
+                let to = GridPosition(column: from.column + columnShift, row: from.row + rowShift)
+                guard to.isValid, let pad = show.grids[grid][from], show.grids[grid][to] == nil,
+                    show.grids[grid].columns[to.column].kind == pad.kind
+                else { return false }
+                plan.append((to, pad.duplicated()))
+            }
+            for step in plan { show.grids[grid][step.to] = step.pad }
+            return true
+        }
+        if done { shiftSelection(columns: columnShift, rows: rowShift, anchor: source) }
+        return done
+    }
+
+    /// Décale toute la sélection (les cases qui sortiraient de la grille sont abandonnées) ; la case principale
+    /// reste celle qui était sous le pointeur si elle est toujours dans la grille.
+    private func shiftSelection(columns: Int, rows: Int, anchor: GridPosition) {
+        func shifted(_ position: GridPosition) -> GridPosition {
+            GridPosition(column: position.column + columns, row: position.row + rows)
+        }
+        let ordered = selectedPositions.sorted { ($0.column, $0.row) < ($1.column, $1.row) }.map(shifted).filter(\.isValid)
+        let primary = shifted(anchor)
+        selectPositions(ordered.contains(primary) ? [primary] + ordered.filter { $0 != primary } : ordered)
     }
 
     public var canPaste: Bool { clipboard != nil && !isLocked }

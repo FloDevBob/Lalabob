@@ -205,3 +205,12 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   Échap annule. `ShowController.renameColumn(at:to:)` (nom vide refusé, 80 caractères, une annulation, refusé verrouillé). 4 tests (`EditingTests`).
   Le nom de la colonne apparaît aussi dans l'infobulle de position des pads (ex. « C2·L5 »).
 - **Alignement des colonnes lumière (01/11/2026)** : la zone ambrée ajoutait 8 px de marge en haut, ce qui décalait en-têtes et pads des colonnes lumière par rapport aux colonnes sons. Marge horizontale seulement ; le cadre ambré déborde de 8 px et occupe toute la hauteur de la grille. Vérifié sur l'aperçu.
+- **Sélection multiple (01/11/2026)** : **⇧-clic** = rectangle de cases depuis l'ancre (le pad principal), **⌘-clic** = ajout / retrait d'une case, clic simple = une seule case.
+  `ShowController.selectedPositions` (+ `selection` = case principale ; l'affecter désélectionne le reste), `press(at:mode:)`. Sur plusieurs pads :
+  **⌘C / ⌘X / ⌘V** gardent la disposition (collé à partir du coin haut-gauche de la sélection ; ce qui sort de la grille ou tombe dans une colonne d'un
+  autre type est ignoré, le reste est collé), **⌫** vide tout, **⌘D** copie chaque pad dans la première case libre en dessous, **glisser** un pad
+  de la sélection déplace tout le groupe du même décalage (refusé s'il sortirait de la grille, changerait de type de colonne ou écraserait un pad hors
+  sélection), **⌥-glisser** le copie (cases libres exigées). Une seule annulation par opération ; refusé verrouillé (où le clic joue, sans sélection multiple).
+  L'inspecteur reste pour un pad seul ; avec plusieurs pads, une barre indique le nombre et propose les actions (menu « ⋯ », Désélectionner).
+  Le menu contextuel agit sur toute la sélection si le pad cliqué en fait partie. Limites : couleur, volume etc. ne s'appliquent qu'à un pad à la fois ;
+  pas de ⌘A ni de sélection au lasso. 22 tests (`MultiSelectionTests`). **À essayer** : ⇧-clic, glisser un groupe, ⌥-glisser, ⌘V d'un groupe sur la grille.

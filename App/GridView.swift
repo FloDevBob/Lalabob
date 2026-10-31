@@ -206,7 +206,7 @@ struct PadView: View {
     var body: some View {
         let pad = controller.pad(at: position)
         let event = pad.flatMap { controller.playback[$0.id] }
-        let isSelected = controller.selection == position
+        let isSelected = controller.selectedPositions.contains(position)
 
         // Pas de `Button` : sur macOS il capte la souris et empêche le glisser de démarrer.
         Group {
@@ -243,9 +243,13 @@ struct PadView: View {
         .accessibilityAction { activate() }
     }
 
+    /// Clic : ⇧ étend la sélection en rectangle depuis l'ancre, ⌘ ajoute ou retire la case, sinon la case seule.
     private func activate() {
         onPress()
-        controller.press(at: position)
+        let modifiers = NSEvent.modifierFlags
+        let mode: ShowController.SelectionMode =
+            modifiers.contains(.shift) ? .range : modifiers.contains(.command) ? .toggle : .replace
+        controller.press(at: position, mode: mode)
     }
 
     @ViewBuilder
@@ -396,12 +400,12 @@ struct PadDropDelegate: DropDelegate {
                         Self.log.error("Glisser : jeton refusé « \(text, privacy: .public) »")
                         return
                     }
+                    // Un pad de la sélection entraîne tout le groupe du même décalage ; sinon il est seul.
                     let done =
                         duplicate
-                        ? controller.duplicatePad(from: token.position, to: target)
-                        : controller.movePad(from: token.position, to: target)
+                        ? controller.duplicateSelection(from: token.position, to: target)
+                        : controller.moveSelection(from: token.position, to: target)
                     Self.log.info("Glisser : \(duplicate ? "duplication" : "déplacement", privacy: .public) \(token.position.description, privacy: .public) → \(target.description, privacy: .public) : \(done)")
-                    if done { controller.selection = target }
                 }
             }
             return true

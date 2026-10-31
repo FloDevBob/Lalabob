@@ -508,8 +508,46 @@ struct PadEditActions: View {
     }
 
     private func act(_ action: () -> Void) {
-        controller.selection = position
+        // Clic droit sur un pad déjà sélectionné : l'action vise toute la sélection ; sinon, ce pad seul.
+        if !controller.selectedPositions.contains(position) { controller.selection = position }
         action()
+    }
+}
+
+/// Barre du bas quand plusieurs pads sont sélectionnés (l'inspecteur ne règle qu'un pad à la fois).
+struct MultiSelectionBar: View {
+    @Environment(ShowController.self) private var controller
+
+    var body: some View {
+        let count = controller.selectedPadCount
+        HStack(spacing: 12) {
+            Icon.duplicate.view(size: 16).foregroundStyle(Surface.textSecondary)
+            Text(count == 1 ? "1 pad sélectionné" : "\(count) pads sélectionnés")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Surface.textPrimary)
+            Text("Glissez pour les déplacer, ⌥ pour les copier ; ⌘C / ⌘X / ⌘V, ⌘D et ⌫ agissent sur tout le groupe.")
+                .font(.system(size: 11))
+                .foregroundStyle(Surface.textSecondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 8)
+            Button("Désélectionner") { controller.selection = nil }
+                .controlSize(.small)
+            Menu {
+                PadEditActions(position: controller.selection ?? GridPosition(column: 0, row: 0), hasPad: count > 0)
+            } label: {
+                Icon.more.view(size: 18).frame(width: 30, height: 30).contentShape(.rect)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .foregroundStyle(Surface.textSecondary)
+            .accessibilityLabel("Actions sur la sélection")
+        }
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity)
+        .frame(height: 52)
+        .background(Surface.panel)
     }
 }
 

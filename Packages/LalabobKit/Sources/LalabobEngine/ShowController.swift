@@ -20,7 +20,18 @@ public final class ShowController {
 
     public private(set) var show: Show
     public var selectedGridIndex: Int
-    public var selection: GridPosition?
+    /// Cases sélectionnées (Maj = plage rectangulaire, ⌘ = ajout / retrait). Vide si rien n'est sélectionné.
+    public internal(set) var selectedPositions: Set<GridPosition> = []
+    /// Case « principale » : celle que montre l'inspecteur quand elle est seule, et l'ancre des plages (Maj).
+    var primarySelection: GridPosition?
+    /// Affecter une case remplace toute la sélection par cette seule case (`nil` : tout désélectionner).
+    public var selection: GridPosition? {
+        get { primarySelection }
+        set {
+            primarySelection = newValue
+            selectedPositions = newValue.map { [$0] } ?? []
+        }
+    }
     /// Cadenas : verrouillé, le spectacle se joue (clic, contrôleur, faders, onglets) mais ne se modifie pas.
     /// Verrouiller efface la sélection (l'inspecteur se ferme).
     public var isLocked: Bool {
@@ -48,8 +59,15 @@ public final class ShowController {
 
     /// Gestionnaire d'annulation de la fenêtre (⌘Z). Fourni par la vue.
     @ObservationIgnored public weak var undoManager: UndoManager?
-    /// Pad copié (⌘C / ⌘X), collé avec un nouvel identifiant.
-    var clipboard: Pad?
+    /// Pads copiés (⌘C / ⌘X) avec leur position relative, collés avec de nouveaux identifiants.
+    var clipboard: [ClipboardEntry]?
+
+    /// Un pad du presse-papiers et son décalage par rapport au coin haut-gauche du groupe copié.
+    struct ClipboardEntry {
+        let pad: Pad
+        let columnOffset: Int
+        let rowOffset: Int
+    }
 
     /// Dossier de travail des sons du spectacle (le futur `Audio/` du paquet).
     @ObservationIgnored public private(set) var audioDirectory: URL?
@@ -135,12 +153,61 @@ public final class ShowController {
 
     /// Clic sur une case : verrouillé, il joue (comme un appui sur le contrôleur) et sélectionne le son lancé, pour que
     /// le panneau du bas (version verrouillée) le montre ; déverrouillé, il sélectionne le pad sans le jouer.
-    public func press(at position: GridPosition) {
+    public func press(at position: GridPosition, mode: SelectionMode = .replace) {
         guard position.isValid else { return }
         if isLocked {
             play(at: position)
-        } else {
+            return
+        }
+        switch mode {
+        case .replace:
             selection = position
+        case .range:
+            selectRange(to: position)
+        case .toggle:
+            toggleSelection(at: position)
+        }
+    }
+
+    /// Comment un clic modifie la sélection (déverrouillé).
+    public enum SelectionMode: Sendable {
+        /// Clic simple : cette case seule.
+        case replace
+        /// Maj-clic : toutes les cases du rectangle entre l'ancre et la case cliquée.
+        case range
+        /// ⌘-clic : ajoute ou retire cette case.
+        case toggle
+    }
+
+    /// Sélectionne ces cases (la première devient la case principale) ; la liste vide désélectionne tout.
+    func selectPositions(_ positions: [GridPosition]) {
+        primarySelection = positions.first
+        selectedPositions = Set(positions)
+    }
+
+    private func selectRange(to position: GridPosition) {
+        guard let anchor = primarySelection else {
+            selection = position
+            return
+        }
+        let columns = min(anchor.column, position.column)...max(anchor.column, position.column)
+        let rows = min(anchor.row, position.row)...max(anchor.row, position.row)
+        selectedPositions = Set(columns.flatMap { column in rows.map { GridPosition(column: column, row: $0) } })
+    }
+
+    private func toggleSelection(at position: GridPosition) {
+        guard primarySelection != nil else {
+            selection = position
+            return
+        }
+        if selectedPositions.contains(position) {
+            selectedPositions.remove(position)
+            if primarySelection == position {
+                // Le pad principal passe à une case restante (la plus haute à gauche, pour rester prévisible).
+                primarySelection = selectedPositions.min { ($0.column, $0.row) < ($1.column, $1.row) }
+            }
+        } else {
+            selectedPositions.insert(position)
         }
     }
 

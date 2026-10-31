@@ -26,7 +26,10 @@ struct ContentView: View {
                             .padding(20)
                     }
                     // Déverrouillé : le pad sélectionné. Verrouillé : le son lancé (version en lecture seule).
-                    if let selection = controller.selection, showsInspector(for: selection) {
+                    if controller.selectedPositions.count > 1, !controller.isLocked {
+                        Divider().overlay(Color.white.opacity(0.06))
+                        MultiSelectionBar()
+                    } else if let selection = controller.selection, showsInspector(for: selection) {
                         Divider().overlay(Color.white.opacity(0.06))
                         InspectorView(position: selection)
                     }
