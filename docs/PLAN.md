@@ -249,3 +249,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   Interprétation : j'ai appliqué la règle aux deux modes ; si seul le mode verrouillé devait garder le clic simple, c'est une ligne à changer.
 - **Barre d'en-tête réorganisée (01/11/2026)** : tout à gauche, dans l'ordre — bouton de la bibliothèque, logo « Lalabob », nom du spectacle, onglets de grilles
   (collés à gauche même peu nombreux, défilement horizontal au-delà de la place disponible) ; tout à droite — contrôleur, sortie audio, cadenas, Tout arrêter.
+- **Bande vide en haut de la fenêtre (01/11/2026, corrigé après capture de la vraie fenêtre)** : titre masqué, SwiftUI laissait la barre de titre invisible (~ 31 pt) en bande vide
+  au-dessus de l'en-tête, et la zone à gauche des boutons de fenêtre avait une autre teinte. `ContentView` ignore maintenant la zone de sécurité du haut : l'en-tête remonte
+  jusqu'au bord et les boutons de fenêtre se posent sur sa partie gauche. Verrouillé, le bouton de la bibliothèque n'est plus qu'absent (plus de trou avant le logo).
+  Largeur minimale de la fenêtre portée de 1100 à **1320 pt** : à 1100, bibliothèque ouverte, la zone lumière était coupée à droite.

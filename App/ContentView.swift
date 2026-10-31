@@ -24,6 +24,9 @@ struct ContentView: View {
                     GridDensity.fitting(
                         availableHeight: proxy.size.height - Self.headerAreaHeight - Self.inspectorAreaHeight))
         }
+        // Titre masqué : sans cela, une bande vide (la barre de titre invisible) reste en haut de la fenêtre. L'en-tête
+        // remonte jusqu'au bord et les boutons de fenêtre se posent sur sa partie gauche, laissée libre.
+        .ignoresSafeArea(.container, edges: .top)
         .background(Surface.window)
         .overlay(alignment: .top) { lockBanner }
         .focusedSceneValue(\.showController, controller)

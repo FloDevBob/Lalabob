@@ -20,7 +20,7 @@ struct LalabobApp: App {
                 .environment(preview)
                 .environment(\.midiSession, midiSession)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 1100, minHeight: 720)
+                .frame(minWidth: 1320, minHeight: 720)  // bibliothèque (273) + 6 colonnes sons + zone lumière tiennent sans être coupées
                 .onAppear { midiSession?.start() }
         }
         .windowStyle(.hiddenTitleBar)

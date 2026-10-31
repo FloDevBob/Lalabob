@@ -18,13 +18,14 @@ struct HeaderView: View {
     var body: some View {
         HStack(spacing: 12) {
             // À gauche : bibliothèque, logo, nom du spectacle, onglets de grilles (les onglets prennent la place restante).
-            Button(showsLibrary ? "Masquer la bibliothèque" : "Afficher la bibliothèque", icon: .sidebar) {
-                showsLibrary.toggle()
+            // Verrouillé : pas de bibliothèque, donc pas de bouton (et pas de trou à sa place avant le logo).
+            if !controller.isLocked {
+                Button(showsLibrary ? "Masquer la bibliothèque" : "Afficher la bibliothèque", icon: .sidebar) {
+                    showsLibrary.toggle()
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
             }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
-            .opacity(controller.isLocked ? 0 : 1)  // verrouillé : pas de bibliothèque
-            .disabled(controller.isLocked)
 
             Text("Lalabob")
                 .font(Typography.logo)
