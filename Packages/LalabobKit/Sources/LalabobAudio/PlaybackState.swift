@@ -45,6 +45,10 @@ public protocol AudioEngineControlling: Sendable {
     func stopAll() async
     func setColumnLevel(_ column: Int, level: Double) async
 
+    /// Déplace la tête de lecture d'un pad : `elapsed` secondes depuis le début de la partie jouée.
+    /// Joue : continue de là ; en pause : reste en pause à cette position ; arrêté : démarre de là.
+    func seek(_ pad: Pad.ID, to elapsed: TimeInterval) async
+
     /// Règle en direct le volume d'un pad (dB), y compris pendant la lecture (jauge de l'inspecteur).
     func setPadGain(_ pad: Pad.ID, gainDB: Double) async
 

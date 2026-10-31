@@ -428,7 +428,9 @@ private nonisolated struct Chevron: Shape {
 
 // MARK: - Actions du pad
 
-/// Couper, copier, coller, dupliquer, vider : regroupés dans un menu (les raccourcis ⌘X/C/V/D/⌫ restent actifs).
+/// Couper, copier, coller, dupliquer, vider : un menu « trois petits points », avec les raccourcis affichés.
+/// ⌫ (sans modifieur) reste géré par la grille : un raccourci sans modifieur volerait la touche Retour arrière
+/// dans les champs de texte ; le menu propose donc ⌘⌫ pour « Vider ».
 private struct PadActionsMenu: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -436,18 +438,33 @@ private struct PadActionsMenu: View {
 
     var body: some View {
         Menu {
-            Button("Couper", icon: .cut) { controller.cutSelection() }.disabled(!hasPad)
-            Button("Copier", icon: .copy) { controller.copySelection() }.disabled(!hasPad)
-            Button("Coller", icon: .paste) { controller.pasteAtSelection() }.disabled(!controller.canPaste)
-            Button("Dupliquer", icon: .duplicate) { controller.duplicateSelection() }.disabled(!hasPad)
+            Button("Couper", icon: .cut) { controller.cutSelection() }
+                .keyboardShortcut("x", modifiers: .command)
+                .disabled(!hasPad)
+            Button("Copier", icon: .copy) { controller.copySelection() }
+                .keyboardShortcut("c", modifiers: .command)
+                .disabled(!hasPad)
+            Button("Coller", icon: .paste) { controller.pasteAtSelection() }
+                .keyboardShortcut("v", modifiers: .command)
+                .disabled(!controller.canPaste)
+            Button("Dupliquer", icon: .duplicate) { controller.duplicateSelection() }
+                .keyboardShortcut("d", modifiers: .command)
+                .disabled(!hasPad)
             Divider()
-            Button("Vider", icon: .trash) { controller.clearSelection() }.disabled(!hasPad)
+            Button("Vider", icon: .trash) { controller.clearSelection() }
+                .keyboardShortcut(.delete, modifiers: .command)
+                .disabled(!hasPad)
         } label: {
-            Text("Actions").font(.system(size: 11))
+            Icon.more.view(size: 18)
+                .frame(width: 30, height: 30)
+                .contentShape(.rect)
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
+        .foregroundStyle(Surface.textSecondary)
         .help("Actions sur le pad (\(controller.positionLabel(for: position)))")
+        .accessibilityLabel("Actions du pad")
     }
 }
 

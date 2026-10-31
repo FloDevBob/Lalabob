@@ -214,6 +214,17 @@ public actor AVAudioEngineController: AudioEngineControlling {
         voices[pad]?.gainNode.globalGain = Gain.engineDecibels(forPadGainDB: gainDB)
     }
 
+    /// Déplace la tête de lecture : le son reprend à `elapsed` secondes de la partie jouée (borné à sa durée).
+    /// En pause, le pad reste en pause à cette position ; arrêté, il démarre de là.
+    public func seek(_ pad: Pad.ID, to elapsed: TimeInterval) {
+        guard let entry = entries[pad] else { return }
+        let latest = max(entry.timing.duration - AudioClip.minimumLength, 0)
+        let target = min(max(elapsed.isFinite ? elapsed : 0, 0), latest)
+        let wasPaused = voices[pad]?.state.isPausedForSeek ?? false
+        startVoice(pad, entry: entry, offset: target)
+        if wasPaused { togglePause(pad) }
+    }
+
     public func setOutputDevice(uid: String?) throws {
         selectedOutputUID = uid
         if let uid, AudioOutputDevices.deviceID(forUID: uid) == nil { throw AudioEngineError.outputDeviceUnavailable }
@@ -514,5 +525,11 @@ public actor AVAudioEngineController: AudioEngineControlling {
         let offset = entry.clip.loops ? elapsed.truncatingRemainder(dividingBy: max(entry.timing.duration, 0.001)) : elapsed
         startVoice(pad, entry: entry, offset: max(offset, 0))
         if case .paused = state { togglePause(pad) }
+    }
+}
+
+extension PlaybackState {
+    fileprivate var isPausedForSeek: Bool {
+        if case .paused = self { true } else { false }
     }
 }

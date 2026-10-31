@@ -32,6 +32,17 @@ extension AudioClip {
         return copy
     }
 
+    /// Position de lecture (secondes depuis le début de la partie jouée) correspondant à un point de la forme d'onde,
+    /// donné en secondes dans le fichier. Bornée à la partie élaguée, avec au moins `minimumLength` avant la fin.
+    /// Entrée invalide (non numérique, durée nulle…) : début de la partie jouée.
+    public func playbackOffset(atFileTime fileTime: TimeInterval, fileDuration: TimeInterval) -> TimeInterval {
+        guard fileTime.isFinite, fileDuration.isFinite, fileDuration > 0 else { return 0 }
+        let start = min(max(trimStart, 0), fileDuration)
+        let end = min(trimEnd ?? fileDuration, fileDuration)
+        let usable = max(end - start, 0)
+        return min(max(fileTime - start, 0), max(usable - Self.minimumLength, 0))
+    }
+
     /// Fondus bornés à 0…`maximumFade` ; une durée nulle ou négative supprime le fondu.
     public func withFades(in fadeIn: TimeInterval, out fadeOut: TimeInterval) -> AudioClip {
         func clamp(_ value: TimeInterval) -> TimeInterval? {

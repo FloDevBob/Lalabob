@@ -168,3 +168,10 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 | Comportements MIDI non documentés (APC surtout) | Pilotes isolés, messages enregistrés, essais matériels tôt |
 | Glisser-déposer SwiftUI limité (⌥ pour dupliquer) | Repli AppKit pour la grille si besoin |
 | Format MIDI attendu par LightKey | Sans objet : LightKey apprend les notes du contrôleur (ADR 0004) |
+- **Tête de lecture déplaçable et menu « ⋯ » (31/10/2026)** : un clic ou un glisser sur l'onde place la tête de lecture
+  (la position est appliquée au relâchement ; le son reprend à ce point, en restant en pause s'il l'était ; sur un pad à l'arrêt,
+  il démarre à ce point). `AudioEngineControlling.seek`, `AudioClip.playbackOffset` (borné à la partie élaguée),
+  `ShowController.seek` (ignoré si verrouillé). Limite : le déplacement relance la voix (micro-coupure possible).
+  Le menu « Actions » devient un menu **trois petits points** (icône `more`) qui affiche ses raccourcis : ⌘X, ⌘C, ⌘V, ⌘D, ⌘⌫.
+  Tests : `SeekTests` (10), `ClipSettingsTests` (+4), `ClipEditingTests` (+2). **À essayer** : les raccourcis du menu ne
+  doivent pas gêner l'édition du titre / sous-titre (⌘C / ⌘V dans un champ).

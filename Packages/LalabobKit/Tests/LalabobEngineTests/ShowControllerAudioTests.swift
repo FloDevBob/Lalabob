@@ -16,6 +16,7 @@ actor RecordingAudioEngine: AudioEngineControlling {
         case level(Int, Double)
         case output(String?)
         case padGain(Pad.ID, Double)
+        case seek(Pad.ID, Double)
     }
 
     nonisolated let events: AsyncStream<PlaybackEvent>
@@ -39,6 +40,7 @@ actor RecordingAudioEngine: AudioEngineControlling {
     func setColumnLevel(_ column: Int, level: Double) { commands.append(.level(column, level)) }
     func setOutputDevice(uid: String?) { commands.append(.output(uid)) }
     func setPadGain(_ pad: Pad.ID, gainDB: Double) { commands.append(.padGain(pad, gainDB)) }
+    func seek(_ pad: Pad.ID, to elapsed: TimeInterval) { commands.append(.seek(pad, elapsed)) }
 }
 
 @MainActor

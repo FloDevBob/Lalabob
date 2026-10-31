@@ -71,6 +71,7 @@ public final class ShowController {
         case level(column: Int, level: Double)
         case output(String?)
         case padGain(Pad.ID, Double)
+        case seek(Pad.ID, TimeInterval)
     }
 
     public init(
@@ -105,6 +106,7 @@ public final class ShowController {
                     case .level(let column, let level): await audio.setColumnLevel(column, level: level)
                     case .output(let uid): try await audio.setOutputDevice(uid: uid)
                     case .padGain(let id, let db): await audio.setPadGain(id, gainDB: db)
+                    case .seek(let id, let elapsed): await audio.seek(id, to: elapsed)
                     }
                 } catch {
                     log.error("Commande audio échouée : \(error.localizedDescription)")
@@ -163,6 +165,14 @@ public final class ShowController {
         guard !isLocked, let pad = pad(at: position), case .audio = pad.content else { return }
         let clamped = AudioClip(fileName: "x").withGain(decibels).gainDB
         commands.yield(.padGain(pad.id, clamped))
+    }
+
+    /// Déplace la tête de lecture d'un pad (clic ou glisser sur la forme d'onde). `fileTime` : point cliqué, en secondes
+    /// dans le fichier ; il est ramené à la partie élaguée. Le son joue de là, ou reste en pause là, ou démarre de là
+    /// s'il était arrêté. Ignoré si le spectacle est verrouillé ou si la case n'a pas de son.
+    public func seek(at position: GridPosition, toFileTime fileTime: TimeInterval, fileDuration: TimeInterval) {
+        guard !isLocked, let pad = pad(at: position), case .audio(let clip) = pad.content else { return }
+        commands.yield(.seek(pad.id, clip.playbackOffset(atFileTime: fileTime, fileDuration: fileDuration)))
     }
 
     /// `true` (et message à l'écran) si le spectacle est verrouillé : l'appelant ne doit rien modifier.

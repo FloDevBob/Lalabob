@@ -52,4 +52,32 @@ struct ClipSettingsTests {
         #expect(AudioClip.gainRange.lowerBound >= -60)
         #expect(AudioClip.gainRange.upperBound <= 24)
     }
+
+    @Test func clickOnTheWaveBecomesAnOffsetInsideTheTrimmedPart() {
+        let clip = AudioClip(fileName: "a.wav", trimStart: 2, trimEnd: 8)
+        #expect(clip.playbackOffset(atFileTime: 5, fileDuration: 10) == 3)  // 5 s dans le fichier = 3 s après le début élagué
+        #expect(clip.playbackOffset(atFileTime: 2, fileDuration: 10) == 0)
+    }
+
+    @Test func clicksOutsideTheTrimmedPartAreClamped() {
+        let clip = AudioClip(fileName: "a.wav", trimStart: 2, trimEnd: 8)
+        #expect(clip.playbackOffset(atFileTime: 0.5, fileDuration: 10) == 0)  // avant le début élagué
+        let last = clip.playbackOffset(atFileTime: 9.9, fileDuration: 10)      // après la fin élaguée
+        #expect(last <= 6 - AudioClip.minimumLength + 1e-9)
+        #expect(last > 5.5)
+    }
+
+    @Test func withoutTrimTheWholeFileIsPlayable() {
+        let clip = AudioClip(fileName: "a.wav")
+        #expect(clip.playbackOffset(atFileTime: 4, fileDuration: 10) == 4)
+        #expect(clip.playbackOffset(atFileTime: 99, fileDuration: 10) <= 10 - AudioClip.minimumLength + 1e-9)
+    }
+
+    @Test func invalidInputsGiveTheBeginning() {
+        let clip = AudioClip(fileName: "a.wav")
+        #expect(clip.playbackOffset(atFileTime: .nan, fileDuration: 10) == 0)
+        #expect(clip.playbackOffset(atFileTime: -3, fileDuration: 10) == 0)
+        #expect(clip.playbackOffset(atFileTime: 4, fileDuration: 0) == 0)
+        #expect(clip.playbackOffset(atFileTime: 4, fileDuration: .infinity) == 0)
+    }
 }

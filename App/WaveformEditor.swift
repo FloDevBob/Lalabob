@@ -4,7 +4,7 @@ import LalabobModel
 import SwiftUI
 
 /// Forme d'onde pleine hauteur : zones élaguées assombries, poignées d'élagage déplaçables,
-/// tête de lecture blanche, et fondus réglés directement sous la courbe :
+/// tête de lecture blanche (un clic ou un glisser sur l'onde la déplace), et fondus réglés directement sous la courbe :
 /// - une puce « Fondu » en bas à gauche (entrée) et en bas à droite (sortie) : un clic l'active ;
 /// - une fois actif, une poignée au bout de la courbe pointillée en règle la durée, et une croix le retire.
 /// Un glisser = une seule modification annulable (⌘Z), enregistrée au relâchement.
@@ -20,6 +20,8 @@ struct WaveformEditor: View {
     @State private var draggedEnd: TimeInterval?
     @State private var draggedFadeIn: TimeInterval?
     @State private var draggedFadeOut: TimeInterval?
+    /// Position (secondes dans le fichier) pointée pendant un clic ou un glisser sur l'onde.
+    @State private var scrubTime: TimeInterval?
 
     /// Durée proposée quand on active un fondu.
     private static let defaultFade: TimeInterval = 1
@@ -50,6 +52,18 @@ struct WaveformEditor: View {
                     fadeChip(isIn: false, width: width, height: height)
                 }
                 .coordinateSpace(.named("wave"))
+                .contentShape(.rect)
+                // Le fond de l'onde : clic ou glisser = déplacer la tête de lecture. Les poignées et les puces,
+                // plus « proches », gardent la priorité sur ce geste.
+                .gesture(
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("wave"))
+                        .onChanged { scrubTime = time(atX: $0.location.x, width: width) }
+                        .onEnded { value in
+                            let target = time(atX: value.location.x, width: width)
+                            controller.seek(at: position, toFileTime: target, fileDuration: duration)
+                            scrubTime = nil
+                        }
+                )
                 .clipShape(.rect(cornerRadius: 10))
             }
             .background(Surface.well, in: .rect(cornerRadius: 10))
@@ -252,9 +266,14 @@ struct WaveformEditor: View {
         }
     }
 
+    /// Tête de lecture : suit le son ; pendant un clic ou un glisser, elle suit le pointeur (et le son ne bouge
+    /// qu'au relâchement, pour ne pas hacher l'audio).
     @ViewBuilder
     private func playhead(width: CGFloat, height: CGFloat) -> some View {
-        if let event, event.state.isActive {
+        if let scrubTime {
+            Rectangle().fill(.white).frame(width: 2, height: height).offset(x: x(scrubTime, width) - 1)
+                .allowsHitTesting(false)
+        } else if let event, event.state.isActive {
             TimelineView(.animation(paused: event.state.isPausedState)) { _ in
                 let elapsed = event.state.elapsedTime(now: ProcessInfo.processInfo.systemUptime)
                 let span = max(end - start, 0.001)

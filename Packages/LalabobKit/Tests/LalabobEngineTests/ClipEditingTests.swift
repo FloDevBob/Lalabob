@@ -136,6 +136,39 @@ struct ClipEditingTests {
         #expect(!sent.contains { if case .padGain = $0 { true } else { false } })
         #expect(controller.lockNotice == nil)  // un simple réglage en direct ne déclenche pas le bandeau
     }
+
+    @Test func seekIsSentToTheEngineWithTheOffsetInsideTheTrimmedPart() async {
+        let audio = RecordingAudioEngine()
+        var grid = PadGrid.empty(name: "G")
+        let clip = AudioClip(fileName: "rire.wav", trimStart: 2, trimEnd: 8)
+        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: clip))
+        grid[Self.a] = pad
+        let controller = ShowController(
+            show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
+
+        controller.seek(at: Self.a, toFileTime: 5, fileDuration: 10)
+        #expect(await waitUntil { await audio.commands.contains(.seek(pad.id, 3)) })
+        controller.seek(at: Self.a, toFileTime: 0.1, fileDuration: 10)  // avant le début élagué
+        #expect(await waitUntil { await audio.commands.contains(.seek(pad.id, 0)) })
+    }
+
+    @Test func seekIsIgnoredWhenLockedOnEmptyCellsAndOnLightPads() async {
+        let audio = RecordingAudioEngine()
+        var grid = PadGrid.empty(name: "G")
+        grid[Self.a] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        let controller = ShowController(
+            show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, isLocked: true)
+        controller.seek(at: Self.a, toFileTime: 1, fileDuration: 10)
+        controller.isLocked = false
+        controller.seek(at: GridPosition(column: 3, row: 3), toFileTime: 1, fileDuration: 10)
+        controller.seek(at: GridPosition(column: 6, row: 0), toFileTime: 1, fileDuration: 10)
+        try? await Task.sleep(for: .milliseconds(150))
+        let sent = await audio.commands
+        #expect(!sent.contains { if case .seek = $0 { true } else { false } })
+        #expect(controller.lockNotice == nil)
+    }
 }
 
 /// Écrit un WAV mono 8 kHz de valeur constante.

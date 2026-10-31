@@ -73,3 +73,5 @@ bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il
 - Glisser un pad sur une autre case : déplace ou échange. Avec ⌥ : duplique.
 - Les sons ne vont que dans les colonnes sons, les cues que dans les colonnes lumière.
 - ⌘X / ⌘C / ⌘V / ⌘D / ⌫ / ⌘Z ; Échap = Tout arrêter ; Espace = pause du pad sélectionné.
+
+**Retouches du 31/10/2026** : cliquer ou glisser sur l'onde déplace la tête de lecture ; les actions du pad (Couper, Copier, Coller, Dupliquer, Vider) sont dans un menu à trois petits points qui affiche leurs raccourcis (⌘X ⌘C ⌘V ⌘D ⌘⌫).
