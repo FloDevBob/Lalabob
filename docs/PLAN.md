@@ -204,3 +204,4 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 - **Noms de colonnes modifiables (01/11/2026)** : double-clic sur le titre d'une colonne (déverrouillé) pour le renommer ; Entrée ou clic ailleurs valide,
   Échap annule. `ShowController.renameColumn(at:to:)` (nom vide refusé, 80 caractères, une annulation, refusé verrouillé). 4 tests (`EditingTests`).
   Le nom de la colonne apparaît aussi dans l'infobulle de position des pads (ex. « C2·L5 »).
+- **Alignement des colonnes lumière (01/11/2026)** : la zone ambrée ajoutait 8 px de marge en haut, ce qui décalait en-têtes et pads des colonnes lumière par rapport aux colonnes sons. Marge horizontale seulement ; le cadre ambré déborde de 8 px et occupe toute la hauteur de la grille. Vérifié sur l'aperçu.

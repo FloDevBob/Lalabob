@@ -28,12 +28,19 @@ struct GridView: View {
                     ColumnView(index: index, onPress: { focused = true })
                 }
             }
-            .padding(8)
-            .background(Surface.lightZone, in: .rect(cornerRadius: Metrics.panelCornerRadius))
-            .overlay(
+            // Marge horizontale seulement : les en-têtes et les pads des colonnes lumière doivent tomber à la même
+            // hauteur que ceux des colonnes sons (le cadre ambré déborde, lui, de 8 px en haut et en bas).
+            .padding(.horizontal, 8)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background {
                 RoundedRectangle(cornerRadius: Metrics.panelCornerRadius)
-                    .stroke(Surface.lightAccent.opacity(0.12))
-            )
+                    .fill(Surface.lightZone)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Metrics.panelCornerRadius)
+                            .stroke(Surface.lightAccent.opacity(0.12))
+                    )
+                    .padding(.vertical, -8)
+            }
             .frame(width: 280)
         }
         .focusable()
