@@ -189,3 +189,6 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   `setGain` et `setFades`, et `previewGain` (direct) ; élagage, boucle, « Nouvel appui », couleur, textes et actions restent refusés.
   Dans le panneau verrouillé : jauge de volume et fondus sur l'onde actifs, poignées d'élagage masquées. Ces réglages sont
   enregistrés dans le spectacle ; ⌘Z reste refusé verrouillé (comme toute annulation). Tests : `ClipEditingTests` (+1, 2 adaptés).
+- **Couleurs dans le menu contextuel (31/10/2026)** : le sous-menu « Couleur » propose les 16 teintes avec leur pastille (fond + point vif,
+  dessinée en image car un menu n'affiche pas de vue SwiftUI), coche sur la teinte en cours, et un sous-menu « Intensité de la LED ».
+  Rendu à vérifier à l'œil (les pastilles doivent rester en couleur).

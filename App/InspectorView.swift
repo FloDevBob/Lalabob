@@ -1,4 +1,5 @@
 import AVFoundation
+import AppKit
 import LalabobDesign
 import LalabobEngine
 import LalabobModel
@@ -569,16 +570,62 @@ struct PadContextMenu: View {
         }
     }
 
+    /// Les 16 teintes comme dans le popover du panneau (pastille : fond du pad + point vif), puis l'intensité de la LED.
     private func colorMenu(pad: Pad) -> some View {
         Menu("Couleur") {
             Picker(
                 "Couleur",
                 selection: Binding(get: { pad.tint }, set: { controller.updatePad(at: position, tint: $0) })
             ) {
-                ForEach(Tint.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                ForEach(Tint.allCases, id: \.self) { tint in
+                    Label {
+                        Text(tint.displayName)
+                    } icon: {
+                        Image(nsImage: TintSwatchImage.make(tint))
+                    }
+                    .tag(tint)
+                }
             }
             .pickerStyle(.inline)
+            Menu("Intensité de la LED") {
+                Picker(
+                    "Intensité de la LED",
+                    selection: Binding(
+                        get: { pad.ledIntensity }, set: { controller.updatePad(at: position, ledIntensity: $0) })
+                ) {
+                    ForEach(LEDIntensity.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                }
+                .pickerStyle(.inline)
+            }
         }
+    }
+}
+
+/// Pastille d'une teinte en image (les menus n'affichent pas de vues SwiftUI) : coin arrondi à la couleur du fond
+/// du pad, point à la couleur vive. Non « template » : la couleur est conservée.
+private enum TintSwatchImage {
+    @MainActor private static var cache: [Tint: NSImage] = [:]
+
+    @MainActor static func make(_ tint: Tint) -> NSImage {
+        if let cached = cache[tint] { return cached }
+        let size = NSSize(width: 16, height: 16)
+        let image = NSImage(size: size, flipped: false) { rect in
+            nsColor(tint.spec.surface).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 4.5, yRadius: 4.5).fill()
+            NSColor.white.withAlphaComponent(0.18).setStroke()
+            NSBezierPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), xRadius: 4, yRadius: 4).stroke()
+            nsColor(tint.spec.vivid).setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 4.5, dy: 4.5)).fill()
+            return true
+        }
+        image.isTemplate = false
+        cache[tint] = image
+        return image
+    }
+
+    private static func nsColor(_ rgb: RGB) -> NSColor {
+        NSColor(
+            srgbRed: CGFloat(rgb.red) / 255, green: CGFloat(rgb.green) / 255, blue: CGFloat(rgb.blue) / 255, alpha: 1)
     }
 }
 
