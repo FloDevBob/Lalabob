@@ -247,3 +247,5 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   toujours d'un appui. `ShowController.press(at:mode:)` = sélection seule ; `audition(at:)` joue même verrouillé ; VoiceOver : l'action par défaut joue, « Sélectionner » en
   action nommée ; infobulle « Clic : sélectionner · Double-clic : jouer ». Remplace la règle du 30/10 « verrouillé = un clic joue ». 5 tests adaptés ou ajoutés.
   Interprétation : j'ai appliqué la règle aux deux modes ; si seul le mode verrouillé devait garder le clic simple, c'est une ligne à changer.
+- **Barre d'en-tête réorganisée (01/11/2026)** : tout à gauche, dans l'ordre — bouton de la bibliothèque, logo « Lalabob », nom du spectacle, onglets de grilles
+  (collés à gauche même peu nombreux, défilement horizontal au-delà de la place disponible) ; tout à droite — contrôleur, sortie audio, cadenas, Tout arrêter.

@@ -17,6 +17,7 @@ struct HeaderView: View {
 
     var body: some View {
         HStack(spacing: 12) {
+            // À gauche : bibliothèque, logo, nom du spectacle, onglets de grilles (les onglets prennent la place restante).
             Button(showsLibrary ? "Masquer la bibliothèque" : "Afficher la bibliothèque", icon: .sidebar) {
                 showsLibrary.toggle()
             }
@@ -34,8 +35,9 @@ struct HeaderView: View {
                 .lineLimit(1)
 
             GridTabsView()
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
+            // À droite : contrôleur, sortie audio, cadenas, Tout arrêter.
             controllerStatus
             outputPicker
             LockButton()
@@ -119,20 +121,25 @@ struct GridTabsView: View {
     @FocusState private var nameFieldFocused: Bool
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(Array(controller.show.grids.enumerated()), id: \.element.id) { index, grid in
-                    tab(index: index, grid: grid)
+        GeometryReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(Array(controller.show.grids.enumerated()), id: \.element.id) { index, grid in
+                        tab(index: index, grid: grid)
+                    }
+                    if !controller.isLocked {
+                        Button("Nouvelle grille", icon: .plus) { controller.addGrid() }
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                            .help("Nouvelle grille (⌘T)")
+                    }
                 }
-                if !controller.isLocked {
-                    Button("Nouvelle grille", icon: .plus) { controller.addGrid() }
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.borderless)
-                        .help("Nouvelle grille (⌘T)")
-                }
+                .padding(.horizontal, 4)
+                // Les onglets restent collés à gauche, même peu nombreux (le défilement ne sert qu'au-delà de la place).
+                .frame(minWidth: proxy.size.width, alignment: .leading)
             }
-            .padding(.horizontal, 4)
         }
+        .frame(height: 36)
     }
 
     private func tab(index: Int, grid: PadGrid) -> some View {
