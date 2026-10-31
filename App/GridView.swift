@@ -251,7 +251,8 @@ struct PadView: View {
 
     private var empty: some View {
         // Verrouillé, l'invitation à déposer n'a pas de sens : la case reste, discrète, sans texte.
-        Group {
+        // ZStack et non Group : un Group vide n'a aucune vue sur laquelle poser cadre et bordure, la case disparaîtrait.
+        ZStack {
             if !controller.isLocked {
                 IconLabel(kind == .audio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
                     .font(.system(size: 11.5))
