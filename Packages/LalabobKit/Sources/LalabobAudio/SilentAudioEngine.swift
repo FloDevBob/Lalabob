@@ -16,4 +16,5 @@ public actor SilentAudioEngine: AudioEngineControlling {
     public func stopAll() {}
     public func setColumnLevel(_ column: Int, level: Double) {}
     public func setOutputDevice(uid: String?) {}
+    public func setPadGain(_ pad: Pad.ID, gainDB: Double) {}
 }

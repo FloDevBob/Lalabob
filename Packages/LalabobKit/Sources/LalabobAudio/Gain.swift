@@ -59,4 +59,16 @@ public enum Gain {
         let range = gaugeRangeDB
         return range.lowerBound + min(max(position, 0), 1) * (range.upperBound - range.lowerBound)
     }
+
+    /// Gain le plus bas accepté par le nœud d'égalisation du moteur : en pratique le silence.
+    public static let engineSilenceDB: Float = -96
+    /// Gain le plus haut accepté par ce nœud.
+    static let engineMaximumDB: Float = 24
+
+    /// Volume d'un pad (dB, −60…+12) traduit pour le nœud de gain d'une voix du moteur.
+    /// Sous le seuil de silence (−60 dB) ou valeur invalide : silence. Borné à la plage du nœud.
+    public static func engineDecibels(forPadGainDB db: Double) -> Float {
+        guard db.isFinite, db > silenceFloorDB else { return engineSilenceDB }
+        return min(Float(db), engineMaximumDB)
+    }
 }

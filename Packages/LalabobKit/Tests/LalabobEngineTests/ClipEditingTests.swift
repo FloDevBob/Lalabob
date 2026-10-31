@@ -100,6 +100,42 @@ struct ClipEditingTests {
         #expect(abs(second.duration - 2) < 0.01)
         #expect(abs((second.peaks.first ?? 0) - 0.25) < 0.001)
     }
+
+    @Test func gainPreviewReachesTheEngineWithoutTouchingTheShowNorTheUndoStack() async {
+        let audio = RecordingAudioEngine()
+        var grid = PadGrid.empty(name: "G")
+        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        grid[Self.a] = pad
+        let controller = ShowController(
+            show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        controller.undoManager = undo
+        let before = controller.show
+
+        controller.previewGain(at: Self.a, -9)
+        controller.previewGain(at: Self.a, 99)  // borné à la plage du pad
+        #expect(await waitUntil { await audio.commands.contains(.padGain(pad.id, -9)) })
+        #expect(await waitUntil { await audio.commands.contains(.padGain(pad.id, AudioClip.gainRange.upperBound)) })
+        #expect(controller.show == before)
+        #expect(!undo.canUndo)
+    }
+
+    @Test func gainPreviewIsIgnoredWhenLockedOrOnAnEmptyCell() async {
+        let audio = RecordingAudioEngine()
+        var grid = PadGrid.empty(name: "G")
+        grid[Self.a] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        let controller = ShowController(
+            show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, isLocked: true)
+        controller.previewGain(at: Self.a, -9)
+        controller.previewGain(at: GridPosition(column: 3, row: 3), -9)
+        try? await Task.sleep(for: .milliseconds(150))
+        let sent = await audio.commands
+        #expect(!sent.contains { if case .padGain = $0 { true } else { false } })
+        #expect(controller.lockNotice == nil)  // un simple réglage en direct ne déclenche pas le bandeau
+    }
 }
 
 /// Écrit un WAV mono 8 kHz de valeur constante.

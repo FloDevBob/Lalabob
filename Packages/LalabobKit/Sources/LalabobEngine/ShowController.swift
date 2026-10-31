@@ -70,6 +70,7 @@ public final class ShowController {
         case stopAll
         case level(column: Int, level: Double)
         case output(String?)
+        case padGain(Pad.ID, Double)
     }
 
     public init(
@@ -103,6 +104,7 @@ public final class ShowController {
                     case .stopAll: await audio.stopAll()
                     case .level(let column, let level): await audio.setColumnLevel(column, level: level)
                     case .output(let uid): try await audio.setOutputDevice(uid: uid)
+                    case .padGain(let id, let db): await audio.setPadGain(id, gainDB: db)
                     }
                 } catch {
                     log.error("Commande audio échouée : \(error.localizedDescription)")
@@ -152,6 +154,15 @@ public final class ShowController {
         case .audio: commands.yield(.trigger(pad.id))
         case .light: lightPressHandler?(position)
         }
+    }
+
+    /// Volume d'un pad pendant qu'on déplace la jauge : le moteur le suit tout de suite, y compris sur un son
+    /// qui joue. Rien n'est écrit dans le spectacle ni dans l'historique : `setGain` valide la valeur finale
+    /// (une seule annulation). Ignoré si le spectacle est verrouillé ou la case sans son.
+    public func previewGain(at position: GridPosition, _ decibels: Double) {
+        guard !isLocked, let pad = pad(at: position), case .audio = pad.content else { return }
+        let clamped = AudioClip(fileName: "x").withGain(decibels).gainDB
+        commands.yield(.padGain(pad.id, clamped))
     }
 
     /// `true` (et message à l'écran) si le spectacle est verrouillé : l'appelant ne doit rien modifier.

@@ -15,6 +15,7 @@ actor RecordingAudioEngine: AudioEngineControlling {
         case stopAll
         case level(Int, Double)
         case output(String?)
+        case padGain(Pad.ID, Double)
     }
 
     nonisolated let events: AsyncStream<PlaybackEvent>
@@ -37,6 +38,7 @@ actor RecordingAudioEngine: AudioEngineControlling {
     func stopAll() { commands.append(.stopAll) }
     func setColumnLevel(_ column: Int, level: Double) { commands.append(.level(column, level)) }
     func setOutputDevice(uid: String?) { commands.append(.output(uid)) }
+    func setPadGain(_ pad: Pad.ID, gainDB: Double) { commands.append(.padGain(pad, gainDB)) }
 }
 
 @MainActor

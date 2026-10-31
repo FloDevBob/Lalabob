@@ -16,7 +16,9 @@ public enum AudioEngineError: Error, Equatable, Sendable {
 /// → le mélangeur principal → la sortie choisie.
 ///
 /// Tout l'état vit dans l'acteur ; le thread de rendu audio n'exécute que le code d'Apple.
-/// Élagage, fondus et gain des sons courts sont « cuits » dans les échantillons au chargement.
+/// Élagage et fondus des sons courts sont « cuits » dans les échantillons au chargement.
+/// Le volume du pad, lui, passe par un nœud de gain propre à chaque voix : il se règle en direct, même en lecture,
+/// et peut dépasser 0 dB (jusqu'à +12 dB) ce que le volume d'un lecteur (0…1) ne permet pas.
 /// Les sons longs sont lus en flux, avec leurs fondus appliqués par le volume du lecteur.
 public actor AVAudioEngineController: AudioEngineControlling {
     public enum Output: Sendable {
@@ -71,6 +73,12 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
     private final class Voice {
         let player = AVAudioPlayerNode()
+        /// Gain du pad (dB) : un seul réglage global, aucune bande d'égalisation active.
+        let gainNode: AVAudioUnitEQ = {
+            let node = AVAudioUnitEQ(numberOfBands: 1)
+            node.bands[0].bypass = true
+            return node
+        }()
         let format: AVAudioFormat
         var state: PlaybackState = .idle
         var generation = 0
@@ -133,12 +141,22 @@ public actor AVAudioEngineController: AudioEngineControlling {
                 if let voice = voices[id], let moved = entries[id] {
                     // Rebrancher un lecteur l'arrête : on le relance là où il en était (micro-coupure possible).
                     let state = voice.state
-                    engine.disconnectNodeOutput(voice.player)
-                    engine.connect(voice.player, to: columnMixers[new.column], format: voice.format)
+                    engine.disconnectNodeOutput(voice.gainNode)
+                    engine.connect(voice.gainNode, to: columnMixers[new.column], format: voice.format)
                     resume(id, entry: moved, from: state, now: ProcessInfo.processInfo.systemUptime)
                 }
             }
-            if new.clip != entry.clip { entries[id] = nil }  // rechargé ci-dessous
+            if new.clip != entry.clip {
+                var sameButGain = new.clip
+                sameButGain.gainDB = entry.clip.gainDB
+                if sameButGain == entry.clip {
+                    // Seul le volume du pad a changé : rien à recharger, la voix en cours suit tout de suite.
+                    entries[id]?.clip.gainDB = new.clip.gainDB
+                    voices[id]?.gainNode.globalGain = Gain.engineDecibels(forPadGainDB: new.clip.gainDB)
+                } else {
+                    entries[id] = nil  // rechargé ci-dessous
+                }
+            }
         }
         // Charge ce qui est nouveau. Un fichier illisible n'empêche pas les autres.
         for (id, new) in wanted where entries[id] == nil {
@@ -186,6 +204,14 @@ public actor AVAudioEngineController: AudioEngineControlling {
     public func setColumnLevel(_ column: Int, level: Double) {
         guard columnMixers.indices.contains(column) else { return }
         columnMixers[column].outputVolume = Float(Gain.faderLevel(level))
+    }
+
+    /// Règle en direct le volume d'un pad (dB), son en cours de lecture compris ; sans effet sur un pad inconnu.
+    /// Retenu pour les déclenchements suivants. La valeur du spectacle (annulable) est envoyée au relâchement.
+    public func setPadGain(_ pad: Pad.ID, gainDB: Double) {
+        guard entries[pad] != nil else { return }
+        entries[pad]?.clip.gainDB = gainDB
+        voices[pad]?.gainNode.globalGain = Gain.engineDecibels(forPadGainDB: gainDB)
     }
 
     public func setOutputDevice(uid: String?) throws {
@@ -245,11 +271,11 @@ public actor AVAudioEngineController: AudioEngineControlling {
         let source: Source?
         if clip.loops {
             // Le corps de la boucle n'a pas de fondu ; seule la première passe monte en fondu.
-            let body = ClipRenderer.bake(raw, timing: timing.withoutFades, gainDB: clip.gainDB)
-            let intro = timing.fadeIn > 0 ? ClipRenderer.bake(raw, timing: timing.withoutFadeOut, gainDB: clip.gainDB) : nil
+            let body = ClipRenderer.bake(raw, timing: timing.withoutFades, gainDB: 0)
+            let intro = timing.fadeIn > 0 ? ClipRenderer.bake(raw, timing: timing.withoutFadeOut, gainDB: 0) : nil
             source = body.map { .buffered(intro: intro, body: $0) }
         } else {
-            source = ClipRenderer.bake(raw, timing: timing, gainDB: clip.gainDB).map { .buffered(intro: nil, body: $0) }
+            source = ClipRenderer.bake(raw, timing: timing, gainDB: 0).map { .buffered(intro: nil, body: $0) }
         }
         guard let source else { return nil }
         return Entry(column: column, clip: clip, timing: timing, format: format, source: source)
@@ -262,7 +288,10 @@ public actor AVAudioEngineController: AudioEngineControlling {
         dropVoice(pad)
         let voice = Voice(format: entry.format)
         engine.attach(voice.player)
-        engine.connect(voice.player, to: columnMixers[entry.column], format: entry.format)
+        engine.attach(voice.gainNode)
+        engine.connect(voice.player, to: voice.gainNode, format: entry.format)
+        engine.connect(voice.gainNode, to: columnMixers[entry.column], format: entry.format)
+        voice.gainNode.globalGain = Gain.engineDecibels(forPadGainDB: entry.clip.gainDB)
         voices[pad] = voice
         return voice
     }
@@ -274,6 +303,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
         voice.envelopeTask?.cancel()
         voice.player.stop()
         engine.detach(voice.player)
+        engine.detach(voice.gainNode)
         if wasActive { continuation.yield(PlaybackEvent(pad: pad, state: .idle, duration: 0)) }
     }
 
@@ -290,10 +320,11 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
         let now = ProcessInfo.processInfo.systemUptime
         voice.state = .playing(startedAt: now - offset)
-        voice.player.volume = entry.isStreamed ? Float(entry.timing.envelope(at: offset)) * Gain.linear(fromDB: entry.clip.gainDB) : 1
+        voice.player.volume = entry.isStreamed ? Float(entry.timing.envelope(at: offset)) : 1
+        voice.gainNode.globalGain = Gain.engineDecibels(forPadGainDB: entry.clip.gainDB)
         schedule(entry, pad: pad, voice: voice, offset: offset)
         voice.player.play()
-        if entry.isStreamed, entry.timing.fadeIn > 0 || entry.timing.fadeOut > 0 { runEnvelope(pad, timing: entry.timing, loops: entry.clip.loops, gainDB: entry.clip.gainDB, voice: voice) }
+        if entry.isStreamed, entry.timing.fadeIn > 0 || entry.timing.fadeOut > 0 { runEnvelope(pad, timing: entry.timing, loops: entry.clip.loops, voice: voice) }
         emit(pad)
     }
 
@@ -390,24 +421,23 @@ public actor AVAudioEngineController: AudioEngineControlling {
     }
 
     /// Fondus d'un son lu en flux : le volume du lecteur suit l'enveloppe, 50 fois par seconde.
-    private func runEnvelope(_ pad: Pad.ID, timing: ClipTiming, loops: Bool, gainDB: Double, voice: Voice) {
+    private func runEnvelope(_ pad: Pad.ID, timing: ClipTiming, loops: Bool, voice: Voice) {
         let generation = voice.generation
-        let gain = Gain.linear(fromDB: gainDB)
         voice.envelopeTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(20))
                 guard let self,
-                    await self.updateEnvelope(pad, timing: timing, loops: loops, generation: generation, gain: gain)
+                    await self.updateEnvelope(pad, timing: timing, loops: loops, generation: generation)
                 else { return }
             }
         }
     }
 
-    private func updateEnvelope(_ pad: Pad.ID, timing: ClipTiming, loops: Bool, generation: Int, gain: Float) -> Bool {
+    private func updateEnvelope(_ pad: Pad.ID, timing: ClipTiming, loops: Bool, generation: Int) -> Bool {
         guard let voice = voices[pad], voice.generation == generation else { return false }
         guard case .playing(let startedAt) = voice.state else { return true }  // en pause : on attend
         let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
-        voice.player.volume = gain * Float(timing.envelope(at: elapsed))
+        voice.player.volume = Float(timing.envelope(at: elapsed))
         return elapsed < timing.duration || loops
     }
 
@@ -454,6 +484,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
             voice.envelopeTask?.cancel()
             voice.player.stop()
             engine.detach(voice.player)
+            engine.detach(voice.gainNode)
         }
         engine.stop()
         let format = offline?.format ?? engine.outputNode.inputFormat(forBus: 0)

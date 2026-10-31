@@ -29,7 +29,10 @@ struct InspectorView: View {
                         .frame(height: Self.headerHeight)
                     Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
                     HStack(spacing: 10) {
-                        TrackGainGauge(name: pad.title, gainDB: clip.gainDB) { controller.setGain(at: position, $0) }
+                        TrackGainGauge(
+                            name: pad.title, gainDB: clip.gainDB,
+                            onLive: { controller.previewGain(at: position, $0) },
+                            onCommit: { controller.setGain(at: position, $0) })
                             .frame(width: 46)
                         WaveformEditor(
                             position: position, clip: clip, tint: pad.tint,
@@ -457,6 +460,8 @@ private struct PadActionsMenu: View {
 private struct TrackGainGauge: View {
     let name: String
     let gainDB: Double
+    /// Appelé à chaque position pendant le glisser : le son en cours de lecture suit tout de suite.
+    let onLive: (Double) -> Void
     let onCommit: (Double) -> Void
 
     @State private var draggedDB: Double?
@@ -481,7 +486,11 @@ private struct TrackGainGauge: View {
                 .contentShape(.rect)
                 .gesture(
                     DragGesture(minimumDistance: 2)
-                        .onChanged { draggedDB = decibels(at: $0.location.y, travel: travel) }
+                        .onChanged { value in
+                            let db = decibels(at: value.location.y, travel: travel)
+                            draggedDB = db
+                            onLive(db)
+                        }
                         .onEnded { value in
                             draggedDB = nil
                             onCommit(decibels(at: value.location.y, travel: travel))
@@ -499,7 +508,7 @@ private struct TrackGainGauge: View {
         .padding(.vertical, 6)
         .background(Surface.well, in: .rect(cornerRadius: 10))
         .overlay { RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.05)) }
-        .help("Volume de ce pad (indépendant du fader de colonne) — double-clic : 0 dB. Appliqué au prochain déclenchement.")
+        .help("Volume de ce pad, réglé en direct (indépendant du fader de colonne) — double-clic : 0 dB.")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Volume du pad \(name)")
         .accessibilityValue(Gain.formatDecibels(db: shownDB))

@@ -63,7 +63,7 @@ extension ShowController {
         updateClip(at: position, actionName: "Nouvel appui") { $0.retrigger = behavior }
     }
 
-    /// Volume propre au pad (dB). S'applique au prochain déclenchement : le son qui joue n'est pas touché.
+    /// Volume propre au pad (dB), validé (annulable). Le moteur le suit en direct, son en cours compris.
     public func setGain(at position: GridPosition, _ decibels: Double) {
         updateClip(at: position, actionName: "Volume") { $0 = $0.withGain(decibels) }
     }

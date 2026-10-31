@@ -45,6 +45,9 @@ public protocol AudioEngineControlling: Sendable {
     func stopAll() async
     func setColumnLevel(_ column: Int, level: Double) async
 
+    /// Règle en direct le volume d'un pad (dB), y compris pendant la lecture (jauge de l'inspecteur).
+    func setPadGain(_ pad: Pad.ID, gainDB: Double) async
+
     /// Choisit la sortie audio (`nil` = sortie par défaut du système). Les sons en cours reprennent là où ils en étaient.
     func setOutputDevice(uid: String?) async throws
 }
