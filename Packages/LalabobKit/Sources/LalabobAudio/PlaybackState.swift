@@ -35,6 +35,9 @@ public protocol AudioEngineControlling: Sendable {
     /// Flux des changements d'état de lecture.
     var events: AsyncStream<PlaybackEvent> { get }
 
+    /// Crêtes du signal de chaque colonne, pour les vumètres (lues par l'interface sans attendre le moteur).
+    var meters: ColumnMeters { get }
+
     /// Communique au moteur les sons du spectacle (tous les onglets) et le dossier `Audio/`.
     /// Les sons en cours de lecture ne sont pas interrompus s'ils n'ont pas changé.
     func configure(show: Show, audioDirectory: URL) async throws
@@ -54,4 +57,9 @@ public protocol AudioEngineControlling: Sendable {
 
     /// Choisit la sortie audio (`nil` = sortie par défaut du système). Les sons en cours reprennent là où ils en étaient.
     func setOutputDevice(uid: String?) async throws
+}
+
+extension AudioEngineControlling {
+    /// Un moteur qui ne mesure rien n'allume aucun vumètre.
+    public var meters: ColumnMeters { .idle }
 }

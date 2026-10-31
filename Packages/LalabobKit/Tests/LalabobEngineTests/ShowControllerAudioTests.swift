@@ -7,6 +7,7 @@ import Testing
 
 /// Moteur factice : enregistre les commandes reçues, dans l'ordre.
 actor RecordingAudioEngine: AudioEngineControlling {
+    nonisolated let meters = ColumnMeters()
     enum Command: Equatable, Sendable {
         case configure(padCount: Int)
         case trigger(Pad.ID)
@@ -70,6 +71,16 @@ struct ShowControllerAudioTests {
             try? await Task.sleep(for: .milliseconds(80))
         }
         return await audio.commands
+    }
+
+    @Test func metersComeStraightFromTheEngine() {
+        let audio = RecordingAudioEngine()
+        let controller = ShowController(
+            audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
+        audio.meters.record(column: 3, channel: 1, peak: 0.4)
+        #expect(controller.meters.peak(column: 3, channel: 1) == 0.4)
+        #expect(controller.meters === audio.meters)
     }
 
     @Test func liveClickTriggersThePad() async {

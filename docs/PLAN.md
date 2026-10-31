@@ -156,7 +156,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   ☐ pad lumière : Tester, couleur ☐ case vide : Coller dans le menu Actions ☐ VoiceOver : jauge ajustable.
 
 ### J6 — Fiabilisation et livraison · palier « prêt pour le spectacle »
-- Vumètre réel par colonne (mesure du signal dans le moteur, voir J5). Mode Spectacle : fait au J4 sous forme de cadenas (voir J4) ; reste à verrouiller aussi la pré-écoute. Tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
+- ~~Vumètre réel par colonne~~ ✅ fait (01/11/2026, voir ci-dessous). Mode Spectacle : fait au J4 sous forme de cadenas (voir J4) ; reste à verrouiller aussi la pré-écoute. Tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.
 - **Terminé quand** : une répétition générale se déroule sans incident.
 
@@ -218,3 +218,14 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   en rouge si le dépôt serait refusé (hors grille, colonne d'un autre type, pad écrasé) ; badge « Copie » avec ⌥. `ShowController.updateDragPreview` /
   `dragPreview` / `beginDrag` / `endDrag`, qui partagent le même plan de calcul (`blockPlan`) que le déplacement réel : l'aperçu ne peut pas mentir.
   Pas d'aperçu pour un pad seul ni pour un fichier venu du Finder. 7 tests (`MultiSelectionTests`). **À essayer** : glisser un groupe et regarder les cases s'allumer.
+
+### J6 — avancement (01/11/2026)
+- **Cartes sous les colonnes sons : volume + vumètre réel** ✅ code terminé, essai sur le vrai son à faire. Chaque colonne son a sous sa grille une carte
+  (fond `Surface.panel`, coins arrondis) avec le fader vertical, un **vumètre stéréo** (deux barres fines : vert, ambre au-delà de 82 %, rouge à 0 dB)
+  et la valeur en dB. Le signal affiché est **réel** : une prise de mesure (`installTap`) sur la sortie de chaque mélangeur de colonne, donc **après
+  le fader**, calcule la crête de chaque bloc (`vDSP_maxmgv`, une écriture atomique ; ni verrou ni allocation) dans `ColumnMeters` (`Synchronization.Atomic`,
+  bibliothèque standard : pas de dépendance tierce). L'interface lit `ShowController.meters` à 30 images/s ; `MeterBallistics` : montée immédiate,
+  descente à 0,45 hauteur/s ; échelle −60 dB … 0 dB (`Gain.meterFraction`). La prise est reposée au redémarrage du moteur (changement de sortie) et
+  les crêtes remises à zéro (pas de barre figée). Colonnes lumière : pas de carte (les faders lumière en CC sont abandonnés, ADR 0004).
+  Actif aussi verrouillé. 12 tests audio (`MeterTests`, dont la mesure réelle en rendu hors ligne) + 1 test Engine.
+  **À essayer** : plusieurs sons simultanés, les barres suivent-elles à l'oreille ? Pas de charge CPU anormale (8 vumètres à 30 images/s) ; changement de sortie en jouant.

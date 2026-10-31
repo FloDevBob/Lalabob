@@ -8,6 +8,8 @@ public typealias PlaybackEvent = LalabobAudio.PlaybackEvent
 public typealias AudioOutputDevice = LalabobAudio.AudioOutputDevice
 public typealias Waveform = LalabobAudio.Waveform
 public typealias Gain = LalabobAudio.Gain
+public typealias ColumnMeters = LalabobAudio.ColumnMeters
+public typealias MeterBallistics = LalabobAudio.MeterBallistics
 
 extension ShowController {
     /// Spectacle relié à la vraie sortie audio du Mac (un moteur par fenêtre).

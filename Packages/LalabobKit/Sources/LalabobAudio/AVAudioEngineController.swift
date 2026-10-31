@@ -1,3 +1,4 @@
+import Accelerate
 import AVFoundation
 import CoreAudio
 import Foundation
@@ -29,6 +30,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
     }
 
     public nonisolated let events: AsyncStream<PlaybackEvent>
+    public nonisolated let meters = ColumnMeters()
     private let continuation: AsyncStream<PlaybackEvent>.Continuation
 
     private let log = Logger(subsystem: "fr.lalabob.app", category: "audio")
@@ -111,6 +113,27 @@ public actor AVAudioEngineController: AudioEngineControlling {
         for mixer in columnMixers {
             engine.attach(mixer)
             engine.connect(mixer, to: engine.mainMixerNode, format: graphFormat)
+        }
+        Self.installMeters(on: columnMixers, meters: meters)
+    }
+
+    /// Une prise de mesure sur la sortie de chaque mélangeur de colonne (donc après son fader) : la crête de chaque bloc
+    /// va dans `meters`. La prise n'est pas le thread de rendu, mais elle reste légère : un `vDSP_maxmgv` par canal,
+    /// une écriture atomique, ni allocation ni verrou.
+    private static func installMeters(on columnMixers: [AVAudioMixerNode], meters: ColumnMeters) {
+        for (column, mixer) in columnMixers.enumerated() {
+            mixer.removeTap(onBus: 0)
+            mixer.installTap(onBus: 0, bufferSize: 1024, format: nil) { buffer, _ in
+                guard let data = buffer.floatChannelData else { return }
+                let frames = vDSP_Length(buffer.frameLength)
+                let channels = Int(buffer.format.channelCount)
+                for channel in 0..<ColumnMeters.channelCount {
+                    var peak: Float = 0
+                    // Un son mono est entendu des deux côtés : même crête à gauche et à droite.
+                    vDSP_maxmgv(data[min(channel, channels - 1)], 1, &peak, frames)
+                    meters.record(column: column, channel: channel, peak: peak)
+                }
+            }
         }
     }
 
@@ -498,11 +521,13 @@ public actor AVAudioEngineController: AudioEngineControlling {
             engine.detach(voice.gainNode)
         }
         engine.stop()
+        meters.reset()
         let format = offline?.format ?? engine.outputNode.inputFormat(forBus: 0)
         for mixer in columnMixers {
             engine.disconnectNodeOutput(mixer)
             engine.connect(mixer, to: engine.mainMixerNode, format: format)
         }
+        Self.installMeters(on: columnMixers, meters: meters)  // le format a pu changer avec la sortie : la prise de mesure est reposée
         do { try startEngineIfNeeded() } catch {
             log.error("Redémarrage du moteur impossible : \(error.localizedDescription)")
             for item in snapshot { continuation.yield(PlaybackEvent(pad: item.pad, state: .idle, duration: 0)) }

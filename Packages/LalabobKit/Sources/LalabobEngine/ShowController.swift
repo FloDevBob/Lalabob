@@ -43,6 +43,9 @@ public final class ShowController {
     /// Message à afficher quand on tente de modifier un spectacle verrouillé (`nil` sinon).
     public private(set) var lockNotice: String?
 
+    /// Crêtes du signal de chaque colonne (vumètres). Lues par l'interface à chaque image, sans passer par le moteur.
+    public var meters: ColumnMeters { audio.meters }
+
     /// État de lecture des pads qui jouent ou sont en pause (les autres sont absents).
     public private(set) var playback: [Pad.ID: PlaybackEvent] = [:]
     public private(set) var outputDevices: [AudioOutputDevice] = []

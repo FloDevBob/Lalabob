@@ -87,9 +87,17 @@ struct ColumnView: View {
             }
 
             if column.kind == .audio {
+                // Carte sous la colonne : fader de volume, vumètre du signal réel et valeur en dB.
                 VerticalFader(
                     name: column.name,
-                    level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) })
+                    level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
+                    meterColumn: index
+                )
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(Surface.panel, in: .rect(cornerRadius: Metrics.padCornerRadius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(Color.white.opacity(0.06))
                 )
                 .padding(.top, 4)
             }
