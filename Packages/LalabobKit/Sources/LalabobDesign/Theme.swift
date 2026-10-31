@@ -6,7 +6,7 @@ extension Color {
         self.init(.sRGB, red: Double(rgb.red) / 255, green: Double(rgb.green) / 255, blue: Double(rgb.blue) / 255)
     }
 
-    init(hex: UInt32) {
+    public init(hex: UInt32) {
         self.init(RGB(hex: hex))
     }
 }
