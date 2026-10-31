@@ -5,6 +5,8 @@ extension AudioClip {
     public static let minimumLength: TimeInterval = 0.05
     /// Fondu le plus long accepté (même limite que `Show.validate()`).
     public static let maximumFade: TimeInterval = 600
+    /// Plage du volume propre au pad, en dB, proposée par l'inspecteur (`Show.validate()` accepte −60…24).
+    public static let gainRange: ClosedRange<Double> = -60...12
 
     /// Élagage borné au fichier : début ≥ 0, fin ≥ début + `minimumLength`, fin du fichier → pas de fin (`nil`).
     /// Les poignées de la forme d'onde ne peuvent donc ni se croiser ni sortir du son.
@@ -15,6 +17,18 @@ extension AudioClip {
         var copy = self
         copy.trimStart = safeStart
         copy.trimEnd = safeEnd >= total - 1e-6 ? nil : safeEnd
+        return copy
+    }
+
+    /// Volume propre au pad, borné à `gainRange` et arrondi au dixième de dB ; une valeur non numérique donne 0 dB.
+    public func withGain(_ decibels: Double) -> AudioClip {
+        var copy = self
+        if decibels.isNaN {
+            copy.gainDB = 0
+        } else {
+            let clamped = min(max(decibels, Self.gainRange.lowerBound), Self.gainRange.upperBound)
+            copy.gainDB = (clamped * 10).rounded() / 10
+        }
         return copy
     }
 

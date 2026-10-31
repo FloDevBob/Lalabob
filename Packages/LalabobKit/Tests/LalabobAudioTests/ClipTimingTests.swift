@@ -126,3 +126,43 @@ struct RetriggerTests {
         #expect(RetriggerAction.resolve(state: paused, behavior: .stop) == .resume)
     }
 }
+
+@Suite("Jauge de volume d'un pad")
+struct TrackGainGaugeTests {
+    @Test func zeroDecibelsSitsAtFiveSixthsOfTheTravel() {
+        #expect(abs(Gain.gaugePosition(forDB: 0) - 60.0 / 72.0) < 1e-9)
+        #expect(abs(Gain.gaugePosition(forDB: -4) - 56.0 / 72.0) < 1e-9)
+    }
+
+    @Test func endsOfTheRangeMapToTheEndsOfTheGauge() {
+        #expect(Gain.gaugePosition(forDB: Gain.gaugeRangeDB.lowerBound) == 0)
+        #expect(Gain.gaugePosition(forDB: Gain.gaugeRangeDB.upperBound) == 1)
+        #expect(Gain.decibels(forGaugePosition: 0) == Gain.gaugeRangeDB.lowerBound)
+        #expect(Gain.decibels(forGaugePosition: 1) == Gain.gaugeRangeDB.upperBound)
+    }
+
+    @Test func outOfRangeAndInvalidValuesAreClamped() {
+        #expect(Gain.gaugePosition(forDB: -500) == 0)
+        #expect(Gain.gaugePosition(forDB: 500) == 1)
+        #expect(Gain.decibels(forGaugePosition: -3) == Gain.gaugeRangeDB.lowerBound)
+        #expect(Gain.decibels(forGaugePosition: 9) == Gain.gaugeRangeDB.upperBound)
+        #expect(Gain.gaugePosition(forDB: .nan) == Gain.gaugePosition(forDB: 0))
+        #expect(Gain.decibels(forGaugePosition: .nan) == 0)
+    }
+
+    @Test func positionAndDecibelsRoundTrip() {
+        for db in stride(from: -60.0, through: 12.0, by: 3.0) {
+            let back = Gain.decibels(forGaugePosition: Gain.gaugePosition(forDB: db))
+            #expect(abs(back - db) < 1e-9)
+        }
+    }
+
+    @Test func gainIsFormattedWithSignAndInfinityAtTheFloor() {
+        #expect(Gain.formatDecibels(db: 0) == "0,0 dB")
+        #expect(Gain.formatDecibels(db: -4) == "−4,0 dB")
+        #expect(Gain.formatDecibels(db: 3.5) == "+3,5 dB")
+        #expect(Gain.formatDecibels(db: -0.04) == "0,0 dB")
+        #expect(Gain.formatDecibels(db: -60) == "−∞ dB")
+        #expect(Gain.formatDecibels(db: .nan) == "0,0 dB")
+    }
+}

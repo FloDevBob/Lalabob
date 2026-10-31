@@ -117,6 +117,36 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 - **Limite connue** : à la taille minimale de la fenêtre (1100 × 720), 196 px représente plus que 1/5 de la
   hauteur (≈ 27 %) ; la proportion visée (1/5) correspond à une fenêtre de régie d'environ 950–1000 px de haut.
 
+### J5c — Inspecteur « solution B » (branche `j5c/inspecteur-solution-b`, empilée sur `j5b/barre-propertes-compacte`)
+**Décision du 31/10/2026** : parmi les pistes A / B / C / D de la maquette, on implémente la **B** (deux bandes).
+- **Bande du haut (52 px)** : transport (lecture/relance, pause, stop, boucle, temps, badge « PAUSE ») · titre et
+  sous-titre (double-clic) · nom du fichier d'origine · « Nouvel appui » (Relancer / Arrêter) · fondus (popover) ·
+  **couleur = un seul bouton (teinte en cours) qui ouvre un popover** (16 teintes + intensité LED) · menu Actions.
+  Filets verticaux entre les groupes sans rapport.
+- **Bande du bas (120 px)** : **jauge de volume du pad** (−60…+12 dB, valeur en dB, double-clic = 0 dB) + forme d'onde
+  pleine largeur. Total ≈ 195 px (≤ `Metrics.inspectorHeight`).
+- **Fait** : `AudioClip.gainRange` / `withGain`, `ShowController.setGain` (⌘Z, refusé si verrouillé),
+  `Gain.gaugePosition` / `decibels(forGaugePosition:)` / `formatDecibels(db:)`, `Surface.loopAccent`,
+  `InspectorView.swift` réécrit. Tests écrits d'abord : `ClipSettingsTests` (+2), `ClipEditingTests` (+2),
+  `TrackGainGaugeTests` (+5).
+- **Écarts avec la maquette B (à valider)** : (1) **Fondus** : absents de la maquette, gardés dans un popover « Fondus » ;
+  (2) **Couper / Copier / Coller / Dupliquer / Vider** regroupés dans un menu « Actions » (raccourcis inchangés) ;
+  (3) pastille de position (C2·L5) retirée de l'en-tête, gardée en infobulle ; (4) pas de chevron système (Iconoir
+  uniquement) : petit chevron dessiné ; (5) jauge de 46 px de large (au lieu de 34) pour tenir « −12,0 dB ».
+- **Limites connues** : le volume du pad s'applique **au prochain déclenchement** (il est « cuit » dans les échantillons
+  des sons courts) — pas de réglage en direct pendant la lecture ; à la largeur minimale de fenêtre, l'en-tête est
+  dense (le nom de fichier est tronqué en premier) ; le clic simple sur la jauge ne déplace pas la poignée (glisser
+  seulement, pour que le double-clic reste fiable).
+- **Correction au passage** : la version J5b utilisait `Color(hex:)` (interne à `LalabobDesign`) depuis `App/` — erreur de
+  compilation latente, supprimée par cette réécriture.
+- **Non compilé** : écrit sans Mac. `swift` n'est pas disponible ici, les tests n'ont **pas** été exécutés.
+- **Essai à faire** : ☐ ça compile ☐ `make test` vert (nouveaux tests inclus) ☐ la barre ne dépasse pas ~196 px
+  ☐ double-clic titre / sous-titre : édition, Entrée valide, Échap annule ☐ pause : le bouton s'ambre + badge PAUSE,
+  reprise ok ☐ boucle ☐ « Nouvel appui » Relancer / Arrêter se comporte comme annoncé sur un pad qui joue
+  ☐ popover couleur : choisir une teinte met la LED du contrôleur à jour ; l'intensité LED aussi ☐ popover Fondus
+  ☐ jauge : glisser = une seule annulation (⌘Z), double-clic = 0 dB, effet audible au prochain appui
+  ☐ pad lumière : Tester, couleur ☐ case vide : Coller dans le menu Actions ☐ VoiceOver : jauge ajustable.
+
 ### J6 — Fiabilisation et livraison · palier « prêt pour le spectacle »
 - Vumètre réel par colonne (mesure du signal dans le moteur, voir J5). Mode Spectacle : fait au J4 sous forme de cadenas (voir J4) ; reste à verrouiller aussi la pré-écoute. Tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.

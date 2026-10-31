@@ -36,4 +36,20 @@ struct ClipSettingsTests {
         #expect(clip.withFades(in: -1, out: 9999).fadeOut == AudioClip.maximumFade)
         try Show.validatePad(clip.withFades(in: 700, out: 700))
     }
+
+    @Test func gainIsClampedRoundedAndNeverInvalid() throws {
+        #expect(clip.withGain(-4).gainDB == -4)
+        #expect(clip.withGain(-4.04).gainDB == -4)  // arrondi au dixième
+        #expect(clip.withGain(-500).gainDB == AudioClip.gainRange.lowerBound)
+        #expect(clip.withGain(500).gainDB == AudioClip.gainRange.upperBound)
+        #expect(clip.withGain(.nan).gainDB == 0)
+        #expect(clip.withGain(.infinity).gainDB == AudioClip.gainRange.upperBound)
+        try Show.validatePad(clip.withGain(-500))
+        try Show.validatePad(clip.withGain(500))
+    }
+
+    @Test func gainRangeStaysInsideWhatValidationAccepts() {
+        #expect(AudioClip.gainRange.lowerBound >= -60)
+        #expect(AudioClip.gainRange.upperBound <= 24)
+    }
 }

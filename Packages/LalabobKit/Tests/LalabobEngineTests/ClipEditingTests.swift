@@ -47,6 +47,27 @@ struct ClipEditingTests {
         #expect(clip(controller)?.retrigger == .restart)
     }
 
+    @Test func trackGainIsEditableAndUndoableAsOneStep() {
+        let (controller, undo) = makeController()
+        controller.setGain(at: Self.a, -4)
+        #expect(clip(controller)?.gainDB == -4)
+        controller.setGain(at: Self.a, -4)  // même valeur : rien à annuler de plus
+        undo.undo()
+        #expect(clip(controller)?.gainDB == 0)
+        #expect(!undo.canUndo)
+    }
+
+    @Test func trackGainIsClampedAndRefusedWhenLocked() {
+        let (controller, _) = makeController()
+        controller.setGain(at: Self.a, 999)
+        #expect(clip(controller)?.gainDB == AudioClip.gainRange.upperBound)
+
+        let (locked, lockedUndo) = makeController(locked: true)
+        locked.setGain(at: Self.a, -10)
+        #expect(clip(locked)?.gainDB == 0)
+        #expect(!lockedUndo.canUndo)
+    }
+
     @Test func settingsAreRefusedWhenLocked() {
         let (controller, undo) = makeController(locked: true)
         controller.setLoops(at: Self.a, true)

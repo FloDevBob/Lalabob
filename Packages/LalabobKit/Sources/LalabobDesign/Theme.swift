@@ -32,6 +32,8 @@ public enum Surface {
     public static let emptyPadStroke = Color.white.opacity(0.11)
     public static let lightZone = Color(hex: 0xFFC93D).opacity(0.035)
     public static let lightAccent = Color(hex: 0xFFC93D)
+    /// Boucle activée (bouton de transport).
+    public static let loopAccent = Color(hex: 0x3DDC6E)
 }
 
 /// Dimensions de la maquette.

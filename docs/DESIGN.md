@@ -37,29 +37,26 @@ Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dos
 - Sous chaque colonne : **fader vertical** (poignée blanche arrondie), vumètre (vert, ambre au-delà de 82 %),
   valeur en dB (sons) ou en % + CC (lumière, icône soleil dont l'opacité suit le niveau).
 
-### Inspecteur (panneau du bas, s'ouvre quand on clique un pad) — compact, décision du 31/10/2026
+### Inspecteur (panneau du bas, s'ouvre quand on clique un pad) — solution B, décision du 31/10/2026
 
-Barre basse, au plus `Metrics.inspectorHeight` (196 px, ≈ 1/5 d'une fenêtre de régie) : pas de panneau
-qui grandit librement. Aucune information n'apparaît deux fois (c'était le défaut de la première version :
-titre et sous-titre dupliqués entre l'en-tête et des champs toujours visibles plus bas).
+Deux bandes, au plus `Metrics.inspectorHeight` (196 px, ≈ 1/5 d'une fenêtre de régie). Aucune information n'apparaît deux
+fois ; des filets verticaux séparent les groupes sans rapport.
 
-**En-tête (26 px)** : pastille de la teinte · **titre** (double-clic pour renommer, Entrée valide, Échap annule)
-· **sous-titre** (idem) · petite pastille de position (« C2·L6 », l'info complète — contrôleur et note —
-reste en infobulle) · actions Couper / Copier / Coller / Dupliquer / Vider, icônes seules.
+**Bande du haut (52 px), pad son**, de gauche à droite :
+1. Transport : bouton rond Lecture / Relancer (couleur du pad), Pause (ambre + badge « PAUSE » quand le son est en pause),
+   Stop, Boucle (vert si active), temps écoulé / durée utile en mono.
+2. Titre (gras) et sous-titre (double-clic pour renommer, Entrée valide, Échap annule).
+3. À droite : nom du fichier d'origine (mono, discret, tronqué au milieu) · « Nouvel appui » + segmenté
+   Relancer / Arrêter · bouton « Fondus » (popover : entrée et sortie) · **bouton couleur** (pastille + nom de la teinte
+   en cours) qui ouvre un **popover** avec les 16 teintes et l'intensité de la LED · menu « Actions »
+   (couper, copier, coller, dupliquer, vider).
 
-**Pad son**, 3 colonnes sous l'en-tête :
-1. Transport (190 px) : petit bouton rond Lecture / Relancer, Pause, Stop, temps écoulé / durée utile sur une
-   ligne ; nom du fichier seul (plus de ligne de métadonnées séparée, redondante avec le nom et peu utile
-   en régie) ; fondu entrée et fondu sortie (interrupteur + durée) et boucle, puis segmenté Nouvel appui —
-   tout en contrôles compacts (`controlSize(.mini)`), sans perdre le réglage fin de la durée des fondus.
-2. Forme d'onde (flexible, 60–64 px) : zones élaguées assombries, poignées d'élagage, tête de lecture. Plus de
-   ligne « Glissez les poignées… » (l'affordance est visible) ; la règle de temps reste, discrète.
-3. Couleur (176 px) : grille de 16 pastilles compactes (18 px) et segmenté d'intensité LED, sans le rappel de
-   vélocité Novation/APC en toutes lettres (il reste en infobulle sur chaque pastille).
+**Bande du bas (120 px)** : **jauge de volume du pad** (rail, poignée blanche arrondie, valeur en dB ; −60…+12 dB,
+indépendante du fader de colonne, double-clic = 0 dB, appliquée au prochain déclenchement) puis la forme d'onde pleine
+largeur (zones élaguées assombries, poignées d'élagage, tête de lecture).
 
-**Pad lumière** (ADR 0004, toujours pas de traduction) : bouton **Tester** + rappel court de la note envoyée
-à LightKey, à gauche ; couleur et intensité LED à droite, dans le même bloc compact que pour un pad son.
-C'est, avec le titre et le sous-titre de l'en-tête, tout ce qu'un pad lumière a besoin de régler.
+**Pad lumière** (ADR 0004, pas de traduction) : une seule bande — titre, bouton **Tester** et rappel de la note envoyée
+à LightKey, puis couleur (popover) et actions.
 
 ## Interactions
 
