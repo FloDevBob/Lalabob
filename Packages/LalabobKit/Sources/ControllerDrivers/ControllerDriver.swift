@@ -65,4 +65,12 @@ public protocol ControllerDriver: Sendable {
 
     /// Messages pour mettre à jour un ensemble de LED.
     func ledMessages(_ updates: [GridPosition: LEDState]) -> [MIDIEvent]
+
+    /// Message que le contrôleur enverrait si son fader de cette colonne passait à `value` (0…1) ; `nil` s'il
+    /// n'a pas de fader pour cette colonne. Sert à répéter vers LightKey un fader déplacé à l'écran.
+    func faderEvent(column: Int, value: Double) -> MIDIEvent?
+}
+
+extension ControllerDriver {
+    public func faderEvent(column: Int, value: Double) -> MIDIEvent? { nil }
 }

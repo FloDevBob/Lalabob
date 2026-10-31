@@ -67,7 +67,7 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - Couleur des pads lumière : via l'inspecteur minimal du J4.
 - **Fait** : source virtuelle dans `CoreMIDISession` (identifiant unique conservé), `MIDITransport.sendLighting`, `ShowController.lightPresses` + `lastControllerModel`, `ControllerSession.watchLightPresses`. 6 tests (`LightingTests`).
 - **Essai réel (à cocher)** : ☐ LightKey voit « Lalabob Lumière » ☐ ajouter ce port à l'écoute dans LightKey avec le même mapping ☐ un clic à l'écran déclenche la cue ☐ un appui physique ne la déclenche qu'une fois.
-- Abandonné : faders lumière en CC (à rediscuter si besoin), retour LED de LightKey, comportements impulsion / bascule / maintenu côté Lalabob.
+- ~~Abandonné : faders lumière en CC~~ → **repris le 01/11/2026** (voir J6) ; abandonné : retour LED de LightKey, comportements impulsion / bascule / maintenu côté Lalabob.
 
 ### J4 — Édition et spectacles · palier « utilisable en répétition » 🟡 code terminé, essai réel à faire (branche `j4/edition-spectacles`, empilée sur `j3/lumiere`)
 **Avancement** — étape 1/4 ✅ édition + ⌘Z dans `ShowController` · étape 2/4 ✅ format `.lalabob` + import des sons · étape 3/4 ✅ interface (onglets, inspecteur minimal, glisser-déposer, raccourcis, bibliothèque) · étape 4/4 ✅ document, sauvegarde auto, contrôleur partagé entre fenêtres. **Reste : essai réel** (check-list ci-dessous), surtout ouverture sur l'autre Mac.
@@ -229,3 +229,11 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   les crêtes remises à zéro (pas de barre figée). Colonnes lumière : pas de carte (les faders lumière en CC sont abandonnés, ADR 0004).
   Actif aussi verrouillé. 12 tests audio (`MeterTests`, dont la mesure réelle en rendu hors ligne) + 1 test Engine.
   **À essayer** : plusieurs sons simultanés, les barres suivent-elles à l'oreille ? Pas de charge CPU anormale (8 vumètres à 30 images/s) ; changement de sortie en jouant.
+- **Faders des colonnes lumière (01/11/2026, retour de l'utilisateur : « comme l'Akai »)** : les colonnes lumière ont leur carte sous la grille, avec un fader
+  (0–100 %, double-clic = 100 %), un soleil dont l'opacité suit le niveau, et « 75 % · CC 54 ». Même principe que les notes (ADR 0004) : **fader physique** →
+  l'écran suit (LightKey l'a reçu du contrôleur, rien n'est renvoyé) ; **fader à l'écran** → `ShowController.setLightFader` règle le niveau et
+  `ControllerSession` envoie le **CC du fader de la même colonne** (APC : 48 + colonne, canal 1, valeur 0…127) sur « Lalabob Lumière » ; LightKey doit avoir
+  le même mapping sur ce port. Envoi ordonné (file unique : la dernière valeur gagne), valeur inchangée sur 7 bits non renvoyée, un mouvement physique remet
+  le dernier envoi à zéro. **Launchpad (sans fader) : on emprunte la correspondance de l'APC** (choix à confirmer) ; **aucun contrôleur connu : rien n'est envoyé**
+  (le niveau change à l'écran). Le 9e fader (CC 56) n'est jamais produit. `ControllerDriver.faderEvent` (pilote pur) + 5 tests, 8 tests Engine.
+  **À essayer** : dans LightKey, ajouter « Lalabob Lumière » avec le mapping des faders 7 et 8 de l'APC ; bouger les faders à l'écran et à la main.

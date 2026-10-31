@@ -85,6 +85,44 @@ struct APCMiniMK2DriverTests {
     }
 }
 
+@Suite("Faders renvoyés vers LightKey")
+struct FaderEventTests {
+    let apc = APCMiniMK2Driver()
+
+    @Test("L'APC envoie le CC du fader de la colonne (48 + colonne), valeur sur 7 bits")
+    func apcFaderEvents() {
+        #expect(apc.faderEvent(column: 6, value: 1) == .controlChange(channel: 0, controller: 54, value: 127))
+        #expect(apc.faderEvent(column: 7, value: 0) == .controlChange(channel: 0, controller: 55, value: 0))
+        #expect(apc.faderEvent(column: 0, value: 0.5) == .controlChange(channel: 0, controller: 48, value: 64))
+    }
+
+    @Test("Les valeurs hors 0…1 ou invalides sont bornées")
+    func clampedValues() {
+        #expect(apc.faderEvent(column: 6, value: 3) == .controlChange(channel: 0, controller: 54, value: 127))
+        #expect(apc.faderEvent(column: 6, value: -1) == .controlChange(channel: 0, controller: 54, value: 0))
+        #expect(apc.faderEvent(column: 6, value: .nan) == .controlChange(channel: 0, controller: 54, value: 0))
+    }
+
+    @Test("Seules les 8 colonnes ont un fader ; le 9e (maître) n'est jamais produit")
+    func columnRange() {
+        #expect(apc.faderEvent(column: -1, value: 1) == nil)
+        #expect(apc.faderEvent(column: 8, value: 1) == nil)
+    }
+
+    @Test("Ce que l'APC envoie, le pilote le relit à l'identique")
+    func roundTrip() {
+        for column in 0..<8 {
+            guard let event = apc.faderEvent(column: column, value: 1) else { Issue.record("pas d'événement"); continue }
+            #expect(apc.interpret(event) == .columnFader(column: column, value: 1))
+        }
+    }
+
+    @Test("Un Launchpad n'a pas de fader")
+    func launchpadHasNone() {
+        #expect(LaunchpadDriver(model: .launchpadX).faderEvent(column: 6, value: 1) == nil)
+    }
+}
+
 @Suite("Catalogue des contrôleurs")
 struct ControllerModelTests {
     @Test("Chaque modèle fournit un pilote du bon modèle", arguments: ControllerModel.allCases)

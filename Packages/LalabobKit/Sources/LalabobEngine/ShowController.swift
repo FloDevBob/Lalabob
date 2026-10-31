@@ -1,6 +1,7 @@
 import ControllerDrivers
 import Foundation
 import LalabobAudio
+import LalabobMIDI
 import LalabobModel
 import Observation
 import os
@@ -92,6 +93,8 @@ public final class ShowController {
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "engine")
     /// Clics à l'écran sur un pad lumière : `ControllerSession` les transmet à LightKey quand cette fenêtre est active.
     @ObservationIgnored var lightPressHandler: (@MainActor (GridPosition) -> Void)?
+    /// Fader d'une colonne lumière déplacé à l'écran : `ControllerSession` le répète vers LightKey quand cette fenêtre est active.
+    @ObservationIgnored var lightFaderHandler: (@MainActor (_ column: Int, _ level: Double) -> Void)?
     /// Appelé après chaque changement du spectacle (le document en garde une copie pour l'enregistrer).
     @ObservationIgnored public var onShowChange: (@MainActor (Show) -> Void)?
 
@@ -325,6 +328,27 @@ public final class ShowController {
         if show.grids[selectedGridIndex].columns[column].kind == .audio {
             commands.yield(.level(column: column, level: level))
         }
+    }
+
+    /// Fader d'une colonne lumière déplacé **à l'écran** : règle le niveau et le répète vers LightKey (CC du fader de la
+    /// même colonne sur le contrôleur, via « Lalabob Lumière »). Un fader physique passe par `setColumnLevel` : LightKey
+    /// l'a déjà reçu du contrôleur, le répéter le ferait deux fois. Sans effet sur une colonne son (`setColumnLevel`).
+    public func setLightFader(column: Int, level: Double) {
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .light else { return }
+        let level = Gain.faderLevel(level)
+        setColumnLevel(column, level: level)
+        lightFaderHandler?(column, level)
+    }
+
+    /// Numéro de CC que LightKey reçoit pour le fader de cette colonne lumière (celui du contrôleur connu, ou de l'APC
+    /// mini mk2 pour un contrôleur sans fader) ; `nil` si aucun contrôleur n'est connu ou si la colonne n'est pas lumière.
+    public func lightFaderCC(forColumn column: Int) -> Int? {
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .light,
+            let model = connectedController ?? lastControllerModel,
+            case .controlChange(_, let number, _)? = model.driver.faderEvent(column: column, value: 0)
+                ?? ControllerModel.apcMiniMK2.driver.faderEvent(column: column, value: 0)
+        else { return nil }
+        return Int(number)
     }
 
     /// Remplace le spectacle ouvert (relecture d'un document).

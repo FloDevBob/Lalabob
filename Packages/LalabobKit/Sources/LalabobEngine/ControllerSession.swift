@@ -32,6 +32,9 @@ public final class ControllerSession {
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
     @ObservationIgnored private let outbox: AsyncStream<Outgoing>.Continuation
+    /// File d'envoi vers « Lalabob Lumière » pour les faders (l'ordre des valeurs compte : la dernière doit gagner).
+    @ObservationIgnored private let lightingOutbox: AsyncStream<MIDIEvent>.Continuation
+    @ObservationIgnored private var lastLightFaderEvents: [Int: MIDIEvent] = [:]
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "midi")
     @ObservationIgnored private var active: Active?
     @ObservationIgnored private var lastLEDs: [GridPosition: LEDState] = [:]
@@ -53,6 +56,16 @@ public final class ControllerSession {
             for await message in stream {
                 do { try await transport.send(message.events, to: message.destination) } catch {
                     log.error("Envoi MIDI échoué : \(error.localizedDescription)")
+                }
+            }
+        }
+
+        let (lightingStream, lightingContinuation) = AsyncStream.makeStream(of: MIDIEvent.self, bufferingPolicy: .unbounded)
+        self.lightingOutbox = lightingContinuation
+        Task.detached {
+            for await event in lightingStream {
+                do { try await transport.sendLighting([event]) } catch {
+                    log.error("Envoi vers LightKey échoué : \(error.localizedDescription)")
                 }
             }
         }
@@ -81,8 +94,10 @@ public final class ControllerSession {
     public func attach(_ controller: ShowController) {
         guard attachedController !== controller else { return }
         attachedController?.lightPressHandler = nil
+        attachedController?.lightFaderHandler = nil
         attachedController = controller
         controller.lightPressHandler = { [weak self] position in self?.sendLightPress(at: position) }
+        controller.lightFaderHandler = { [weak self] column, level in self?.sendLightFader(column: column, level: level) }
         controller.setConnectedController(active?.model)
         lastLEDs = [:]
         pushLEDs()
@@ -92,6 +107,7 @@ public final class ControllerSession {
     public func detach(_ controller: ShowController) {
         guard attachedController === controller else { return }
         controller.lightPressHandler = nil
+        controller.lightFaderHandler = nil
         controller.setConnectedController(nil)
         attachedController = nil
     }
@@ -157,6 +173,8 @@ public final class ControllerSession {
                     attachedController?.pressFromController(at: position)
                 case .columnFader(let column, let value):
                     attachedController?.setColumnLevel(column, level: value)
+                    // Le fader physique a changé ce que LightKey croit : la prochaine valeur de l'écran doit repartir.
+                    lastLightFaderEvents[column] = nil
                 default:
                     break  // relâchement, messages inconnus
                 }
@@ -185,6 +203,22 @@ public final class ControllerSession {
                 log.error("Envoi vers LightKey échoué : \(error.localizedDescription)")
             }
         }
+    }
+
+    /// Fader d'une colonne lumière déplacé à l'écran : le CC que le contrôleur aurait envoyé part sur « Lalabob Lumière ».
+    /// Un contrôleur sans fader (Launchpad) emprunte la correspondance de l'APC mini mk2, seul à en avoir ; sans aucun
+    /// contrôleur connu, rien n'est envoyé (LightKey n'a rien à lier). Une valeur inchangée (sur 7 bits) n'est pas renvoyée.
+    private func sendLightFader(column: Int, level: Double) {
+        guard let model = active?.model ?? attachedController?.lastControllerModel else {
+            log.notice("Fader lumière ignoré : aucun contrôleur connu pour choisir le CC")
+            return
+        }
+        guard let event = model.driver.faderEvent(column: column, value: level)
+            ?? ControllerModel.apcMiniMK2.driver.faderEvent(column: column, value: level),
+            lastLightFaderEvents[column] != event
+        else { return }
+        lastLightFaderEvents[column] = event
+        lightingOutbox.yield(event)
     }
 
     // MARK: - LED

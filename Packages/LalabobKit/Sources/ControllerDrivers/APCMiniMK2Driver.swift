@@ -49,6 +49,13 @@ public struct APCMiniMK2Driver: ControllerDriver {
         }
     }
 
+    /// CC du fader de la colonne (48 + colonne), valeur 0…127 ; jamais le 9e fader.
+    public func faderEvent(column: Int, value: Double) -> MIDIEvent? {
+        guard (0..<Int(Self.masterFaderCC - Self.firstFaderCC)).contains(column) else { return nil }
+        let clamped = value.isFinite ? min(max(value, 0), 1) : 0
+        return .controlChange(channel: 0, controller: Self.firstFaderCC + UInt8(column), value: UInt8((clamped * 127).rounded()))
+    }
+
     /// Canal MIDI selon l'intensité voulue.
     static func brightnessChannel(_ intensity: LEDIntensity) -> UInt8 {
         switch intensity {

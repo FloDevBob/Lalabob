@@ -64,6 +64,13 @@ struct GridView: View {
 }
 
 struct ColumnView: View {
+    /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
+    private func lightValueText(_ column: Column) -> String {
+        let percent = Int((column.level * 100).rounded())
+        guard let cc = controller.lightFaderCC(forColumn: index) else { return "\(percent) %" }
+        return "\(percent) % · CC \(cc)"
+    }
+
     @Environment(ShowController.self) private var controller
     let index: Int
     let onPress: () -> Void
@@ -86,21 +93,38 @@ struct ColumnView: View {
                 PadView(position: GridPosition(column: index, row: row), kind: column.kind, onPress: onPress)
             }
 
-            if column.kind == .audio {
-                // Carte sous la colonne : fader de volume, vumètre du signal réel et valeur en dB.
-                VerticalFader(
-                    name: column.name,
-                    level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
-                    meterColumn: index
-                )
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity)
-                .background(Surface.panel, in: .rect(cornerRadius: Metrics.padCornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(Color.white.opacity(0.06))
-                )
-                .padding(.top, 4)
+            // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
+            // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
+            Group {
+                if column.kind == .audio {
+                    VerticalFader(
+                        name: column.name,
+                        level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) })
+                    ) {
+                        LevelMeter(column: index).frame(width: 14)
+                    }
+                } else {
+                    VerticalFader(
+                        name: column.name,
+                        level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
+                        valueText: lightValueText(column),
+                        defaultLevel: 1
+                    ) {
+                        Icon.sun.view(size: 16)
+                            .foregroundStyle(Surface.lightAccent)
+                            .opacity(0.25 + 0.75 * column.level)
+                            .frame(width: 16, height: 120, alignment: .top)
+                    }
+                }
             }
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(Surface.panel, in: .rect(cornerRadius: Metrics.padCornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                    .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
+            )
+            .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)
     }

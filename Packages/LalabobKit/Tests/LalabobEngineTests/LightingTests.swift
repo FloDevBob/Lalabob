@@ -114,4 +114,110 @@ struct LightingTests {
         rig.runner.cancel()
         #expect(rig.controller.ledStates[Self.light] == .lit(.ambre, .full))
     }
+
+    // MARK: Faders des colonnes lumière
+
+    @Test("Un fader lumière déplacé à l'écran envoie le CC du fader de l'APC sur « Lalabob Lumière »")
+    func screenFaderSendsTheControllerCC() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
+        _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
+
+        rig.controller.setLightFader(column: 6, level: 1)
+        #expect(await waitUntil { await rig.transport.lighting == [.controlChange(channel: 0, controller: 54, value: 127)] })
+        #expect(rig.controller.currentGrid.columns[6].level == 1)
+
+        rig.controller.setLightFader(column: 7, level: 0.25)
+        #expect(await waitUntil { await rig.transport.lighting.last == .controlChange(channel: 0, controller: 55, value: 32) })
+        #expect(rig.controller.currentGrid.columns[7].level == 0.25)
+    }
+
+    @Test("Les valeurs partent dans l'ordre et une valeur inchangée n'est pas renvoyée")
+    func faderValuesAreOrderedAndDeduplicated() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
+        _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
+
+        for level in [0.1, 0.2, 0.2, 0.2001, 0.3] { rig.controller.setLightFader(column: 6, level: level) }
+        let expected: [MIDIEvent] = [13, 25, 38].map { .controlChange(channel: 0, controller: 54, value: $0) }
+        #expect(await waitUntil { await rig.transport.lighting.count >= 3 })
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(await rig.transport.lighting == expected)
+    }
+
+    @Test("Avec un Launchpad (sans fader), l'écran utilise la correspondance de l'APC")
+    func launchpadFallsBackToTheAPCMapping() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await plugLaunchpad(rig)
+
+        rig.controller.setLightFader(column: 6, level: 1)
+        #expect(await waitUntil { await rig.transport.lighting == [.controlChange(channel: 0, controller: 54, value: 127)] })
+    }
+
+    @Test("Aucun contrôleur connu : le niveau change à l'écran, rien n'est envoyé")
+    func noKnownControllerForFaders() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(rig.controller.currentGrid.columns[6].level == 0.5)
+        #expect(await rig.transport.lighting.isEmpty)
+    }
+
+    @Test("Un fader physique règle l'écran mais n'envoie rien : LightKey l'a déjà reçu du contrôleur")
+    func physicalFaderIsNotForwarded() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
+        _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
+
+        await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 127)], from: ControllerSessionTests.apcSource.id)
+        #expect(await waitUntil { await rig.controller.currentGrid.columns[6].level == 1 })
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(await rig.transport.lighting.isEmpty)
+    }
+
+    @Test("Après un fader physique, la même valeur à l'écran est renvoyée (LightKey n'a plus l'ancienne)")
+    func screenValueIsResentAfterAPhysicalMove() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
+        _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
+
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        #expect(await waitUntil { await rig.transport.lighting.count == 1 })
+        await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 127)], from: ControllerSessionTests.apcSource.id)
+        #expect(await waitUntil { await rig.controller.currentGrid.columns[6].level == 1 })
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        #expect(await waitUntil { await rig.transport.lighting.count == 2 })
+    }
+
+    @Test("L'interface connaît le CC du fader d'une colonne lumière (APC, ou celui de l'APC pour un Launchpad)")
+    func faderCCIsShownToTheUser() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        #expect(rig.controller.lightFaderCC(forColumn: 6) == nil)  // aucun contrôleur connu
+
+        await plugLaunchpad(rig)
+        #expect(rig.controller.lightFaderCC(forColumn: 6) == 54)
+        #expect(rig.controller.lightFaderCC(forColumn: 7) == 55)
+        #expect(rig.controller.lightFaderCC(forColumn: 2) == nil)  // colonne son : pas de CC lumière
+    }
+
+    @Test("Les colonnes sons ne passent pas par la lumière")
+    func soundColumnsAreNotForwarded() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
+        _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
+
+        rig.controller.setLightFader(column: 2, level: 1)
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(await rig.transport.lighting.isEmpty)
+        #expect(rig.controller.currentGrid.columns[2].level == 0.8)  // inchangé
+    }
 }

@@ -2,35 +2,35 @@ import LalabobDesign
 import LalabobEngine
 import SwiftUI
 
-/// Fader vertical d'une colonne son : rail, remplissage, poignée blanche arrondie, valeur en dB.
-/// Avec `meterColumn`, le vumètre de la colonne (signal réel mesuré dans le moteur) est à droite du rail.
-/// Reste utilisable verrouillé (le volume se règle en jouant). Double-clic : retour à 80 %.
-struct VerticalFader: View {
+/// Fader vertical d'une colonne : rail, remplissage, poignée blanche arrondie, valeur en dB (ou `valueText`).
+/// `accessory` se place à droite du rail : le vumètre d'une colonne son (signal réel mesuré dans le moteur), le soleil
+/// d'une colonne lumière. Reste utilisable verrouillé (on règle en jouant). Double-clic : retour à `defaultLevel`.
+struct VerticalFader<Accessory: View>: View {
     let name: String
     @Binding var level: Double
-    var meterColumn: Int?
-    static let defaultLevel = 0.8
+    var valueText: String?
+    var defaultLevel = 0.8
+    @ViewBuilder var accessory: () -> Accessory
     private let trackHeight: CGFloat = 120
+
+    private var shownValue: String { valueText ?? Gain.formatDecibels(level: level) }
 
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
                 track
                     .frame(width: 34)
-                if let meterColumn {
-                    LevelMeter(column: meterColumn)
-                        .frame(width: 14)
-                }
+                accessory()
             }
             .frame(height: trackHeight)
-            Text(Gain.formatDecibels(level: level))
+            Text(shownValue)
                 .font(Typography.mono)
                 .foregroundStyle(Surface.textSecondary)
                 .monospacedDigit()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Volume de \(name)")
-        .accessibilityValue(Gain.formatDecibels(level: level))
+        .accessibilityValue(shownValue)
         .accessibilityAdjustableAction { direction in
             let step = 0.05
             level = min(max(level + (direction == .increment ? step : -step), 0), 1)
@@ -57,7 +57,7 @@ struct VerticalFader: View {
                     level = min(max(1 - Double((value.location.y - 10) / travel), 0), 1)
                 }
             )
-            .onTapGesture(count: 2) { level = Self.defaultLevel }
+            .onTapGesture(count: 2) { level = defaultLevel }
         }
     }
 }
