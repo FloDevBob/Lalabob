@@ -41,6 +41,8 @@ public enum Metrics {
     public static let padSpacing: CGFloat = 6
     public static let columnSpacing: CGFloat = 8
     public static let panelCornerRadius: CGFloat = 18
+    /// Hauteur maximale de l'inspecteur (panneau du bas) : environ 1/5 d'une fenêtre de régie.
+    public static let inspectorHeight: CGFloat = 196
 }
 
 /// Typographie : SF Pro partout, Fredoka pour le logo (appeler `Fonts.register()` au lancement).

@@ -98,6 +98,25 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - Palette 16 teintes, intensité LED, police Fredoka (logo), icônes Iconoir + projecteur sur mesure, animations, accessibilité (VoiceOver, contrastes).
 - **Terminé quand** : l'app est fidèle à la maquette, validée côte à côte.
 
+### J5b — Inspecteur compact (branche `j5b/barre-propertes-compacte`, empilée sur `j5/inspecteur-design`)
+**Décision du 31/10/2026** : le panneau du bas construit au J5 (étape 3) grandissait librement et dupliquait
+le titre/sous-titre (en-tête + champs toujours visibles). Nouvelle version, dans l'esprit de la maquette
+mise à jour le même jour : hauteur plafonnée à `Metrics.inspectorHeight` (196 px, ≈ 1/5 d'une fenêtre de
+régie), titre et sous-titre éditables en double-cliquant dans l'en-tête (plus de champs séparés), contrôles
+réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les poignées » retirés.
+- **Fait** : `InspectorView.swift` réécrit (en-tête `InspectorHeader` avec édition par double-clic,
+  `TransportPanel` et `AppearancePanel` compactés, `LightPanel` resserré) ; `Metrics.inspectorHeight` ajouté
+  (`LalabobDesign/Theme.swift`). Aucun test automatique touché (pas de cible de tests sur `App/`).
+- **Non compilé** : écrit sans Mac, comme indiqué dans `CLAUDE.md`. Relecture attentive faite (accolades et
+  parenthèses comptées, API de `ShowController` vérifiées dans leurs fichiers sources), mais à compiler et
+  essayer dans Xcode avant de fusionner.
+- **Essai à faire** : ☐ ça compile ☐ le panneau ne dépasse pas ~196 px même avec un titre long ☐ double-clic
+  sur le titre puis sur le sous-titre : édition, Entrée valide, Échap annule, un clic ailleurs valide aussi
+  ☐ fondu entrée/sortie : interrupteur et réglage fin de la durée toujours accessibles ☐ pad lumière : Tester,
+  couleur, intensité LED ☐ au clavier / VoiceOver, les boutons et champs restent accessibles.
+- **Limite connue** : à la taille minimale de la fenêtre (1100 × 720), 196 px représente plus que 1/5 de la
+  hauteur (≈ 27 %) ; la proportion visée (1/5) correspond à une fenêtre de régie d'environ 950–1000 px de haut.
+
 ### J6 — Fiabilisation et livraison · palier « prêt pour le spectacle »
 - Vumètre réel par colonne (mesure du signal dans le moteur, voir J5). Mode Spectacle : fait au J4 sous forme de cadenas (voir J4) ; reste à verrouiller aussi la pré-écoute. Tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.
