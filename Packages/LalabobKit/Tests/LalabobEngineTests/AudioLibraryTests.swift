@@ -59,6 +59,11 @@ struct AudioLibraryTests {
         #expect(AudioLibrary.formatDuration(seconds) == expected)
     }
 
+    @Test(arguments: [(0.1, "0,1 s"), (1.0, "1,0 s"), (2.55, "2,6 s"), (12.0, "12,0 s"), (0.04, "0,0 s")])
+    func fadeFormatting(seconds: Double, expected: String) {
+        #expect(AudioLibrary.formatFade(seconds) == expected)
+    }
+
     @Test func favoritesArePersistedAndRestored() async throws {
         let defaults = UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!
         let dir = try folder()

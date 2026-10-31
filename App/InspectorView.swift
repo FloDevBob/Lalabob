@@ -1,3 +1,4 @@
+import AVFoundation
 import LalabobDesign
 import LalabobEngine
 import LalabobModel
@@ -5,9 +6,10 @@ import SwiftUI
 
 /// Inspecteur (panneau du bas, cadenas ouvert) — solution B de la maquette : deux bandes, au plus
 /// `Metrics.inspectorHeight` (≈ 1/5 de la hauteur de la fenêtre).
-/// - Bande du haut : transport (lecture, pause, stop, boucle, temps), titre et sous-titre (double-clic pour
-///   modifier), nom du fichier d'origine, « Nouvel appui », fondus, couleur (popover), actions du pad.
-/// - Bande du bas (pad son) : jauge de volume du pad (dB) et forme d'onde pleine largeur avec élagage.
+/// - Bande du haut : transport (lecture, pause, stop et boucle groupés, temps), titre et sous-titre (double-clic
+///   pour modifier), nom du fichier d'origine, « Nouvel appui », couleur (popover), actions du pad.
+/// - Bande du bas (pad son) : jauge de volume du pad (dB) et forme d'onde pleine largeur avec élagage ;
+///   les fondus se règlent sur l'onde (puces sous la courbe, poignée de durée).
 /// Aucune information n'apparaît deux fois ; les groupes sans rapport sont séparés par un filet.
 struct InspectorView: View {
     @Environment(ShowController.self) private var controller
@@ -73,7 +75,7 @@ struct InspectorView: View {
 
 // MARK: - Bande du haut
 
-/// Pad son : transport | titre | (espace) nom du fichier | nouvel appui, fondus | couleur, actions.
+/// Pad son : transport | titre | (espace) nom du fichier | nouvel appui | couleur, actions.
 private struct AudioHeader: View {
     let position: GridPosition
     let pad: Pad
@@ -96,7 +98,6 @@ private struct AudioHeader: View {
                 .help("Fichier d'origine : \(clip.fileName)")
             HeaderDivider()
             RetriggerControl(position: position, clip: clip)
-            FadesButton(position: position, clip: clip)
             HeaderDivider()
             ColorPopoverButton(position: position, pad: pad)
             PadActionsMenu(position: position, hasPad: true)
@@ -237,30 +238,41 @@ private struct TransportControls: View {
         let event = controller.playback[pad.id]
         let isPlaying: Bool = if case .playing = event?.state { true } else { false }
         let isPaused = event?.state.isPausedState ?? false
-        HStack(spacing: 7) {
-            Button {
-                controller.audition(at: position)
-            } label: {
-                (isPlaying ? Icon.restart : Icon.play).view(size: 14)
-                    .frame(width: 36, height: 36)
-                    .background(pad.tint.vividColor, in: .circle)
-                    .foregroundStyle(Surface.window)
-            }
-            .buttonStyle(.plain)
-            .help(isPlaying ? "Relancer" : "Lecture")
-            .accessibilityLabel(isPlaying ? "Relancer" : "Lecture")
+        HStack(spacing: 10) {
+            // Lecture, pause, stop et boucle forment un seul bloc.
+            HStack(spacing: 4) {
+                Button {
+                    controller.audition(at: position)
+                } label: {
+                    (isPlaying ? Icon.restart : Icon.play).view(size: 13)
+                        .frame(width: 32, height: 32)
+                        .background(pad.tint.vividColor, in: .circle)
+                        .foregroundStyle(Surface.window)
+                }
+                .buttonStyle(.plain)
+                .help(isPlaying ? "Relancer" : "Lecture")
+                .accessibilityLabel(isPlaying ? "Relancer" : "Lecture")
 
-            roundButton(.pause, label: isPaused ? "Reprendre" : "Pause", active: isPaused, tint: Surface.lightAccent) {
-                controller.togglePause(at: position)
+                groupButton(.pause, label: isPaused ? "Reprendre" : "Pause", active: isPaused, tint: Surface.lightAccent) {
+                    controller.togglePause(at: position)
+                }
+                .disabled(event == nil)
+                groupButton(.stop, label: "Stop", active: false, tint: Surface.textSecondary) {
+                    controller.stop(at: position)
+                }
+                .disabled(event == nil)
+
+                Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: 16).padding(.horizontal, 2)
+                    .accessibilityHidden(true)
+
+                groupButton(.loop, label: "Boucle", active: clip.loops, tint: Surface.loopAccent) {
+                    controller.setLoops(at: position, !clip.loops)
+                }
+                .accessibilityValue(clip.loops ? "activée" : "désactivée")
             }
-            .disabled(event == nil)
-            roundButton(.stop, label: "Stop", active: false, tint: Surface.textSecondary) {
-                controller.stop(at: position)
-            }
-            .disabled(event == nil)
-            roundButton(.loop, label: "Boucle", active: clip.loops, tint: Surface.loopAccent) {
-                controller.setLoops(at: position, !clip.loops)
-            }
+            .padding(.horizontal, 4)
+            .frame(height: 38)
+            .background(Surface.well, in: .capsule)
 
             timeLabel(event)
             if isPaused {
@@ -275,14 +287,15 @@ private struct TransportControls: View {
         .fixedSize()
     }
 
-    private func roundButton(
+    private func groupButton(
         _ icon: Icon, label: String, active: Bool, tint: Color, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            icon.view(size: 11)
-                .frame(width: 28, height: 28)
-                .background(active ? tint.opacity(0.18) : Color.white.opacity(0.06), in: .circle)
+            icon.view(size: 12)
+                .frame(width: 30, height: 30)
+                .background(active ? tint.opacity(0.22) : Color.clear, in: .circle)
                 .foregroundStyle(active ? tint : Surface.textSecondary)
+                .contentShape(.circle)
         }
         .buttonStyle(.plain)
         .help(label)
@@ -304,7 +317,7 @@ private struct TransportControls: View {
     }
 }
 
-// MARK: - Nouvel appui, fondus
+// MARK: - Nouvel appui
 
 private struct RetriggerControl: View {
     @Environment(ShowController.self) private var controller
@@ -331,59 +344,7 @@ private struct RetriggerControl: View {
     }
 }
 
-/// Réglage des fondus d'entrée et de sortie, dans un popover (absents de la maquette B : ajout nécessaire,
-/// ces réglages existaient déjà dans l'inspecteur précédent).
-private struct FadesButton: View {
-    @Environment(ShowController.self) private var controller
-    let position: GridPosition
-    let clip: AudioClip
-
-    @State private var shown = false
-
-    var body: some View {
-        Button { shown.toggle() } label: {
-            HStack(spacing: 5) {
-                Text("Fondus").font(.system(size: 11, weight: .semibold))
-                if clip.fadeIn != nil || clip.fadeOut != nil {
-                    Circle().fill(Surface.textSecondary).frame(width: 5, height: 5)
-                }
-            }
-            .foregroundStyle(Surface.textSecondary)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(shown ? Color.white.opacity(0.1) : Color.white.opacity(0.06), in: .rect(cornerRadius: 9))
-        }
-        .buttonStyle(.plain)
-        .help("Fondus d'entrée et de sortie")
-        .popover(isPresented: $shown, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 10) {
-                fadeRow("Entrée", value: clip.fadeIn) { controller.setFades(at: position, in: $0, out: clip.fadeOut ?? 0) }
-                fadeRow("Sortie", value: clip.fadeOut) { controller.setFades(at: position, in: clip.fadeIn ?? 0, out: $0) }
-            }
-            .padding(12)
-            .frame(width: 190)
-        }
-    }
-
-    /// Interrupteur de fondu + durée (pas de 0,1 s). Activer propose 1 s.
-    private func fadeRow(_ title: String, value: TimeInterval?, set: @escaping (TimeInterval) -> Void) -> some View {
-        HStack(spacing: 8) {
-            Toggle(title, isOn: Binding(get: { value != nil }, set: { set($0 ? 1 : 0) }))
-                .toggleStyle(.switch).controlSize(.small)
-            if let value {
-                Stepper(value: Binding(get: { value }, set: { set(max($0, 0.1)) }), in: 0.1...60, step: 0.1) {
-                    Text(AudioLibrary.formatDuration(value)).monospacedDigit()
-                }
-                .controlSize(.small)
-            } else {
-                Spacer(minLength: 0)
-            }
-        }
-        .font(.system(size: 11))
-    }
-}
-
-// MARK: - Couleur (popover) : un seul bouton, la teinte en cours
+// MARK: - Couleur (popover) : un seul bouton, la pastille de la teinte en cours (sans son nom)
 
 private struct ColorPopoverButton: View {
     @Environment(ShowController.self) private var controller
@@ -399,7 +360,6 @@ private struct ColorPopoverButton: View {
                     .fill(pad.tint.surfaceColor)
                     .frame(width: 20, height: 20)
                     .overlay { Circle().fill(pad.tint.vividColor).frame(width: 10, height: 10) }
-                Text(pad.tint.displayName).font(.system(size: 11, weight: .semibold))
                 Chevron()
                     .stroke(Surface.textTertiary, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
                     .frame(width: 8, height: 5)
@@ -552,4 +512,35 @@ private struct TrackGainGauge: View {
     private func decibels(at y: CGFloat, travel: CGFloat) -> Double {
         Gain.decibels(forGaugePosition: 1 - Double((y - handleHeight / 2) / travel))
     }
+}
+
+// MARK: - Aperçu (Xcode) : un pad avec un son de synthèse, des fondus et un élagage
+
+#Preview("Inspecteur — pad son") {
+    Fonts.register()
+    let directory = FileManager.default.temporaryDirectory.appending(path: "lalabob-preview-audio", directoryHint: .isDirectory)
+    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    if let format = AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 1),
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 8000 * 6),
+        let samples = buffer.floatChannelData,
+        let file = try? AVAudioFile(forWriting: directory.appending(path: "essai.wav"), settings: format.settings)
+    {
+        buffer.frameLength = buffer.frameCapacity
+        for i in 0..<Int(buffer.frameLength) {
+            let t = Float(i) / 8000
+            samples[0][i] = sin(t * 440) * (0.2 + 0.7 * abs(sin(t * 1.3))) * (t < 0.3 ? 0.2 : 1)
+        }
+        try? file.write(from: buffer)
+    }
+    var grid = PadGrid.empty(name: "Essai")
+    let position = GridPosition(column: 1, row: 2)
+    grid[position] = Pad(
+        title: "Orage lointain", subtitle: "Ambiance", tint: .azur,
+        content: .audio(clip: AudioClip(fileName: "essai.wav", trimStart: 0.4, trimEnd: 5.2, fadeIn: 0.8, fadeOut: 1.4, loops: true)))
+    let controller = ShowController(show: Show(name: "Essai", grids: [grid]), audioDirectory: directory)
+    controller.selection = position
+    return InspectorView(position: position)
+        .environment(controller)
+        .frame(width: 1100, height: Metrics.inspectorHeight)
+        .preferredColorScheme(.dark)
 }

@@ -120,8 +120,8 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 ### J5c — Inspecteur « solution B » (branche `j5c/inspecteur-solution-b`, empilée sur `j5b/barre-propertes-compacte`)
 **Décision du 31/10/2026** : parmi les pistes A / B / C / D de la maquette, on implémente la **B** (deux bandes).
 - **Bande du haut (52 px)** : transport (lecture/relance, pause, stop, boucle, temps, badge « PAUSE ») · titre et
-  sous-titre (double-clic) · nom du fichier d'origine · « Nouvel appui » (Relancer / Arrêter) · fondus (popover) ·
-  **couleur = un seul bouton (teinte en cours) qui ouvre un popover** (16 teintes + intensité LED) · menu Actions.
+  sous-titre (double-clic) · nom du fichier d'origine · « Nouvel appui » (Relancer / Arrêter) ·
+  **couleur = un seul bouton (pastille de la teinte en cours, sans son nom) qui ouvre un popover** (16 teintes + intensité LED) · menu Actions.
   Filets verticaux entre les groupes sans rapport.
 - **Bande du bas (120 px)** : **jauge de volume du pad** (−60…+12 dB, valeur en dB, double-clic = 0 dB) + forme d'onde
   pleine largeur. Total ≈ 195 px (≤ `Metrics.inspectorHeight`).
@@ -129,7 +129,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   `Gain.gaugePosition` / `decibels(forGaugePosition:)` / `formatDecibels(db:)`, `Surface.loopAccent`,
   `InspectorView.swift` réécrit. Tests écrits d'abord : `ClipSettingsTests` (+2), `ClipEditingTests` (+2),
   `TrackGainGaugeTests` (+5).
-- **Écarts avec la maquette B (à valider)** : (1) **Fondus** : absents de la maquette, gardés dans un popover « Fondus » ;
+- **Écarts avec la maquette B (à valider)** : (1) **Fondus** : absents de la maquette ; réglés **sur l'onde** (puces sous la courbe + poignée de durée, repris de J5b, décision du 31/10) — le popover « Fondus » est supprimé ;
   (2) **Couper / Copier / Coller / Dupliquer / Vider** regroupés dans un menu « Actions » (raccourcis inchangés) ;
   (3) pastille de position (C2·L5) retirée de l'en-tête, gardée en infobulle ; (4) pas de chevron système (Iconoir
   uniquement) : petit chevron dessiné ; (5) jauge de 46 px de large (au lieu de 34) pour tenir « −12,0 dB ».
@@ -137,6 +137,9 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   des sons courts) — pas de réglage en direct pendant la lecture ; à la largeur minimale de fenêtre, l'en-tête est
   dense (le nom de fichier est tronqué en premier) ; le clic simple sur la jauge ne déplace pas la poignée (glisser
   seulement, pour que le double-clic reste fiable).
+- **Retouches du 31/10/2026 (retour d'essai)** : (a) fondus remis **sur l'onde** (`WaveformEditor` de J5b, `AudioLibrary.formatFade` + 5 tests
+  repris) ; (b) lecture / pause / stop / boucle **regroupés** dans une capsule ; (c) **nom de la teinte retiré** du bouton couleur
+  (reste lu par VoiceOver et en infobulle sur chaque pastille). Aperçu Xcode « Inspecteur — pad son » ajouté.
 - **Correction au passage** : la version J5b utilisait `Color(hex:)` (interne à `LalabobDesign`) depuis `App/` — erreur de
   compilation latente, supprimée par cette réécriture.
 - **Non compilé** : écrit sans Mac. `swift` n'est pas disponible ici, les tests n'ont **pas** été exécutés.

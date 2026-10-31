@@ -43,17 +43,21 @@ Deux bandes, au plus `Metrics.inspectorHeight` (196 px, ≈ 1/5 d'une fenêtre d
 fois ; des filets verticaux séparent les groupes sans rapport.
 
 **Bande du haut (52 px), pad son**, de gauche à droite :
-1. Transport : bouton rond Lecture / Relancer (couleur du pad), Pause (ambre + badge « PAUSE » quand le son est en pause),
-   Stop, Boucle (vert si active), temps écoulé / durée utile en mono.
+1. Transport : **un seul bloc (capsule)** regroupant Lecture / Relancer (bouton rond à la couleur du pad), Pause (ambre
+   quand le son est en pause), Stop et, après un filet, Boucle (verte si active) ; puis temps écoulé / durée utile en mono
+   et badge « PAUSE ».
 2. Titre (gras) et sous-titre (double-clic pour renommer, Entrée valide, Échap annule).
 3. À droite : nom du fichier d'origine (mono, discret, tronqué au milieu) · « Nouvel appui » + segmenté
-   Relancer / Arrêter · bouton « Fondus » (popover : entrée et sortie) · **bouton couleur** (pastille + nom de la teinte
-   en cours) qui ouvre un **popover** avec les 16 teintes et l'intensité de la LED · menu « Actions »
+   Relancer / Arrêter · **bouton couleur** (la pastille de la teinte en cours, **sans son nom**, plus une flèche) qui ouvre un
+   **popover** avec les 16 teintes et l'intensité de la LED · menu « Actions »
    (couper, copier, coller, dupliquer, vider).
 
 **Bande du bas (120 px)** : **jauge de volume du pad** (rail, poignée blanche arrondie, valeur en dB ; −60…+12 dB,
 indépendante du fader de colonne, double-clic = 0 dB, appliquée au prochain déclenchement) puis la forme d'onde pleine
-largeur (zones élaguées assombries, poignées d'élagage, tête de lecture).
+largeur (zones élaguées assombries, poignées d'élagage, tête de lecture). **Les fondus se règlent sur l'onde** (décision du
+31/10/2026, retour d'essai : « très pratique ») : une puce « + Fondu » sous la courbe, en bas à gauche (entrée) et en bas à
+droite (sortie) ; une fois actif, la puce affiche la durée (« 0,8 s ») avec une croix pour le retirer, et une poignée au
+bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il n'y a plus de bouton « Fondus ».
 
 **Pad lumière** (ADR 0004, pas de traduction) : une seule bande — titre, bouton **Tester** et rappel de la note envoyée
 à LightKey, puis couleur (popover) et actions.
