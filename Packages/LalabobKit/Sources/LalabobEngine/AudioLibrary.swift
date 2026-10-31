@@ -38,6 +38,11 @@ public enum AudioLibrary {
         return items.filter { $0.name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
     }
 
+    /// Durée d'un fondu : « 1,0 s », « 2,6 s ».
+    public static func formatFade(_ seconds: TimeInterval) -> String {
+        seconds.formatted(.number.precision(.fractionLength(1)).locale(Locale(identifier: "fr_FR"))) + " s"
+    }
+
     /// « 0:04 », « 1:02 », « 1:02:05 ».
     public static func formatDuration(_ seconds: TimeInterval) -> String {
         let total = Int(max(seconds, 0))

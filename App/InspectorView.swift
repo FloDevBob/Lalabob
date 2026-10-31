@@ -1,12 +1,14 @@
+import AVFoundation
 import LalabobDesign
 import LalabobEngine
 import LalabobModel
 import SwiftUI
 
-/// Inspecteur (panneau du bas, cadenas ouvert) : une barre compacte, au plus `Metrics.inspectorHeight`
-/// (≈ 1/5 de la hauteur de la fenêtre). Le titre et le sous-titre se modifient en double-cliquant
-/// dessus, dans l'en-tête : il n'y a pas de champs séparés qui dupliqueraient cette information.
-/// Pad son : transport, forme d'onde avec élagage et fondus. Pad lumière : bouton Tester.
+/// Inspecteur (panneau du bas, cadenas ouvert) : une barre de hauteur fixe `Metrics.inspectorHeight`
+/// (≈ 1/5 de la fenêtre), pour qu'elle ne saute pas d'un pad à l'autre.
+/// Pad son : une barre de commandes (lecture, pause, stop, boucle), puis la forme d'onde qui prend toute
+/// la hauteur restante — l'élagage et les fondus se règlent directement sur elle. Couleur à droite.
+/// Le titre et le sous-titre se modifient en double-cliquant dans l'en-tête.
 struct InspectorView: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -20,14 +22,15 @@ struct InspectorView: View {
             if let pad {
                 switch pad.content {
                 case .audio(let clip):
-                    HStack(alignment: .center, spacing: 14) {
-                        TransportPanel(position: position, pad: pad, clip: clip, waveform: waveform)
-                            .frame(width: 190)
-                        WaveformEditor(
-                            position: position, clip: clip, tint: pad.tint,
-                            event: controller.playback[pad.id], waveform: waveform
-                        )
-                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 60, maxHeight: 64)
+                    HStack(alignment: .top, spacing: 14) {
+                        VStack(spacing: 6) {
+                            TransportBar(position: position, pad: pad, clip: clip, waveform: waveform)
+                            WaveformEditor(
+                                position: position, clip: clip, tint: pad.tint,
+                                event: controller.playback[pad.id], waveform: waveform
+                            )
+                            .frame(maxHeight: .infinity)
+                        }
                         AppearancePanel(position: position, pad: pad)
                             .frame(width: 176)
                     }
@@ -47,7 +50,8 @@ struct InspectorView: View {
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 10)
-        .frame(maxWidth: .infinity, maxHeight: Metrics.inspectorHeight, alignment: .topLeading)
+        .frame(maxWidth: .infinity)
+        .frame(height: Metrics.inspectorHeight, alignment: .topLeading)
         .background(Surface.panel)
     }
 
@@ -169,9 +173,9 @@ private struct InspectorHeader: View {
     }
 }
 
-// MARK: - Transport et réglages du son
+// MARK: - Barre de commandes : lecture, pause, stop et boucle ensemble
 
-private struct TransportPanel: View {
+private struct TransportBar: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad
@@ -182,13 +186,13 @@ private struct TransportPanel: View {
         let event = controller.playback[pad.id]
         let isPlaying: Bool = if case .playing = event?.state { true } else { false }
         let isPaused = event?.state.isPausedState ?? false
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
+        HStack(spacing: 10) {
+            HStack(spacing: 4) {
                 Button {
                     controller.audition(at: position)
                 } label: {
-                    (isPlaying ? Icon.restart : Icon.play).view(size: 14)
-                        .frame(width: 32, height: 32)
+                    (isPlaying ? Icon.restart : Icon.play).view(size: 13)
+                        .frame(width: 28, height: 28)
                         .background(pad.tint.vividColor, in: .circle)
                         .foregroundStyle(Surface.window)
                 }
@@ -196,41 +200,89 @@ private struct TransportPanel: View {
                 .help(isPlaying ? "Relancer" : "Lecture")
                 .accessibilityLabel(isPlaying ? "Relancer" : "Lecture")
 
-                Button(isPaused ? "Reprendre" : "Pause", icon: .pause) { controller.togglePause(at: position) }
-                    .labelStyle(.iconOnly).controlSize(.small).disabled(event == nil)
-                Button("Stop", icon: .stop) { controller.stop(at: position) }
-                    .labelStyle(.iconOnly).controlSize(.small).disabled(event == nil)
-
-                timeLabel(event)
-                if isPaused {
-                    Text("Pause").font(.system(size: 9.5, weight: .semibold))
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(Surface.lightAccent.opacity(0.2), in: .capsule)
-                        .foregroundStyle(Surface.lightAccent)
+                transportButton(isPaused ? "Reprendre" : "Pause", icon: .pause, enabled: event != nil) {
+                    controller.togglePause(at: position)
                 }
+                transportButton("Stop", icon: .stop, enabled: event != nil) { controller.stop(at: position) }
+
+                Rectangle().fill(.white.opacity(0.12)).frame(width: 1, height: 16).padding(.horizontal, 2)
+
+                loopButton
+            }
+            .padding(.horizontal, 5)
+            .frame(height: 34)
+            .background(Surface.well, in: .capsule)
+
+            timeLabel(event)
+            if isPaused {
+                Text("Pause").font(.system(size: 9.5, weight: .semibold))
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(Surface.lightAccent.opacity(0.2), in: .capsule)
+                    .foregroundStyle(Surface.lightAccent)
             }
 
-            Text(clip.fileName).font(.system(size: 10.5)).foregroundStyle(Surface.textTertiary).lineLimit(1)
+            Spacer(minLength: 8)
 
-            fadeRow("Entrée", value: clip.fadeIn) { controller.setFades(at: position, in: $0, out: clip.fadeOut ?? 0) }
-            fadeRow("Sortie", value: clip.fadeOut) { controller.setFades(at: position, in: clip.fadeIn ?? 0, out: $0) }
-            Toggle("Boucle", isOn: Binding(get: { clip.loops }, set: { controller.setLoops(at: position, $0) }))
-                .toggleStyle(.switch).controlSize(.mini)
+            Text(clip.fileName)
                 .font(.system(size: 10.5))
-                .foregroundStyle(Surface.textSecondary)
+                .foregroundStyle(Surface.textTertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .layoutPriority(-1)
 
+            retriggerMenu
+        }
+    }
+
+    private func transportButton(_ title: String, icon: Icon, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            icon.view(size: 13)
+                .frame(width: 26, height: 26)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(enabled ? Surface.textPrimary : Surface.textTertiary.opacity(0.5))
+        .disabled(!enabled)
+        .help(title)
+        .accessibilityLabel(title)
+    }
+
+    /// Boucle : un bouton à bascule, allumé quand le son boucle.
+    private var loopButton: some View {
+        Button {
+            controller.setLoops(at: position, !clip.loops)
+        } label: {
+            Icon.loop.view(size: 14)
+                .frame(width: 28, height: 26)
+                .background(clip.loops ? pad.tint.vividColor.opacity(0.28) : .clear, in: .capsule)
+                .foregroundStyle(clip.loops ? pad.tint.vividColor : Surface.textSecondary)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .help(clip.loops ? "Boucle activée" : "Boucle désactivée")
+        .accessibilityLabel("Boucle")
+        .accessibilityValue(clip.loops ? "activée" : "désactivée")
+        .accessibilityAddTraits(.isToggle)
+    }
+
+    /// Nouvel appui sur un pad qui joue déjà : relancer ou arrêter.
+    private var retriggerMenu: some View {
+        Menu {
             Picker(
                 "Nouvel appui",
                 selection: Binding(get: { clip.retrigger }, set: { controller.setRetrigger(at: position, $0) })
             ) {
-                Text("Relancer").tag(RetriggerBehavior.restart)
-                Text("Arrêter").tag(RetriggerBehavior.stop)
+                Text("Relancer depuis le début").tag(RetriggerBehavior.restart)
+                Text("Arrêter le son").tag(RetriggerBehavior.stop)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.mini)
-            .help("Nouvel appui sur ce pad : relancer depuis le début, ou arrêter")
+            .pickerStyle(.inline)
+        } label: {
+            Text(clip.retrigger == .restart ? "Appui : relancer" : "Appui : arrêter")
+                .font(.system(size: 10.5))
         }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Nouvel appui sur ce pad pendant qu'il joue")
     }
 
     private func timeLabel(_ event: PlaybackEvent?) -> some View {
@@ -244,24 +296,6 @@ private struct TransportPanel: View {
                 .monospacedDigit()
         }
         .accessibilityLabel("Durée utile \(AudioLibrary.formatDuration(usable))")
-    }
-
-    /// Interrupteur de fondu + durée, en une ligne compacte (pas de 0,1 s). Activer propose 1 s.
-    private func fadeRow(_ title: String, value: TimeInterval?, set: @escaping (TimeInterval) -> Void) -> some View {
-        HStack(spacing: 6) {
-            Toggle(title, isOn: Binding(get: { value != nil }, set: { set($0 ? 1 : 0) }))
-                .toggleStyle(.switch).controlSize(.mini)
-            if let value {
-                Stepper(value: Binding(get: { value }, set: { set(max($0, 0.1)) }), in: 0.1...60, step: 0.1) {
-                    Text(AudioLibrary.formatDuration(value)).monospacedDigit()
-                }
-                .controlSize(.mini)
-            } else {
-                Spacer(minLength: 0)
-            }
-        }
-        .font(.system(size: 10.5))
-        .foregroundStyle(Surface.textSecondary)
     }
 }
 
@@ -334,4 +368,35 @@ private struct AppearancePanel: View {
             .controlSize(.mini)
         }
     }
+}
+
+// MARK: - Aperçu (Xcode) : un pad avec un son de synthèse, des fondus et un élagage
+
+#Preview("Inspecteur — pad son") {
+    Fonts.register()
+    let directory = FileManager.default.temporaryDirectory.appending(path: "lalabob-preview-audio", directoryHint: .isDirectory)
+    try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    if let format = AVAudioFormat(standardFormatWithSampleRate: 8000, channels: 1),
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 8000 * 6),
+        let samples = buffer.floatChannelData,
+        let file = try? AVAudioFile(forWriting: directory.appending(path: "essai.wav"), settings: format.settings)
+    {
+        buffer.frameLength = buffer.frameCapacity
+        for i in 0..<Int(buffer.frameLength) {
+            let t = Float(i) / 8000
+            samples[0][i] = sin(t * 440) * (0.2 + 0.7 * abs(sin(t * 1.3))) * (t < 0.3 ? 0.2 : 1)
+        }
+        try? file.write(from: buffer)
+    }
+    var grid = PadGrid.empty(name: "Essai")
+    let position = GridPosition(column: 1, row: 2)
+    grid[position] = Pad(
+        title: "Orage lointain", subtitle: "Ambiance", tint: .azur,
+        content: .audio(clip: AudioClip(fileName: "essai.wav", trimStart: 0.4, trimEnd: 5.2, fadeIn: 0.8, fadeOut: 1.4, loops: true)))
+    let controller = ShowController(show: Show(name: "Essai", grids: [grid]), audioDirectory: directory)
+    controller.selection = position
+    return InspectorView(position: position)
+        .environment(controller)
+        .frame(width: 1100)
+        .preferredColorScheme(.dark)
 }

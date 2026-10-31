@@ -117,6 +117,14 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 - **Limite connue** : à la taille minimale de la fenêtre (1100 × 720), 196 px représente plus que 1/5 de la
   hauteur (≈ 27 %) ; la proportion visée (1/5) correspond à une fenêtre de régie d'environ 950–1000 px de haut.
 
+**Révision du 31/10/2026 (retour d'essai)** : l'interface « UX/UI » du panneau n'était pas optimale. Forme d'onde
+sur toute la hauteur restante (panneau de hauteur fixe) ; **fondus réglés sous la courbe** (puces « + Fondu » début / fin,
+poignée de durée, croix pour retirer) ; **lecture, pause, stop et boucle regroupés** en une barre au-dessus de l'onde ;
+règle de temps corrigée (secondes décimales < 20 s). `WaveformEditor` réécrit, `TransportPanel` → `TransportBar`,
+`AudioLibrary.formatFade` (+ 5 tests). Aperçu Xcode dédié (`#Preview` « Inspecteur — pad son », son de synthèse).
+**À valider à l'œil dans l'app** : glisser les poignées de fondu et d'élagage, puces de fondu à la bonne place.
+**En attente de validation** : déplacer tous les réglages de couleur dans un menu contextuel.
+
 ### J6 — Fiabilisation et livraison · palier « prêt pour le spectacle »
 - Vumètre réel par colonne (mesure du signal dans le moteur, voir J5). Mode Spectacle : fait au J4 sous forme de cadenas (voir J4) ; reste à verrouiller aussi la pré-écoute. Tests de charge et d'endurance (3 h), scénarios de panne (contrôleur, carte son, LightKey), journal `OSLog`.
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.

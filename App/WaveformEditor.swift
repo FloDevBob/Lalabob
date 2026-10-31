@@ -3,9 +3,11 @@ import LalabobEngine
 import LalabobModel
 import SwiftUI
 
-/// Forme d'onde pleine largeur : zones élaguées assombries, poignées d'élagage déplaçables,
-/// courbes de fondu en pointillés, tête de lecture blanche pendant la lecture.
-/// Un glisser de poignée = une seule modification (⌘Z), enregistrée au relâchement.
+/// Forme d'onde pleine hauteur : zones élaguées assombries, poignées d'élagage déplaçables,
+/// tête de lecture blanche, et fondus réglés directement sous la courbe :
+/// - une puce « Fondu » en bas à gauche (entrée) et en bas à droite (sortie) : un clic l'active ;
+/// - une fois actif, une poignée au bout de la courbe pointillée en règle la durée, et une croix le retire.
+/// Un glisser = une seule modification annulable (⌘Z), enregistrée au relâchement.
 struct WaveformEditor: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -16,13 +18,21 @@ struct WaveformEditor: View {
 
     @State private var draggedStart: TimeInterval?
     @State private var draggedEnd: TimeInterval?
+    @State private var draggedFadeIn: TimeInterval?
+    @State private var draggedFadeOut: TimeInterval?
+
+    /// Durée proposée quand on active un fondu.
+    private static let defaultFade: TimeInterval = 1
+    private static let minimumFade: TimeInterval = 0.1
 
     private var duration: TimeInterval { max(waveform?.duration ?? 0, 0.001) }
     private var start: TimeInterval { draggedStart ?? clip.trimStart }
     private var end: TimeInterval { draggedEnd ?? clip.trimEnd ?? duration }
+    private var fadeIn: TimeInterval? { draggedFadeIn ?? clip.fadeIn }
+    private var fadeOut: TimeInterval? { draggedFadeOut ?? clip.fadeOut }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 3) {
             ruler
             GeometryReader { geometry in
                 let width = geometry.size.width
@@ -31,9 +41,13 @@ struct WaveformEditor: View {
                     Canvas { context, size in drawWave(in: &context, size: size) }
                     trimmedShade(width: width)
                     fadeCurves(width: width, height: height)
-                    handle(at: start, width: width, height: height, isStart: true)
-                    handle(at: end, width: width, height: height, isStart: false)
+                    trimHandle(at: start, width: width, height: height, isStart: true)
+                    trimHandle(at: end, width: width, height: height, isStart: false)
+                    fadeHandle(isIn: true, width: width, height: height)
+                    fadeHandle(isIn: false, width: width, height: height)
                     playhead(width: width, height: height)
+                    fadeChip(isIn: true, width: width, height: height)
+                    fadeChip(isIn: false, width: width, height: height)
                 }
                 .coordinateSpace(.named("wave"))
                 .clipShape(.rect(cornerRadius: 10))
@@ -55,6 +69,10 @@ struct WaveformEditor: View {
         CGFloat(min(max(time / duration, 0), 1)) * width
     }
 
+    private func time(atX x: CGFloat, width: CGFloat) -> TimeInterval {
+        Double(min(max(x, 0), width) / max(width, 1)) * duration
+    }
+
     private func drawWave(in context: inout GraphicsContext, size: CGSize) {
         guard let peaks = waveform?.peaks, !peaks.isEmpty else { return }
         let barWidth = size.width / CGFloat(peaks.count)
@@ -70,13 +88,19 @@ struct WaveformEditor: View {
     private var ruler: some View {
         HStack {
             ForEach(0..<5, id: \.self) { step in
-                Text(AudioLibrary.formatDuration(duration * Double(step) / 4))
+                Text(rulerLabel(duration * Double(step) / 4))
                     .font(Typography.mono)
                     .foregroundStyle(Surface.textTertiary)
                 if step < 4 { Spacer(minLength: 0) }
             }
         }
+        .font(.system(size: 9.5))
         .accessibilityHidden(true)
+    }
+
+    /// Sons courts : secondes avec décimale (« 1,5 s ») pour ne pas tronquer ; sons longs : « 1:02 ».
+    private func rulerLabel(_ time: TimeInterval) -> String {
+        duration < 20 ? AudioLibrary.formatFade(time) : AudioLibrary.formatDuration(time)
     }
 
     private func trimmedShade(width: CGFloat) -> some View {
@@ -90,12 +114,12 @@ struct WaveformEditor: View {
 
     private func fadeCurves(width: CGFloat, height: CGFloat) -> some View {
         Path { path in
-            if let fadeIn = clip.fadeIn {
+            if let fadeIn {
                 path.move(to: CGPoint(x: x(start, width), y: height))
-                path.addLine(to: CGPoint(x: x(min(start + fadeIn, end), width), y: 2))
+                path.addLine(to: CGPoint(x: x(min(start + fadeIn, end), width), y: 4))
             }
-            if let fadeOut = clip.fadeOut {
-                path.move(to: CGPoint(x: x(max(end - fadeOut, start), width), y: 2))
+            if let fadeOut {
+                path.move(to: CGPoint(x: x(max(end - fadeOut, start), width), y: 4))
                 path.addLine(to: CGPoint(x: x(end, width), y: height))
             }
         }
@@ -103,7 +127,9 @@ struct WaveformEditor: View {
         .allowsHitTesting(false)
     }
 
-    private func handle(at time: TimeInterval, width: CGFloat, height: CGFloat, isStart: Bool) -> some View {
+    // MARK: - Élagage
+
+    private func trimHandle(at time: TimeInterval, width: CGFloat, height: CGFloat, isStart: Bool) -> some View {
         RoundedRectangle(cornerRadius: 2)
             .fill(.white)
             .frame(width: 4, height: height)
@@ -115,7 +141,7 @@ struct WaveformEditor: View {
             .gesture(
                 DragGesture(coordinateSpace: .named("wave"))
                     .onChanged { value in
-                        let t = Double(min(max(value.location.x, 0), width) / width) * duration
+                        let t = self.time(atX: value.location.x, width: width)
                         if isStart { draggedStart = t } else { draggedEnd = t }
                     }
                     .onEnded { _ in
@@ -132,6 +158,98 @@ struct WaveformEditor: View {
                 controller.setTrim(
                     at: position, start: isStart ? start + step : start, end: isStart ? end : end + step, fileDuration: duration)
             }
+    }
+
+    // MARK: - Fondus
+
+    /// Durée maximale d'un fondu : ce qui reste de la partie jouée une fois l'autre fondu compté.
+    private func fadeLimit(isIn: Bool) -> TimeInterval {
+        max((end - start) - ((isIn ? fadeOut : fadeIn) ?? 0), Self.minimumFade)
+    }
+
+    private func setFade(isIn: Bool, to value: TimeInterval?) {
+        let newIn = isIn ? (value ?? 0) : (clip.fadeIn ?? 0)
+        let newOut = isIn ? (clip.fadeOut ?? 0) : (value ?? 0)
+        controller.setFades(at: position, in: newIn, out: newOut)
+    }
+
+    /// Puce sous la courbe : « + Fondu » quand il n'y a pas de fondu, sinon la durée avec une croix pour le retirer.
+    private func fadeChip(isIn: Bool, width: CGFloat, height: CGFloat) -> some View {
+        let value = isIn ? fadeIn : fadeOut
+        let name = isIn ? "Fondu d'entrée" : "Fondu de sortie"
+        return HStack(spacing: 4) {
+            if let value {
+                Text(AudioLibrary.formatFade(value))
+                    .font(.system(size: 10, design: .monospaced)).monospacedDigit()
+                Button {
+                    setFade(isIn: isIn, to: nil)
+                } label: {
+                    Icon.close.view(size: 9)
+                }
+                .buttonStyle(.plain)
+                .help("Retirer le \(name.lowercased())")
+                .accessibilityLabel("Retirer le \(name.lowercased())")
+            } else {
+                Button {
+                    setFade(isIn: isIn, to: min(Self.defaultFade, fadeLimit(isIn: isIn)))
+                } label: {
+                    HStack(spacing: 3) {
+                        Icon.plus.view(size: 9)
+                        Text("Fondu").font(.system(size: 10, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Ajouter un \(name.lowercased())")
+                .accessibilityLabel("Ajouter un \(name.lowercased())")
+            }
+        }
+        .padding(.horizontal, 7)
+        .frame(height: 18)
+        .background(.black.opacity(0.55), in: .capsule)
+        .overlay(Capsule().stroke(.white.opacity(value == nil ? 0.12 : 0.35)))
+        .foregroundStyle(value == nil ? Surface.textSecondary : .white)
+        .fixedSize()
+        .position(
+            x: isIn ? x(start, width) + 14 + chipHalfWidth(isActive: value != nil) : x(end, width) - 14 - chipHalfWidth(isActive: value != nil),
+            y: height - 14
+        )
+    }
+
+    private func chipHalfWidth(isActive: Bool) -> CGFloat { isActive ? 30 : 28 }
+
+    /// Poignée au bout de la courbe de fondu : glisser en change la durée.
+    @ViewBuilder
+    private func fadeHandle(isIn: Bool, width: CGFloat, height: CGFloat) -> some View {
+        if let value = isIn ? fadeIn : fadeOut {
+            let handleTime = isIn ? start + value : end - value
+            Circle()
+                .fill(.white)
+                .frame(width: 10, height: 10)
+                .overlay(Circle().stroke(.black.opacity(0.4), lineWidth: 1))
+                .contentShape(.circle.inset(by: -8))
+                .position(x: x(min(max(handleTime, start), end), width), y: 4)
+                .gesture(
+                    DragGesture(coordinateSpace: .named("wave"))
+                        .onChanged { drag in
+                            let t = time(atX: drag.location.x, width: width)
+                            let wanted = isIn ? t - start : end - t
+                            let clamped = min(max(wanted, Self.minimumFade), fadeLimit(isIn: isIn))
+                            if isIn { draggedFadeIn = clamped } else { draggedFadeOut = clamped }
+                        }
+                        .onEnded { _ in
+                            setFade(isIn: isIn, to: isIn ? draggedFadeIn : draggedFadeOut)
+                            draggedFadeIn = nil
+                            draggedFadeOut = nil
+                        }
+                )
+                .accessibilityElement()
+                .accessibilityLabel(isIn ? "Durée du fondu d'entrée" : "Durée du fondu de sortie")
+                .accessibilityValue(AudioLibrary.formatFade(value))
+                .accessibilityAdjustableAction { direction in
+                    let step = direction == .increment ? 0.1 : -0.1
+                    setFade(isIn: isIn, to: min(max(value + step, Self.minimumFade), fadeLimit(isIn: isIn)))
+                }
+        }
     }
 
     @ViewBuilder

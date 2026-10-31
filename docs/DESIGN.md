@@ -47,15 +47,17 @@ titre et sous-titre dupliqués entre l'en-tête et des champs toujours visibles 
 · **sous-titre** (idem) · petite pastille de position (« C2·L6 », l'info complète — contrôleur et note —
 reste en infobulle) · actions Couper / Copier / Coller / Dupliquer / Vider, icônes seules.
 
-**Pad son**, 3 colonnes sous l'en-tête :
-1. Transport (190 px) : petit bouton rond Lecture / Relancer, Pause, Stop, temps écoulé / durée utile sur une
-   ligne ; nom du fichier seul (plus de ligne de métadonnées séparée, redondante avec le nom et peu utile
-   en régie) ; fondu entrée et fondu sortie (interrupteur + durée) et boucle, puis segmenté Nouvel appui —
-   tout en contrôles compacts (`controlSize(.mini)`), sans perdre le réglage fin de la durée des fondus.
-2. Forme d'onde (flexible, 60–64 px) : zones élaguées assombries, poignées d'élagage, tête de lecture. Plus de
-   ligne « Glissez les poignées… » (l'affordance est visible) ; la règle de temps reste, discrète.
-3. Couleur (176 px) : grille de 16 pastilles compactes (18 px) et segmenté d'intensité LED, sans le rappel de
-   vélocité Novation/APC en toutes lettres (il reste en infobulle sur chaque pastille).
+**Pad son** (révision du 31/10/2026, après essai) — la forme d'onde est l'élément principal :
+1. **Barre de commandes** (une ligne) : Lecture / Relancer, Pause, Stop et **Boucle** dans un même groupe
+   (la boucle est un bouton à bascule, allumé à la couleur du pad) ; temps écoulé / durée utile ; nom du fichier ;
+   menu « Appui : relancer / arrêter » (nouvel appui sur un pad qui joue).
+2. **Forme d'onde sur toute la hauteur restante** du panneau (hauteur du panneau fixe : pas de saut d'un pad
+   à l'autre). Règle de temps (secondes décimales pour un son < 20 s), zones élaguées assombries, poignées
+   d'élagage, tête de lecture. **Fondus réglés sous la courbe** : une puce « + Fondu » en bas à gauche (entrée)
+   et en bas à droite (sortie) ; une fois actif, la puce indique la durée (« 0,8 s ») avec une croix pour le retirer,
+   et une poignée au bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z par glisser).
+3. **Couleur** (colonne de droite) : 16 pastilles et intensité LED. *À l'étude : tout passer dans un menu
+   contextuel pour libérer la largeur (proposition à valider).*
 
 **Pad lumière** (ADR 0004, toujours pas de traduction) : bouton **Tester** + rappel court de la note envoyée
 à LightKey, à gauche ; couleur et intensité LED à droite, dans le même bloc compact que pour un pad son.
