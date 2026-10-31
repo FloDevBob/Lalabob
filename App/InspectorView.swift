@@ -11,8 +11,9 @@ import SwiftUI
 /// - Bande du bas (pad son) : jauge de volume du pad (dB) et forme d'onde pleine largeur avec élagage ;
 ///   les fondus se règlent sur l'onde (puces sous la courbe, poignée de durée).
 /// Aucune information n'apparaît deux fois ; les groupes sans rapport sont séparés par un filet.
-/// Verrouillé, une version en lecture seule du même panneau reste affichée pour le son lancé : lecture, pause, stop et
-/// tête de lecture se pilotent, mais couleur, actions, textes, volume, boucle, fondus et élagage ne se modifient pas.
+/// Verrouillé, une version allégée du même panneau reste affichée pour le son lancé : lecture, pause, stop, tête de
+/// lecture, volume du pad et fondus se règlent (réglages de jeu) ; couleur, actions, textes, boucle, « Nouvel appui »
+/// et élagage ne se modifient pas.
 struct InspectorView: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -36,8 +37,6 @@ struct InspectorView: View {
                             onLive: { controller.previewGain(at: position, $0) },
                             onCommit: { controller.setGain(at: position, $0) })
                             .frame(width: 46)
-                            .allowsHitTesting(!controller.isLocked)
-                            .opacity(controller.isLocked ? 0.55 : 1)
                         WaveformEditor(
                             position: position, clip: clip, tint: pad.tint,
                             event: controller.playback[pad.id], waveform: waveform

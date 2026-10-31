@@ -52,7 +52,7 @@ extension ShowController {
     }
 
     public func setFades(at position: GridPosition, in fadeIn: TimeInterval, out fadeOut: TimeInterval) {
-        updateClip(at: position, actionName: "Fondus") { $0 = $0.withFades(in: fadeIn, out: fadeOut) }
+        updateClip(at: position, actionName: "Fondus", allowedWhenLocked: true) { $0 = $0.withFades(in: fadeIn, out: fadeOut) }
     }
 
     public func setLoops(at position: GridPosition, _ loops: Bool) {
@@ -64,12 +64,15 @@ extension ShowController {
     }
 
     /// Volume propre au pad (dB), validé (annulable). Le moteur le suit en direct, son en cours compris.
+    /// Volume et fondus restent réglables verrouillé : ce sont des réglages de jeu (⌘Z, lui, reste refusé).
     public func setGain(at position: GridPosition, _ decibels: Double) {
-        updateClip(at: position, actionName: "Volume") { $0 = $0.withGain(decibels) }
+        updateClip(at: position, actionName: "Volume", allowedWhenLocked: true) { $0 = $0.withGain(decibels) }
     }
 
-    private func updateClip(at position: GridPosition, actionName: String, _ change: (inout AudioClip) -> Void) {
-        commit(actionName) { show, grid in
+    private func updateClip(
+        at position: GridPosition, actionName: String, allowedWhenLocked: Bool = false, _ change: (inout AudioClip) -> Void
+    ) {
+        commit(actionName, allowedWhenLocked: allowedWhenLocked) { show, grid in
             guard position.isValid, var pad = show.grids[grid][position], case .audio(var clip) = pad.content else {
                 return false
             }

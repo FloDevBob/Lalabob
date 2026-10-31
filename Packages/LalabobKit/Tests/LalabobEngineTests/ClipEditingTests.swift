@@ -57,24 +57,32 @@ struct ClipEditingTests {
         #expect(!undo.canUndo)
     }
 
-    @Test func trackGainIsClampedAndRefusedWhenLocked() {
+    @Test func trackGainIsClamped() {
         let (controller, _) = makeController()
         controller.setGain(at: Self.a, 999)
         #expect(clip(controller)?.gainDB == AudioClip.gainRange.upperBound)
-
-        let (locked, lockedUndo) = makeController(locked: true)
-        locked.setGain(at: Self.a, -10)
-        #expect(clip(locked)?.gainDB == 0)
-        #expect(!lockedUndo.canUndo)
     }
 
-    @Test func settingsAreRefusedWhenLocked() {
+    @Test func gainAndFadesStayAdjustableWhenLocked() {
+        let (controller, _) = makeController(locked: true)
+        controller.setGain(at: Self.a, -10)
+        controller.setFades(at: Self.a, in: 0.8, out: 1.4)
+        #expect(clip(controller)?.gainDB == -10)
+        #expect(clip(controller)?.fadeIn == 0.8)
+        #expect(clip(controller)?.fadeOut == 1.4)
+        #expect(controller.lockNotice == nil)
+    }
+
+    @Test func otherSettingsAreRefusedWhenLocked() {
         let (controller, undo) = makeController(locked: true)
         controller.setLoops(at: Self.a, true)
+        controller.setRetrigger(at: Self.a, .stop)
         controller.setTrim(at: Self.a, start: 1, end: 2, fileDuration: 10)
         #expect(clip(controller)?.loops == false)
+        #expect(clip(controller)?.retrigger == .restart)
         #expect(clip(controller)?.trimStart == 0)
         #expect(!undo.canUndo)
+        #expect(controller.lockNotice != nil)
     }
 
     @Test func settingsOnALightPadOrEmptyCellDoNothing() {
@@ -122,10 +130,11 @@ struct ClipEditingTests {
         #expect(!undo.canUndo)
     }
 
-    @Test func gainPreviewIsIgnoredWhenLockedOrOnAnEmptyCell() async {
+    @Test func gainPreviewWorksWhenLockedButNotOnAnEmptyCell() async {
         let audio = RecordingAudioEngine()
         var grid = PadGrid.empty(name: "G")
-        grid[Self.a] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        grid[Self.a] = pad
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
             defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, isLocked: true)
@@ -133,8 +142,8 @@ struct ClipEditingTests {
         controller.previewGain(at: GridPosition(column: 3, row: 3), -9)
         try? await Task.sleep(for: .milliseconds(150))
         let sent = await audio.commands
-        #expect(!sent.contains { if case .padGain = $0 { true } else { false } })
-        #expect(controller.lockNotice == nil)  // un simple réglage en direct ne déclenche pas le bandeau
+        #expect(sent.filter { if case .padGain = $0 { true } else { false } } == [.padGain(pad.id, -9)])
+        #expect(controller.lockNotice == nil)
     }
 
     @Test func seekIsSentToTheEngineWithTheOffsetInsideTheTrimmedPart() async {

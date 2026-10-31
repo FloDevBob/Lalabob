@@ -185,3 +185,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   `ShowController.playPad(at:)` (lecture sans refus quand verrouillé) ; `seek` n'est plus refusé verrouillé (il ne modifie pas le
   spectacle) ; verrouillé, un son lancé devient la sélection. 6 tests (`LockTests`). **À essayer** : clic droit sur un pad non
   sélectionné puis ⌘C / ⌘V ; en mode verrouillé, lancer un son au contrôleur et voir le panneau apparaître.
+- **Volume et fondus réglables verrouillé (31/10/2026)** : réglages de jeu, autorisés par `commit(…, allowedWhenLocked:)` pour
+  `setGain` et `setFades`, et `previewGain` (direct) ; élagage, boucle, « Nouvel appui », couleur, textes et actions restent refusés.
+  Dans le panneau verrouillé : jauge de volume et fondus sur l'onde actifs, poignées d'élagage masquées. Ces réglages sont
+  enregistrés dans le spectacle ; ⌘Z reste refusé verrouillé (comme toute annulation). Tests : `ClipEditingTests` (+1, 2 adaptés).

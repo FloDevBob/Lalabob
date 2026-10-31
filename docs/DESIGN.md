@@ -80,5 +80,5 @@ bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il
 puis Couper, Copier, Coller, Dupliquer, Vider avec leurs raccourcis. Verrouillé : seulement la lecture.
 
 **Panneau du bas verrouillé** : même disposition, en lecture seule, affiché pour le dernier son lancé (il apparaît dès le
-lancement d'une piste). Actifs : lecture / relance, pause, stop, tête de lecture sur l'onde. Figés ou masqués : titre et
-sous-titre, couleur, actions, nouvel appui, volume du pad, boucle, fondus, élagage.
+lancement d'une piste). Actifs : lecture / relance, pause, stop, tête de lecture sur l'onde, **volume du pad et fondus** (réglages de jeu).
+Figés ou masqués : titre et sous-titre, couleur, actions, nouvel appui, boucle, élagage (poignées masquées).

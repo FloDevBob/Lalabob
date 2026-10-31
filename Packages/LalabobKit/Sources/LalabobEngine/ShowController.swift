@@ -168,9 +168,9 @@ public final class ShowController {
 
     /// Volume d'un pad pendant qu'on déplace la jauge : le moteur le suit tout de suite, y compris sur un son
     /// qui joue. Rien n'est écrit dans le spectacle ni dans l'historique : `setGain` valide la valeur finale
-    /// (une seule annulation). Ignoré si le spectacle est verrouillé ou la case sans son.
+    /// (une seule annulation). Marche aussi verrouillé ; ignoré si la case n'a pas de son.
     public func previewGain(at position: GridPosition, _ decibels: Double) {
-        guard !isLocked, let pad = pad(at: position), case .audio = pad.content else { return }
+        guard let pad = pad(at: position), case .audio = pad.content else { return }
         let clamped = AudioClip(fileName: "x").withGain(decibels).gainDB
         commands.yield(.padGain(pad.id, clamped))
     }
@@ -290,9 +290,11 @@ public final class ShowController {
 
     /// Applique une modification au spectacle. `change` reçoit une copie et l'index de l'onglet affiché ;
     /// il renvoie `false` pour ne rien faire. Une modification sans effet n'enregistre pas d'annulation.
+    /// Verrouillé, la modification est refusée (avec un message), sauf si `allowedWhenLocked` : réglages de jeu
+    /// (volume du pad, fondus) que la régie ajuste pendant le spectacle.
     @discardableResult
-    func commit(_ actionName: String, _ change: (inout Show, Int) -> Bool) -> Bool {
-        guard !refuseWhileLocked() else { return false }
+    func commit(_ actionName: String, allowedWhenLocked: Bool = false, _ change: (inout Show, Int) -> Bool) -> Bool {
+        guard allowedWhenLocked || !refuseWhileLocked() else { return false }
         var updated = show
         guard change(&updated, selectedGridIndex), updated != show else { return false }
         apply(updated, actionName: actionName)
