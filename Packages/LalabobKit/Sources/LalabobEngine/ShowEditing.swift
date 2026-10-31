@@ -168,6 +168,23 @@ extension ShowController {
         }
     }
 
+    /// Plan d'un glissé de groupe : pour chaque pad sélectionné, sa case d'arrivée (décalage identique). `nil` si le
+    /// glissé serait refusé : case hors grille, colonne d'un autre type, pad hors groupe écrasé (déplacer) ou case
+    /// occupée (copier : les cases libres sont exigées, même celles du groupe).
+    private static func blockPlan(
+        in grid: PadGrid, moving: [GridPosition], columnShift: Int, rowShift: Int, copying: Bool
+    ) -> [(from: GridPosition, to: GridPosition, pad: Pad)]? {
+        let leaving = Set(moving)
+        var plan: [(from: GridPosition, to: GridPosition, pad: Pad)] = []
+        for from in moving {
+            let to = GridPosition(column: from.column + columnShift, row: from.row + rowShift)
+            guard to.isValid, let pad = grid[from], grid.columns[to.column].kind == pad.kind else { return nil }
+            if grid[to] != nil, copying || !leaving.contains(to) { return nil }
+            plan.append((from, to, pad))
+        }
+        return plan
+    }
+
     /// Glisser un pad. Seul : déplace ou échange (voir `movePad`). S'il fait partie d'une sélection de plusieurs
     /// pads, tout le groupe suit du même décalage (une case sélectionnée ou libre en destination ; refusé si le
     /// groupe sortirait de la grille, changerait de type de colonne ou écraserait un pad hors sélection).
@@ -184,16 +201,10 @@ extension ShowController {
         guard columnShift != 0 || rowShift != 0 else { return false }
         let moving = selectedFilledPositions
         let done = commit("Déplacer les pads") { show, grid in
-            let staying = Set(moving)
-            var plan: [(from: GridPosition, to: GridPosition, pad: Pad)] = []
-            for from in moving {
-                let to = GridPosition(column: from.column + columnShift, row: from.row + rowShift)
-                guard to.isValid, let pad = show.grids[grid][from],
-                    show.grids[grid].columns[to.column].kind == pad.kind
-                else { return false }
-                if show.grids[grid][to] != nil, !staying.contains(to) { return false }
-                plan.append((from, to, pad))
-            }
+            guard
+                let plan = Self.blockPlan(
+                    in: show.grids[grid], moving: moving, columnShift: columnShift, rowShift: rowShift, copying: false)
+            else { return false }
             for step in plan { show.grids[grid][step.from] = nil }
             for step in plan { show.grids[grid][step.to] = step.pad }
             return true
@@ -216,19 +227,55 @@ extension ShowController {
         guard columnShift != 0 || rowShift != 0 else { return false }
         let moving = selectedFilledPositions
         let done = commit("Copier les pads") { show, grid in
-            var plan: [(to: GridPosition, pad: Pad)] = []
-            for from in moving {
-                let to = GridPosition(column: from.column + columnShift, row: from.row + rowShift)
-                guard to.isValid, let pad = show.grids[grid][from], show.grids[grid][to] == nil,
-                    show.grids[grid].columns[to.column].kind == pad.kind
-                else { return false }
-                plan.append((to, pad.duplicated()))
-            }
-            for step in plan { show.grids[grid][step.to] = step.pad }
+            guard
+                let plan = Self.blockPlan(
+                    in: show.grids[grid], moving: moving, columnShift: columnShift, rowShift: rowShift, copying: true)
+            else { return false }
+            for step in plan { show.grids[grid][step.to] = step.pad.duplicated() }
             return true
         }
         if done { shiftSelection(columns: columnShift, rows: rowShift, anchor: source) }
         return done
+    }
+
+    // MARK: - Aperçu des cases cibles pendant un glisser de groupe
+
+    /// Un glisser vient de commencer sur ce pad (mémorisé pour montrer, pendant le survol, où tomberait le groupe).
+    public func beginDrag(from position: GridPosition) {
+        draggedPosition = position
+        dragPreview = nil
+    }
+
+    /// Met à jour l'aperçu quand le pointeur survole `target` : toutes les cases d'arrivée du groupe, et si le dépôt
+    /// serait accepté. Pas d'aperçu pour un pad seul, un pad hors sélection ou un spectacle verrouillé.
+    public func updateDragPreview(source: GridPosition, target: GridPosition, copying: Bool) {
+        draggedPosition = source
+        guard !isLocked, selectedPositions.contains(source), selectedPositions.count > 1 else {
+            clearDragPreview()
+            return
+        }
+        let moving = selectedFilledPositions
+        let columnShift = target.column - source.column
+        let rowShift = target.row - source.row
+        let cells = moving
+            .map { GridPosition(column: $0.column + columnShift, row: $0.row + rowShift) }
+            .filter(\.isValid)
+        let allowed =
+            (columnShift != 0 || rowShift != 0)
+            && Self.blockPlan(
+                in: currentGrid, moving: moving, columnShift: columnShift, rowShift: rowShift, copying: copying) != nil
+        let preview = DropPreview(positions: Set(cells), isAllowed: allowed, isCopy: copying)
+        if dragPreview != preview { dragPreview = preview }
+    }
+
+    public func clearDragPreview() {
+        if dragPreview != nil { dragPreview = nil }
+    }
+
+    /// Fin du glisser (dépôt ou sortie) : plus d'aperçu.
+    public func endDrag() {
+        draggedPosition = nil
+        clearDragPreview()
     }
 
     /// Décale toute la sélection (les cases qui sortiraient de la grille sont abandonnées) ; la case principale

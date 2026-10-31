@@ -293,4 +293,80 @@ struct MultiSelectionTests {
         #expect(controller.show == before)
         #expect(!undo.canUndo)
     }
+
+    // MARK: Aperçu des cases cibles pendant un glisser
+
+    @Test func previewShowsEveryTargetCellOfTheGroup() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.press(at: Self.d, mode: .range)
+        controller.updateDragPreview(source: Self.a, target: GridPosition(column: 2, row: 2), copying: false)
+        let cells = [(2, 2), (2, 3), (3, 2), (3, 3)].map { GridPosition(column: $0.0, row: $0.1) }
+        let expected = Set(cells)
+        #expect(controller.dragPreview?.positions == expected)
+        #expect(controller.dragPreview?.isAllowed == true)
+        #expect(controller.dragPreview?.isCopy == false)
+    }
+
+    @Test func previewIsMarkedRefusedWhenTheDropWouldFail() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.press(at: Self.b, mode: .range)
+        // B tomberait dans une colonne lumière : le groupe est refusé, mais les cases visées sont montrées.
+        controller.updateDragPreview(source: Self.a, target: GridPosition(column: 5, row: 5), copying: false)
+        #expect(controller.dragPreview?.isAllowed == false)
+        #expect(controller.dragPreview?.positions == [GridPosition(column: 5, row: 5), GridPosition(column: 6, row: 5)])
+    }
+
+    @Test func previewOutsideTheGridKeepsOnlyTheCellsInsideIt() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.press(at: Self.b, mode: .range)
+        controller.updateDragPreview(source: Self.a, target: GridPosition(column: 7, row: 7), copying: false)
+        #expect(controller.dragPreview?.isAllowed == false)
+        #expect(controller.dragPreview?.positions == [GridPosition(column: 7, row: 7)])
+    }
+
+    @Test func copyPreviewIsRefusedOntoOccupiedCellsButMovePreviewIsNotWhenTheyAreInTheGroup() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.press(at: Self.d, mode: .range)
+        let down = GridPosition(column: 0, row: 1)
+        controller.updateDragPreview(source: Self.a, target: down, copying: false)
+        #expect(controller.dragPreview?.isAllowed == true)  // déplacer d'une ligne : chevauche ses propres cases
+        controller.updateDragPreview(source: Self.a, target: down, copying: true)
+        #expect(controller.dragPreview?.isAllowed == false)  // copier exige des cases libres
+        #expect(controller.dragPreview?.isCopy == true)
+    }
+
+    @Test func noGroupPreviewForASinglePadOrAPadOutsideTheSelection() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.updateDragPreview(source: Self.a, target: Self.d, copying: false)
+        #expect(controller.dragPreview == nil)
+
+        controller.press(at: Self.a)
+        controller.press(at: Self.b, mode: .range)
+        controller.updateDragPreview(source: Self.d, target: Self.c, copying: false)  // D n'est pas sélectionné
+        #expect(controller.dragPreview == nil)
+    }
+
+    @Test func clearingTheDragRemovesThePreview() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.press(at: Self.d, mode: .range)
+        controller.updateDragPreview(source: Self.a, target: GridPosition(column: 2, row: 2), copying: false)
+        controller.endDrag()
+        #expect(controller.dragPreview == nil)
+        #expect(controller.draggedPosition == nil)
+    }
+
+    @Test func previewIsNeverShownWhenLocked() {
+        let (controller, _) = makeController()
+        controller.press(at: Self.a)
+        controller.press(at: Self.d, mode: .range)
+        controller.isLocked = true
+        controller.updateDragPreview(source: Self.a, target: GridPosition(column: 2, row: 2), copying: false)
+        #expect(controller.dragPreview == nil)
+    }
 }

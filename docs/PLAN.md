@@ -214,3 +214,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   L'inspecteur reste pour un pad seul ; avec plusieurs pads, une barre indique le nombre et propose les actions (menu « ⋯ », Désélectionner).
   Le menu contextuel agit sur toute la sélection si le pad cliqué en fait partie. Limites : couleur, volume etc. ne s'appliquent qu'à un pad à la fois ;
   pas de ⌘A ni de sélection au lasso. 22 tests (`MultiSelectionTests`). **À essayer** : ⇧-clic, glisser un groupe, ⌥-glisser, ⌘V d'un groupe sur la grille.
+- **Aperçu des cases cibles d'un glisser de groupe (01/11/2026)** : pendant le survol, chaque case où le groupe tomberait est teintée en blanc (contour pointillé) ;
+  en rouge si le dépôt serait refusé (hors grille, colonne d'un autre type, pad écrasé) ; badge « Copie » avec ⌥. `ShowController.updateDragPreview` /
+  `dragPreview` / `beginDrag` / `endDrag`, qui partagent le même plan de calcul (`blockPlan`) que le déplacement réel : l'aperçu ne peut pas mentir.
+  Pas d'aperçu pour un pad seul ni pour un fichier venu du Finder. 7 tests (`MultiSelectionTests`). **À essayer** : glisser un groupe et regarder les cases s'allumer.

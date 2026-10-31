@@ -223,12 +223,14 @@ struct PadView: View {
             }
         }
         .overlay { dropOverlay }
+        .overlay { groupDropOverlay }
         .contentShape(.rect(cornerRadius: Metrics.padCornerRadius))
         // Verrouillé : un clic joue tout de suite. Déverrouillé : un clic sélectionne, un double-clic fait écouter.
         .onTapGesture(count: 2) { controller.audition(at: position) }
         .simultaneousGesture(TapGesture().onEnded(activate))
         .modifier(PadDragSource(enabled: pad != nil && !controller.isLocked) {
             let token = PadDragToken.string(grid: controller.currentGrid.id, position: position)
+            controller.beginDrag(from: position)
             PadDropDelegate.log.info("Glisser : départ de \(position.description, privacy: .public)")
             return NSItemProvider(object: token as NSString)
         })
@@ -250,6 +252,33 @@ struct PadView: View {
         let mode: ShowController.SelectionMode =
             modifiers.contains(.shift) ? .range : modifiers.contains(.command) ? .toggle : .replace
         controller.press(at: position, mode: mode)
+    }
+
+    /// Glisser un groupe de pads : chaque case où il tomberait est teintée (blanc) ; en rouge si le dépôt serait refusé.
+    @ViewBuilder
+    private var groupDropOverlay: some View {
+        if let preview = controller.dragPreview, preview.positions.contains(position) {
+            let color: Color = preview.isAllowed ? .white : .red
+            RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                .fill(color.opacity(0.14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(color.opacity(0.9), style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                )
+                .overlay(alignment: .topTrailing) {
+                    if preview.isAllowed, preview.isCopy {
+                        Text("Copie")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.white, in: .capsule)
+                            .foregroundStyle(Surface.window)
+                            .padding(6)
+                    }
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 
     @ViewBuilder
@@ -357,10 +386,21 @@ struct PadDropDelegate: DropDelegate {
     func dropEntered(info: DropInfo) {
         Self.log.info("Glisser : entrée sur \(position.description, privacy: .public)")
         highlight = isPadDrag(info) && optionHeld ? .copy : .move
+        updateGroupPreview(info)
+    }
+
+    /// Un groupe de pads qu'on glisse : toutes les cases d'arrivée sont montrées (pas pour un fichier venu du Finder).
+    private func updateGroupPreview(_ info: DropInfo) {
+        guard isPadDrag(info), let source = controller.draggedPosition else {
+            controller.clearDragPreview()
+            return
+        }
+        controller.updateDragPreview(source: source, target: position, copying: optionHeld)
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         highlight = isPadDrag(info) && optionHeld ? .copy : .move
+        updateGroupPreview(info)
         // Toujours « copier » : proposer « déplacer » à une source qui ne l'autorise pas fait refuser le dépôt
         // en silence. Le geste réel (déplacer, échanger, dupliquer avec ⌥) est décidé par `performDrop`.
         return DropProposal(operation: .copy)
@@ -368,10 +408,12 @@ struct PadDropDelegate: DropDelegate {
 
     func dropExited(info: DropInfo) {
         highlight = nil
+        controller.clearDragPreview()
     }
 
     func performDrop(info: DropInfo) -> Bool {
         highlight = nil
+        controller.endDrag()
         Self.log.info("Glisser : dépôt sur \(position.description, privacy: .public), fichier \(info.hasItemsConforming(to: [.fileURL])), texte \(info.hasItemsConforming(to: [.plainText]))")
         let target = position
         let controller = controller

@@ -59,6 +59,18 @@ public final class ShowController {
 
     /// Gestionnaire d'annulation de la fenêtre (⌘Z). Fourni par la vue.
     @ObservationIgnored public weak var undoManager: UndoManager?
+    /// Pad d'où part le glisser en cours (`nil` hors glisser) : donne le décalage d'un glisser de groupe.
+    public internal(set) var draggedPosition: GridPosition?
+    /// Cases où tomberait le groupe pendant un glisser de plusieurs pads (`nil` : pas de glisser de groupe).
+    public internal(set) var dragPreview: DropPreview?
+
+    /// Aperçu d'un glisser de groupe : les cases visées et si le dépôt serait accepté.
+    public struct DropPreview: Equatable, Sendable {
+        public let positions: Set<GridPosition>
+        public let isAllowed: Bool
+        public let isCopy: Bool
+    }
+
     /// Pads copiés (⌘C / ⌘X) avec leur position relative, collés avec de nouveaux identifiants.
     var clipboard: [ClipboardEntry]?
 
