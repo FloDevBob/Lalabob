@@ -11,7 +11,8 @@ struct VerticalFader<Accessory: View>: View {
     var valueText: String?
     var defaultLevel = 0.8
     @ViewBuilder var accessory: () -> Accessory
-    private let trackHeight: CGFloat = 120
+    @Environment(\.gridDensity) private var density
+    private var trackHeight: CGFloat { density.faderTrackHeight }
 
     private var shownValue: String { valueText ?? Gain.formatDecibels(level: level) }
 

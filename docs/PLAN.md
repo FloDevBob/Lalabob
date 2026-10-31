@@ -237,3 +237,8 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   le dernier envoi à zéro. **Launchpad (sans fader) : on emprunte la correspondance de l'APC** (choix à confirmer) ; **aucun contrôleur connu : rien n'est envoyé**
   (le niveau change à l'écran). Le 9e fader (CC 56) n'est jamais produit. `ControllerDriver.faderEvent` (pilote pur) + 5 tests, 8 tests Engine.
   **À essayer** : dans LightKey, ajouter « Lalabob Lumière » avec le mapping des faders 7 et 8 de l'APC ; bouger les faders à l'écran et à la main.
+- **Grille adaptée à la hauteur de la fenêtre (01/11/2026)** : en plein écran d'un portable (900 pt), grille, cartes de volume et barre du bas tiennent sans défiler.
+  `GridDensity.fitting(availableHeight:)` (LalabobDesign, pure) fait rétrécir ensemble les **pads** (56 → 38 pt au minimum) et la **piste des faders** (120 → 64 pt)
+  selon la hauteur disponible = fenêtre − en-tête (57) − barre du bas (197, **toujours réservée** : la grille ne bouge pas quand un son démarre ou qu'on
+  sélectionne un pad). Posée dans l'environnement par `ContentView` (`\.gridDensity`). Marges verticales de la grille : 20 → 12. Sous ~ 520 pt de grille
+  (fenêtre < ≈ 775 pt de haut), la zone défile. Vérifié sur l'aperçu « Plein écran portable (1440 × 900) ». 10 tests (`GridDensityTests`).

@@ -54,3 +54,48 @@ public enum Typography {
     public static let padSubtitle = Font.system(size: 11.5)
     public static let mono = Font.system(size: 11, design: .monospaced)
 }
+
+/// Hauteurs de la grille qui s'adaptent à la fenêtre : pads et piste des faders rétrécissent quand la fenêtre est
+/// basse (plein écran d'un portable), jusqu'à un minimum lisible, pour que la grille, les cartes de volume et la barre
+/// du bas restent visibles sans défiler. Pure, donc testable.
+public struct GridDensity: Equatable, Sendable {
+    public var padHeight: CGFloat
+    public var faderTrackHeight: CGFloat
+
+    public init(padHeight: CGFloat, faderTrackHeight: CGFloat) {
+        self.padHeight = padHeight
+        self.faderTrackHeight = faderTrackHeight
+    }
+
+    /// Les dimensions de la maquette (fenêtre haute).
+    public static let regular = GridDensity(padHeight: Metrics.padHeight, faderTrackHeight: 120)
+
+    /// En dessous, le titre et le sous-titre d'un pad ne tiennent plus.
+    public static let minimumPadHeight: CGFloat = 38
+    public static let minimumFaderTrackHeight: CGFloat = 64
+
+    /// Hauteur de tout ce qui n'est ni pad ni piste de fader : en-tête de colonne, espaces, carte de volume (marges,
+    /// valeur), marges de la grille.
+    public static let fixedHeight: CGFloat = 152
+
+    /// Densité qui tient dans `availableHeight` (la zone de la grille, sans l'en-tête de la fenêtre ni la barre du bas).
+    /// Fenêtre assez haute : dimensions de la maquette. Sinon pads et piste rétrécissent ensemble ; au minimum, la zone
+    /// défile.
+    public static func fitting(availableHeight: CGFloat) -> GridDensity {
+        guard availableHeight.isFinite else { return .regular }
+        let rows = CGFloat(8)
+        let regularFree = rows * regular.padHeight + regular.faderTrackHeight
+        let free = availableHeight - fixedHeight
+        guard free < regularFree else { return .regular }
+
+        let trackShare = regular.faderTrackHeight / regularFree
+        let track = min(max(free * trackShare, minimumFaderTrackHeight), regular.faderTrackHeight)
+        let pad = min(max((free - track) / rows, minimumPadHeight), regular.padHeight)
+        return GridDensity(padHeight: pad, faderTrackHeight: track)
+    }
+}
+
+extension EnvironmentValues {
+    /// Hauteurs de la grille adaptées à la fenêtre (posées par la fenêtre principale).
+    @Entry public var gridDensity = GridDensity.regular
+}

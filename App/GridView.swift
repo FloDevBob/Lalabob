@@ -64,6 +64,7 @@ struct GridView: View {
 }
 
 struct ColumnView: View {
+    @Environment(\.gridDensity) private var density
     /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
     private func lightValueText(_ column: Column) -> String {
         let percent = Int((column.level * 100).rounded())
@@ -113,7 +114,7 @@ struct ColumnView: View {
                         Icon.sun.view(size: 16)
                             .foregroundStyle(Surface.lightAccent)
                             .opacity(0.25 + 0.75 * column.level)
-                            .frame(width: 16, height: 120, alignment: .top)
+                            .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
                     }
                 }
             }
@@ -229,6 +230,7 @@ enum DropHighlight: Equatable {
 }
 
 struct PadView: View {
+    @Environment(\.gridDensity) private var density
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let kind: ColumnKind
@@ -248,7 +250,7 @@ struct PadView: View {
                 empty
             }
         }
-        .frame(height: Metrics.padHeight)
+        .frame(height: density.padHeight)
         .overlay {
             if isSelected {
                 RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(.white, lineWidth: 2)
