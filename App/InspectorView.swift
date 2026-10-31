@@ -453,7 +453,7 @@ private struct ColorPopoverButton: View {
     }
 }
 
-private struct Chevron: Shape {
+private nonisolated struct Chevron: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: rect.minX, y: rect.minY))
