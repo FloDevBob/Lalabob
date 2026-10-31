@@ -50,7 +50,7 @@ struct HeaderView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
         }
-        .padding(.leading, 72)  // laisse la place aux boutons de fenêtre (rouge, jaune, vert : titre masqué, ils finissent vers 62 pt)
+        .padding(.leading, 88)  // boutons de fenêtre (rouge, jaune, vert : titre masqué) : ils finissent vers 70 pt, plus une marge de 18 pt
         .padding(.trailing, 20)
         .frame(height: 56)
         .background(Surface.chrome)

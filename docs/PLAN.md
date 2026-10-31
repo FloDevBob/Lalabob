@@ -253,3 +253,4 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   au-dessus de l'en-tête, et la zone à gauche des boutons de fenêtre avait une autre teinte. `ContentView` ignore maintenant la zone de sécurité du haut : l'en-tête remonte
   jusqu'au bord et les boutons de fenêtre se posent sur sa partie gauche. Verrouillé, le bouton de la bibliothèque n'est plus qu'absent (plus de trou avant le logo).
   Largeur minimale de la fenêtre portée de 1100 à **1320 pt** : à 1100, bibliothèque ouverte, la zone lumière était coupée à droite.
+- **Marge de l'en-tête à gauche : 88 pt (01/11/2026)** : les boutons de fenêtre finissent vers 70 pt ; 72 pt laissait le logo (ou le bouton de la bibliothèque, déverrouillé) à ~ 4 pt du bouton vert. 88 pt = 18 pt d'air. Vérifié sur une capture de la vraie fenêtre.
