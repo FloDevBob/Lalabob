@@ -30,9 +30,10 @@ public actor WaveformStore {
         return waveform
     }
 
+    /// « v2 » : l'analyse des MP3 a été corrigée (longueur annoncée peu fiable) ; les formes d'onde déjà en cache, tronquées, sont ignorées.
     private func cacheKey(for url: URL, buckets: Int) throws -> String {
         let values = try url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
-        let stamp = "\(url.standardizedFileURL.path)|\(values.fileSize ?? 0)|\(values.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(buckets)"
+        let stamp = "v2|\(url.standardizedFileURL.path)|\(values.fileSize ?? 0)|\(values.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(buckets)"
         // FNV-1a 64 bits : stable d'un lancement à l'autre (contrairement à `hashValue`).
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
         for byte in stamp.utf8 {

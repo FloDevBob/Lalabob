@@ -254,3 +254,9 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   jusqu'au bord et les boutons de fenêtre se posent sur sa partie gauche. Verrouillé, le bouton de la bibliothèque n'est plus qu'absent (plus de trou avant le logo).
   Largeur minimale de la fenêtre portée de 1100 à **1320 pt** : à 1100, bibliothèque ouverte, la zone lumière était coupée à droite.
 - **Marge de l'en-tête à gauche : 88 pt (01/11/2026)** : les boutons de fenêtre finissent vers 70 pt ; 72 pt laissait le logo (ou le bouton de la bibliothèque, déverrouillé) à ~ 4 pt du bouton vert. 88 pt = 18 pt d'air. Vérifié sur une capture de la vraie fenêtre.
+- **Forme d'onde des MP3 (01/11/2026, bug trouvé en essai)** : la barre du bas n'affichait rien pour de nombreux MP3 (« Forme d'onde indisponible »). Cause, reproduite sur 13 des 17 MP3
+  d'un vrai spectacle : `AVAudioFile.length` est une **estimation** pour les formats compressés (MP3 à débit variable : 1 à 3 000 trames de trop) ; l'analyse lisait jusqu'à cette
+  longueur et la lecture échouait avec `eofErr`. `Waveform.analyze` lit désormais **jusqu'à la vraie fin**, garde un pic par bloc de 1 024 trames puis regroupe selon le nombre réel de
+  trames lues ; une erreur de lecture après du son donne une forme tronquée plutôt qu'absente. Le cache disque passe en « v2 » (les anciennes formes, parfois tronquées, sont ignorées).
+  Le moteur audio n'est pas touché : `read(into:)` lit simplement un peu moins que `length` (≤ 70 ms) sans erreur (vérifié sur les mêmes fichiers). 3 tests (AAC, fichier plus court
+  que son en-tête, fichier vide). Limite : durée annoncée du MP3 et durée lue diffèrent de quelques dizaines de ms (sans effet audible).

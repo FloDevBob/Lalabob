@@ -39,6 +39,55 @@ struct WaveformTests {
         #expect(throws: (any Error).self) { try Waveform.analyze(url, buckets: 10) }
     }
 
+    @Test func aCompressedFileGetsItsWaveform() throws {
+        // AAC (comme le MP3) : format compressé, durée annoncée approximative, trames d'amorce au début.
+        let dir = try makeTemporaryDirectory()
+        let url = dir.appending(path: "a.m4a")
+        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2))
+        let frames = AVAudioFrameCount(44100 * 3)
+        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames))
+        buffer.frameLength = frames
+        for channel in 0..<2 {
+            let data = try #require(buffer.floatChannelData)[channel]
+            for i in 0..<Int(frames) { data[i] = 0.5 * sin(Float(i) * 0.05) }
+        }
+        do {
+            let file = try AVAudioFile(
+                forWriting: url,
+                settings: [
+                    AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 44100, AVNumberOfChannelsKey: 2,
+                ])
+            try file.write(from: buffer)
+        }
+        let waveform = try Waveform.analyze(url, buckets: 100)
+        #expect(waveform.peaks.count == 100)
+        #expect(abs(waveform.duration - 3) < 0.2)
+        #expect(waveform.peaks.max() ?? 0 > 0.3)
+        #expect(waveform.peaks.filter { $0 == 0 }.count < 5)  // pas de trou à la fin
+    }
+
+    @Test func aFileLongerOnPaperThanOnDiskStillGivesTheSoundThatExists() throws {
+        // Un MP3 annonce souvent plus de trames qu'il n'en contient : la lecture au-delà de la fin échoue (eofErr).
+        // On simule en coupant un WAV de 2 s après environ 1 s, l'en-tête annonçant toujours 2 s.
+        let dir = try makeTemporaryDirectory()
+        try writeTestFile(named: "a.wav", in: dir, duration: 2, channels: 1) { _ in 0.5 }
+        let url = dir.appending(path: "a.wav")
+        let data = try Data(contentsOf: url)
+        try data.prefix(data.count / 2).write(to: url)
+
+        let waveform = try Waveform.analyze(url, buckets: 50)
+        #expect(waveform.peaks.count == 50)
+        #expect(waveform.duration > 0.5 && waveform.duration < 1.5)  // ce qui existe vraiment, pas les 2 s annoncées
+        #expect(waveform.peaks.allSatisfy { abs($0 - 0.5) < 0.001 })
+    }
+
+    @Test func aFileWithoutAnySoundStillThrowsOrIsEmptyButNeverCrashes() throws {
+        let dir = try makeTemporaryDirectory()
+        try writeTestFile(named: "vide.wav", in: dir, duration: 0.0001) { _ in 0 }
+        let waveform = try? Waveform.analyze(dir.appending(path: "vide.wav"), buckets: 10)
+        #expect(waveform == nil || waveform?.peaks.count == 10)
+    }
+
     @Test func roundTripsThroughCodable() throws {
         let waveform = Waveform(duration: 1.5, peaks: [0, 0.5, 1])
         let data = try JSONEncoder().encode(waveform)
