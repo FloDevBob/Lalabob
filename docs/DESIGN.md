@@ -53,7 +53,7 @@ fois ; des filets verticaux séparent les groupes sans rapport.
    (couper, copier, coller, dupliquer, vider).
 
 **Bande du bas (120 px)** : **jauge de volume du pad** (rail, poignée blanche arrondie, valeur en dB ; −60…+12 dB,
-indépendante du fader de colonne, double-clic = 0 dB, appliquée au prochain déclenchement) puis la forme d'onde pleine
+indépendante du fader de colonne, double-clic = 0 dB, **appliquée en direct, même sur un son qui joue**) puis la forme d'onde pleine
 largeur (zones élaguées assombries, poignées d'élagage, tête de lecture). **Les fondus se règlent sur l'onde** (décision du
 31/10/2026, retour d'essai : « très pratique ») : une puce « + Fondu » sous la courbe, en bas à gauche (entrée) et en bas à
 droite (sortie) ; une fois actif, la puce affiche la durée (« 0,8 s ») avec une croix pour le retirer, et une poignée au

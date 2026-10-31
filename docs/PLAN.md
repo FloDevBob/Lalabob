@@ -133,8 +133,13 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   (2) **Couper / Copier / Coller / Dupliquer / Vider** regroupés dans un menu « Actions » (raccourcis inchangés) ;
   (3) pastille de position (C2·L5) retirée de l'en-tête, gardée en infobulle ; (4) pas de chevron système (Iconoir
   uniquement) : petit chevron dessiné ; (5) jauge de 46 px de large (au lieu de 34) pour tenir « −12,0 dB ».
-- **Limites connues** : le volume du pad s'applique **au prochain déclenchement** (il est « cuit » dans les échantillons
-  des sons courts) — pas de réglage en direct pendant la lecture ; à la largeur minimale de fenêtre, l'en-tête est
+- **Volume du pad en direct (31/10/2026)** : la jauge agit **pendant la lecture**. Le volume n'est plus « cuit » dans les
+  échantillons : chaque voix a un nœud de gain (`AVAudioUnitEQ`, `globalGain`), réglable en direct et capable de dépasser 0 dB
+  (jusqu'à +12 dB, ce que le volume d'un lecteur 0…1 ne permet pas). Pendant le glisser, chaque position part au moteur
+  (`ShowController.previewGain` → `AudioEngineControlling.setPadGain`, sans écrire dans le spectacle) ; au relâchement,
+  `setGain` valide la valeur (une seule annulation). Un changement de volume dans le spectacle (annulation comprise)
+  ne recharge ni ne relance le son. 14 tests (`PadGainTests`, `ClipEditingTests`).
+- **Limites connues** : à la largeur minimale de fenêtre, l'en-tête est
   dense (le nom de fichier est tronqué en premier) ; le clic simple sur la jauge ne déplace pas la poignée (glisser
   seulement, pour que le double-clic reste fiable).
 - **Retouches du 31/10/2026 (retour d'essai)** : (a) fondus remis **sur l'onde** (`WaveformEditor` de J5b, `AudioLibrary.formatFade` + 5 tests
