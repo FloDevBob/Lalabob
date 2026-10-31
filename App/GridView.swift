@@ -67,10 +67,7 @@ struct ColumnView: View {
             HStack(spacing: 8) {
                 (column.kind == .audio ? Icon.music : Icon.spotlight).view(size: 16)
                     .foregroundStyle(column.kind == .audio ? Surface.textSecondary : Surface.lightAccent)
-                Text(column.name)
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(Surface.textPrimary)
-                    .lineLimit(1)
+                ColumnTitle(index: index, name: column.name)
                 Spacer(minLength: 0)
                 Text("\(index + 1)")
                     .font(Typography.mono)
@@ -91,6 +88,64 @@ struct ColumnView: View {
             }
         }
         .frame(minWidth: 110, maxWidth: .infinity)
+    }
+}
+
+/// Nom d'une colonne : double-clic pour le modifier (déverrouillé), Entrée valide, Échap annule, un clic ailleurs valide.
+struct ColumnTitle: View {
+    @Environment(ShowController.self) private var controller
+    let index: Int
+    let name: String
+
+    @State private var isEditing = false
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
+    private let font = Font.system(size: 12.5, weight: .semibold)
+
+    var body: some View {
+        Group {
+            if isEditing {
+                TextField("Nom de la colonne", text: $draft)
+                    .textFieldStyle(.plain)
+                    .font(font)
+                    .foregroundStyle(Surface.textPrimary)
+                    .focused($focused)
+                    .onSubmit { focused = false }
+                    .onExitCommand {
+                        isEditing = false
+                        focused = false
+                    }
+                    .onChange(of: focused) { wasFocused, isFocused in
+                        if wasFocused, !isFocused { commit() }
+                    }
+            } else {
+                Text(name)
+                    .font(font)
+                    .foregroundStyle(Surface.textPrimary)
+                    .lineLimit(1)
+                    .help(controller.isLocked ? "" : "Double-cliquer pour renommer la colonne")
+                    .onTapGesture(count: 2) { start() }
+            }
+        }
+        // Un changement d'onglet ou le verrouillage pendant la saisie l'abandonne.
+        .onChange(of: controller.isLocked) { isEditing = false }
+        .onChange(of: controller.selectedGridIndex) { isEditing = false }
+        .accessibilityLabel("Colonne \(index + 1) : \(name)")
+        .accessibilityAction(named: "Renommer") { start() }
+    }
+
+    private func start() {
+        guard !controller.isLocked else { return }
+        draft = name
+        isEditing = true
+        DispatchQueue.main.async { focused = true }
+    }
+
+    private func commit() {
+        guard isEditing else { return }
+        isEditing = false
+        controller.renameColumn(at: index, to: draft)
     }
 }
 

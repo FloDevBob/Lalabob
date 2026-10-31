@@ -201,3 +201,6 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   Reste à l'œil : les états désactivés et les bordures décoratives (case vide, 11 % de blanc) ne sont volontairement pas soumis au seuil.
 - **Badge « ON » des cues lumière : abandonné** (l'état de LightKey n'est pas connu de Lalabob, ADR 0004). **Vumètre réel : reporté au J6.**
 - **Reste du J5 = validation humaine** : comparer l'app à la maquette côte à côte (je ne peux pas ouvrir l'artefact), puis essai réel.
+- **Noms de colonnes modifiables (01/11/2026)** : double-clic sur le titre d'une colonne (déverrouillé) pour le renommer ; Entrée ou clic ailleurs valide,
+  Échap annule. `ShowController.renameColumn(at:to:)` (nom vide refusé, 80 caractères, une annulation, refusé verrouillé). 4 tests (`EditingTests`).
+  Le nom de la colonne apparaît aussi dans l'infobulle de position des pads (ex. « C2·L5 »).

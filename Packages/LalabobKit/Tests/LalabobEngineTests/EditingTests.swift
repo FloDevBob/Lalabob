@@ -270,6 +270,40 @@ struct EditingTests {
         #expect(controller.selectedGridIndex == 0)
     }
 
+    @Test func renameAColumnIsUndoableAndKeepsItsContent() {
+        let (controller, undo) = makeController()
+        controller.place(sound("Rire"), at: Self.a)
+        controller.renameColumn(at: 0, to: "  Ambiances ")
+        #expect(controller.currentGrid.columns[0].name == "Ambiances")
+        #expect(controller.pad(at: Self.a)?.title == "Rire")
+        undo.undo()
+        #expect(controller.currentGrid.columns[0].name == "Colonne 1")
+    }
+
+    @Test func renameAColumnRefusesEmptyNamesUnknownColumnsAndNoChange() {
+        let (controller, undo) = makeController()
+        controller.renameColumn(at: 0, to: "   ")
+        controller.renameColumn(at: 42, to: "Ailleurs")
+        controller.renameColumn(at: 0, to: "Colonne 1")  // aucun changement : pas d'annulation
+        #expect(controller.currentGrid.columns[0].name == "Colonne 1")
+        #expect(!undo.canUndo)
+    }
+
+    @Test func aColumnNameIsLimitedInLength() {
+        let (controller, _) = makeController()
+        controller.renameColumn(at: 1, to: String(repeating: "a", count: 500))
+        #expect(controller.currentGrid.columns[1].name.count == ShowController.maximumTextLength)
+    }
+
+    @Test func renameAColumnIsRefusedWhenLocked() {
+        let (controller, undo) = makeController()
+        controller.isLocked = true
+        controller.renameColumn(at: 0, to: "Autre")
+        #expect(controller.currentGrid.columns[0].name == "Colonne 1")
+        #expect(!undo.canUndo)
+        #expect(controller.lockNotice != nil)
+    }
+
     @Test func everyEditKeepsTheShowValid() throws {
         let (controller, _) = makeController()
         controller.place(sound("Rire"), at: Self.a)

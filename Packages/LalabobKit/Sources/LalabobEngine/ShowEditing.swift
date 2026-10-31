@@ -144,6 +144,16 @@ extension ShowController {
         }
     }
 
+    /// Renomme une colonne de la grille affichée (nom vide refusé, 80 caractères au plus ; une seule annulation).
+    public func renameColumn(at index: Int, to name: String) {
+        let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maximumTextLength))
+        commit("Renommer la colonne") { show, grid in
+            guard show.grids[grid].columns.indices.contains(index), !trimmed.isEmpty else { return false }
+            show.grids[grid].columns[index].name = trimmed
+            return true
+        }
+    }
+
     /// Réordonne les onglets ; l'onglet affiché reste le même.
     public func moveGrid(from source: Int, to destination: Int) {
         let displayed = currentGrid.id
