@@ -193,3 +193,11 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   dessinée en image car un menu n'affiche pas de vue SwiftUI), coche sur la teinte en cours, et un sous-menu « Intensité de la LED ».
   Rendu à vérifier à l'œil (les pastilles doivent rester en couleur).
 - **Cases vides verrouillé (01/11/2026)** : plus de « Déposer un son » / « Nouvelle cue » quand le spectacle est verrouillé ; la case garde sa bordure pointillée discrète.
+
+### J5 — clôture du volet code (01/11/2026)
+- **Audit des contrastes fait** (WCAG, calcul automatisé) : pour les 16 teintes, titre de pad ≥ 5,76 : 1, sous-titre (88 %) ≥ 4,87 : 1, couleur vive sur
+  le fond de fenêtre ≥ 5,58 : 1 (AA = 4,5 ; 3 pour les éléments d'interface). Textes d'interface sur fond : principal ≥ 15 : 1, secondaire ≥ 8,5 : 1,
+  tertiaire ≥ 5,7 : 1. Verrouillé par 48 tests (`ContrastTests`) : une teinte modifiée trop pâle ou trop sombre fera échouer `make test`.
+  Reste à l'œil : les états désactivés et les bordures décoratives (case vide, 11 % de blanc) ne sont volontairement pas soumis au seuil.
+- **Badge « ON » des cues lumière : abandonné** (l'état de LightKey n'est pas connu de Lalabob, ADR 0004). **Vumètre réel : reporté au J6.**
+- **Reste du J5 = validation humaine** : comparer l'app à la maquette côte à côte (je ne peux pas ouvrir l'artefact), puis essai réel.
