@@ -77,20 +77,17 @@ struct LockTests {
         #expect(controller.lockNotice != nil)
     }
 
-    @Test func lockedClickPlaysAndUnlockedClickSelects() async {
+    @Test func aSingleClickOnlySelectsWhetherLockedOrNot() async {
         let audio = RecordingAudioEngine()
         let (controller, _, pad) = makeController(locked: true, audio: audio)
 
         controller.press(at: Self.a)
-        #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
-
-        controller.selection = nil
+        #expect(controller.selection == Self.a)
         controller.isLocked = false
-        let triggersBefore = await audio.commands.filter { $0 == .trigger(pad.id) }.count
         controller.press(at: Self.a)
         #expect(controller.selection == Self.a)
         try? await Task.sleep(for: .milliseconds(150))
-        #expect(await audio.commands.filter { $0 == .trigger(pad.id) }.count == triggersBefore)
+        #expect(!(await audio.commands.contains(.trigger(pad.id))))
     }
 
     @Test func doubleClickAuditionsWhenUnlocked() async {
@@ -100,12 +97,13 @@ struct LockTests {
         #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
     }
 
-    @Test func doubleClickDoesNothingMoreWhenLocked() async {
+    @Test func doubleClickPlaysWhenLockedToo() async {
         let audio = RecordingAudioEngine()
         let (controller, _, pad) = makeController(locked: true, audio: audio)
-        controller.audition(at: Self.a)  // verrouillé : chaque clic joue déjà, le double-clic n'ajoute rien
-        try? await Task.sleep(for: .milliseconds(150))
-        #expect(!(await audio.commands.contains(.trigger(pad.id))))
+        controller.audition(at: Self.a)
+        #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
+        #expect(controller.lockNotice == nil)  // jouer n'est pas modifier
+        #expect(controller.selection == Self.a)  // et le panneau de jeu s'ouvre pour ce son
     }
 
     @Test func lockingClearsTheSelection() {
@@ -152,18 +150,18 @@ struct LockTests {
 
     // MARK: - Panneau du bas en mode verrouillé
 
-    @Test func lockedClickSelectsTheAudioPadItPlays() {
+    @Test func lockedSingleClickSelectsTheAudioPadSoItsPanelShows() {
         let (controller, _, _) = makeController(locked: true)
         #expect(controller.selection == nil)
         controller.press(at: Self.a)
         #expect(controller.selection == Self.a)
     }
 
-    @Test func lockedClickOnAnEmptyCellKeepsTheSelection() {
+    @Test func lockedClickOnAnEmptyCellSelectsItButShowsNoPanel() {
         let (controller, _, _) = makeController(locked: true)
         controller.press(at: Self.a)
         controller.press(at: Self.b)
-        #expect(controller.selection == Self.a)
+        #expect(controller.selection == Self.b)  // l'interface n'affiche le panneau que pour un son
     }
 
     @Test func aPadStartedFromTheControllerIsSelectedWhenLocked() {

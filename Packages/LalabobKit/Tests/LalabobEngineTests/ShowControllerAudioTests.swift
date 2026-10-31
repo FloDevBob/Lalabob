@@ -83,14 +83,18 @@ struct ShowControllerAudioTests {
         #expect(controller.meters === audio.meters)
     }
 
-    @Test func liveClickTriggersThePad() async {
+    @Test func doubleClickTriggersThePadAndASingleClickDoesNot() async {
         let audio = RecordingAudioEngine()
         let (show, pad) = makeShow()
         let controller = makeController(audio, show: show)
         controller.isLocked = true
 
         controller.press(at: GridPosition(column: 0, row: 2))
-        let sent = await commands(of: audio)
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!(await audio.commands.contains(.trigger(pad.id))))
+
+        controller.audition(at: GridPosition(column: 0, row: 2))
+        let sent = await commands(of: audio, count: 2)
         #expect(sent.last == .trigger(pad.id))
     }
 
@@ -126,7 +130,7 @@ struct ShowControllerAudioTests {
         let audio = RecordingAudioEngine()
         let controller = makeController(audio, show: Show(name: "S", grids: [grid]))
         controller.isLocked = true
-        controller.press(at: GridPosition(column: 6, row: 0))
+        controller.audition(at: GridPosition(column: 6, row: 0))
         try? await Task.sleep(for: .milliseconds(100))
         let sent = await audio.commands
         #expect(!sent.contains { if case .trigger = $0 { true } else { false } })
@@ -139,8 +143,8 @@ struct ShowControllerAudioTests {
         controller.isLocked = true
         let position = GridPosition(column: 0, row: 2)
 
-        controller.press(at: position)
-        controller.press(at: position)
+        controller.audition(at: position)
+        controller.audition(at: position)
         controller.stopAll()
         let sent = await commands(of: audio)
         #expect(Array(sent.suffix(3)) == [.trigger(pad.id), .trigger(pad.id), .stopAll])

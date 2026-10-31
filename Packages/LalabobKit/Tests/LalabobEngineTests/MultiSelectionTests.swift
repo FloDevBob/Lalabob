@@ -90,13 +90,13 @@ struct MultiSelectionTests {
         #expect(controller.selectedPositions.isEmpty)
     }
 
-    @Test func lockedClicksPlayInsteadOfSelectingARange() {
+    @Test func lockedClicksNeverBuildAMultipleSelection() {
         let (controller, _) = makeController()
         controller.isLocked = true
         controller.press(at: Self.a)
         controller.press(at: Self.d, mode: .range)
         controller.press(at: Self.b, mode: .toggle)
-        #expect(controller.selectedPositions == [Self.b])  // seul le dernier son lancé est « sélectionné » pour le panneau
+        #expect(controller.selectedPositions == [Self.b])  // rien à éditer en groupe : un seul pad, celui du panneau de jeu
     }
 
     // MARK: Copier, couper, coller

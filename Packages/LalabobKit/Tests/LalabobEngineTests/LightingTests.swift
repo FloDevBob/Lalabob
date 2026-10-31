@@ -49,7 +49,7 @@ struct LightingTests {
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
 
-        rig.controller.press(at: Self.light)
+        rig.controller.audition(at: Self.light)
         // Colonne 7, 2e rangée depuis le haut → rangée 7 depuis le bas → note 77.
         let expected: [MIDIEvent] = [.noteOn(channel: 0, note: 77, velocity: 127), .noteOff(channel: 0, note: 77, velocity: 0)]
         #expect(await waitUntil { await rig.transport.lighting == expected })
@@ -69,7 +69,7 @@ struct LightingTests {
         defer { rig.runner.cancel() }
         #expect(rig.controller.lastControllerModel == .apcMiniMK2)
 
-        rig.controller.press(at: Self.light)
+        rig.controller.audition(at: Self.light)
         // APC : note = rangée depuis le bas × 8 + colonne = 6 × 8 + 6 = 54.
         #expect(await waitUntil { await rig.transport.lighting.first == .noteOn(channel: 0, note: 54, velocity: 127) })
     }
@@ -78,7 +78,7 @@ struct LightingTests {
     func noKnownController() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
-        rig.controller.press(at: Self.light)
+        rig.controller.audition(at: Self.light)
         try? await Task.sleep(for: .milliseconds(250))
         #expect(await rig.transport.lighting.isEmpty)
     }
@@ -95,16 +95,19 @@ struct LightingTests {
         #expect(!(await rig.audio.commands.contains { if case .trigger = $0 { true } else { false } }))
     }
 
-    @Test("En mode Édition, un clic sélectionne sans rien envoyer")
-    func editModeSelects() async {
+    @Test("Un simple clic sélectionne sans rien envoyer, verrouillé ou non")
+    func singleClickSelects() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
-        rig.controller.isLocked = false
-
-        rig.controller.press(at: Self.light)
+        rig.controller.press(at: Self.light)  // verrouillé : le clic ne joue plus, il faut double-cliquer
         try? await Task.sleep(for: .milliseconds(250))
         #expect(rig.controller.selection == Self.light)
+        #expect(await rig.transport.lighting.isEmpty)
+
+        rig.controller.isLocked = false
+        rig.controller.press(at: Self.light)
+        try? await Task.sleep(for: .milliseconds(150))
         #expect(await rig.transport.lighting.isEmpty)
     }
 

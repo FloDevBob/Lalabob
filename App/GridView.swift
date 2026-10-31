@@ -259,7 +259,7 @@ struct PadView: View {
         .overlay { dropOverlay }
         .overlay { groupDropOverlay }
         .contentShape(.rect(cornerRadius: Metrics.padCornerRadius))
-        // Verrouillé : un clic joue tout de suite. Déverrouillé : un clic sélectionne, un double-clic fait écouter.
+        // Verrouillé ou non : un clic sélectionne (le panneau s'ouvre), un double-clic joue. Le contrôleur, lui, joue d'un appui.
         .onTapGesture(count: 2) { controller.audition(at: position) }
         .simultaneousGesture(TapGesture().onEnded(activate))
         .modifier(PadDragSource(enabled: pad != nil && !controller.isLocked) {
@@ -276,7 +276,9 @@ struct PadView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind == .audio ? "Case vide" : "Case lumière vide"))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction { activate() }
+        .accessibilityAction { controller.audition(at: position) }
+        .accessibilityAction(named: "Sélectionner") { activate() }
+        .help(pad == nil ? "" : "Clic : sélectionner · Double-clic : jouer")
     }
 
     /// Clic : ⇧ étend la sélection en rectangle depuis l'ancre, ⌘ ajoute ou retire la case, sinon la case seule.

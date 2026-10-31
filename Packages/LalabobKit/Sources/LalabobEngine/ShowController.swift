@@ -169,15 +169,12 @@ public final class ShowController {
 
     // MARK: - Commandes
 
-    /// Clic sur une case : verrouillé, il joue (comme un appui sur le contrôleur) et sélectionne le son lancé, pour que
-    /// le panneau du bas (version verrouillée) le montre ; déverrouillé, il sélectionne le pad sans le jouer.
+    /// Clic simple sur une case : la sélectionne, **sans jouer** (déverrouillé comme verrouillé : un son ne part qu'au
+    /// double-clic, `audition`, ou sur le contrôleur). Déverrouillé, ⇧ étend la sélection en rectangle et ⌘ ajoute ou retire
+    /// une case ; verrouillé, il n'y a que la case cliquée (rien à éditer en groupe) et le panneau de jeu s'ouvre pour un son.
     public func press(at position: GridPosition, mode: SelectionMode = .replace) {
         guard position.isValid else { return }
-        if isLocked {
-            play(at: position)
-            return
-        }
-        switch mode {
+        switch isLocked ? .replace : mode {
         case .replace:
             selection = position
         case .range:
@@ -229,9 +226,9 @@ public final class ShowController {
         }
     }
 
-    /// Double-clic, déverrouillé : écouter le pad sans quitter l'édition. Verrouillé, chaque clic joue déjà.
+    /// Double-clic : joue le pad (son ou cue lumière), déverrouillé comme verrouillé. Jouer n'est pas modifier.
     public func audition(at position: GridPosition) {
-        guard position.isValid, !isLocked else { return }
+        guard position.isValid else { return }
         play(at: position)
     }
 

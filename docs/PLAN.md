@@ -242,3 +242,8 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   selon la hauteur disponible = fenêtre − en-tête (57) − barre du bas (197, **toujours réservée** : la grille ne bouge pas quand un son démarre ou qu'on
   sélectionne un pad). Posée dans l'environnement par `ContentView` (`\.gridDensity`). Marges verticales de la grille : 20 → 12. Sous ~ 520 pt de grille
   (fenêtre < ≈ 775 pt de haut), la zone défile. Vérifié sur l'aperçu « Plein écran portable (1440 × 900) ». 10 tests (`GridDensityTests`).
+- **Lecture à la souris : double-clic (01/11/2026, demande de l'utilisateur)** : un clic simple ne joue plus, **verrouillé comme déverrouillé** ; il sélectionne le pad
+  (verrouillé : le panneau de jeu s'ouvre pour un son, pas de sélection multiple), le **double-clic** joue (son ou cue lumière → LightKey). Le contrôleur physique joue
+  toujours d'un appui. `ShowController.press(at:mode:)` = sélection seule ; `audition(at:)` joue même verrouillé ; VoiceOver : l'action par défaut joue, « Sélectionner » en
+  action nommée ; infobulle « Clic : sélectionner · Double-clic : jouer ». Remplace la règle du 30/10 « verrouillé = un clic joue ». 5 tests adaptés ou ajoutés.
+  Interprétation : j'ai appliqué la règle aux deux modes ; si seul le mode verrouillé devait garder le clic simple, c'est une ligne à changer.

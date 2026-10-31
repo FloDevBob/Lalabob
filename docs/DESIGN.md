@@ -64,10 +64,10 @@ bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il
 
 ## Interactions
 
-- **Cadenas fermé** (verrouillé) : un clic sur un pad agit comme un appui sur le contrôleur. Bibliothèque et inspecteur
+- **Clic et double-clic (01/11/2026, verrouillé ou non)** : un **clic** sélectionne le pad (verrouillé : le panneau de jeu s'ouvre pour un son), un **double-clic** le joue ; seul le contrôleur physique joue d'un appui. Évite un départ de son sur un clic accidentel.
+- **Cadenas fermé** (verrouillé) : le double-clic joue (jouer n'est pas modifier). Bibliothèque et inspecteur
   masqués ; glisser-déposer, presse-papiers, onglets et ⌘Z refusés, avec un bandeau « Spectacle verrouillé : ouvrez le cadenas (⌘L) ».
   Faders, changement d'onglet, Tout arrêter et contrôleur restent actifs.
-- **Cadenas ouvert** : un clic sélectionne le pad (inspecteur) sans le jouer ; un double-clic le joue pour l'écouter.
 - Un spectacle déjà enregistré s'ouvre verrouillé ; un nouveau spectacle s'ouvre déverrouillé.
 - Glisser un fichier de la bibliothèque vers un pad : crée le pad (titre, sous-titre, couleur pré-remplis).
 - Glisser un pad sur une autre case : déplace ou échange. Avec ⌥ : duplique.

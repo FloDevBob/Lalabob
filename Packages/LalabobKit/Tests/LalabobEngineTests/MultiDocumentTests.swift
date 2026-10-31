@@ -106,10 +106,10 @@ struct MultiDocumentTests {
         #expect(await waitUntil { await a.connectedController != nil })
         session.attach(b)
 
-        a.press(at: GridPosition(column: 6, row: 0))  // fenêtre inactive : ignoré
+        a.audition(at: GridPosition(column: 6, row: 0))  // fenêtre inactive : ignoré
         try? await Task.sleep(for: .milliseconds(200))
         #expect(await transport.lighting.isEmpty)
-        b.press(at: GridPosition(column: 6, row: 0))
+        b.audition(at: GridPosition(column: 6, row: 0))
         #expect(await waitUntil { await !transport.lighting.isEmpty })
     }
 }
