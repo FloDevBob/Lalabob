@@ -94,6 +94,10 @@ public final class ShowController {
     /// Clics à l'écran sur un pad lumière : `ControllerSession` les transmet à LightKey quand cette fenêtre est active.
     @ObservationIgnored var lightPressHandler: (@MainActor (GridPosition) -> Void)?
     /// Fader d'une colonne lumière déplacé à l'écran : `ControllerSession` le répète vers LightKey quand cette fenêtre est active.
+    /// Faders physiques décrochés : colonne → position réelle du fader (0…1). Ils n'agissent pas encore sur leur colonne
+    /// (prise en main progressive, `FaderPickup`) ; l'interface en fait un repère sur la carte de la colonne.
+    public private(set) var waitingFaders: [Int: Double] = [:]
+    @ObservationIgnored private var faderPickup = FaderPickup()
     @ObservationIgnored var lightFaderHandler: (@MainActor (_ column: Int, _ level: Double) -> Void)?
     /// Appelé après chaque changement du spectacle (le document en garde une copie pour l'enregistrer).
     @ObservationIgnored public var onShowChange: (@MainActor (Show) -> Void)?
@@ -160,6 +164,7 @@ public final class ShowController {
         guard show.grids.indices.contains(index) else { return }
         selectedGridIndex = index
         syncColumnLevels()
+        syncHardwareFaders()
     }
 
     public func pad(at position: GridPosition) -> Pad? {
@@ -306,6 +311,23 @@ public final class ShowController {
         commands.yield(.togglePause(pad.id))
     }
 
+    /// Espace : sur le pad sélectionné, pause si le son joue, reprise s'il est en pause, lecture s'il est arrêté
+    /// (ou cue lumière envoyée). Marche aussi verrouillé : c'est du jeu, pas de l'édition.
+    public func togglePlaybackOfSelection() {
+        guard let position = selection, let pad = pad(at: position) else { return }
+        if case .audio = pad.content, playback[pad.id]?.state.isActive == true {
+            commands.yield(.togglePause(pad.id))
+        } else {
+            play(at: position)
+        }
+    }
+
+    /// Retour : lecture / relance du pad sélectionné (son : selon son réglage « Nouvel appui »).
+    public func playSelection() {
+        guard let position = selection else { return }
+        play(at: position)
+    }
+
     public func stop(at position: GridPosition) {
         guard let pad = pad(at: position), case .audio = pad.content else { return }
         commands.yield(.stop(pad.id))
@@ -316,8 +338,32 @@ public final class ShowController {
         commands.yield(.stopAll)
     }
 
-    /// Fader d'une colonne de la grille affichée. Niveau borné à 0…1.
+    /// Fader d'une colonne de la grille affichée, déplacé **à l'écran**. Niveau borné à 0…1. Un fader physique qui
+    /// n'était plus à cette valeur se décroche (il reprend la main en la rejoignant, `moveHardwareFader`).
     public func setColumnLevel(_ column: Int, level: Double) {
+        applyColumnLevel(column, level: level)
+        syncHardwareFaders()
+    }
+
+    /// Fader **physique** déplacé (0…1). Tant qu'il n'a pas rejoint la valeur affichée (après un changement d'onglet, par
+    /// exemple), il est ignoré : le volume ne saute pas. Renvoie `true` si la colonne a suivi.
+    @discardableResult
+    public func moveHardwareFader(column: Int, value: Double) -> Bool {
+        guard (0..<PadGrid.size).contains(column), value.isFinite else { return false }
+        let value = Gain.faderLevel(value)
+        let applied = faderPickup.move(column: column, to: value, screen: currentGrid.columns[column].level)
+        if applied { applyColumnLevel(column, level: value) }
+        publishWaitingFaders()
+        return applied
+    }
+
+    /// Positions déjà connues des faders physiques (gardées par la session d'une fenêtre à l'autre).
+    func seedHardwareFaders(_ positions: [Int: Double]) {
+        faderPickup.seed(positions)
+        syncHardwareFaders()
+    }
+
+    private func applyColumnLevel(_ column: Int, level: Double) {
         guard (0..<PadGrid.size).contains(column) else { return }
         let level = Gain.faderLevel(level)
         show.grids[selectedGridIndex].columns[column].level = level
@@ -325,6 +371,17 @@ public final class ShowController {
         if show.grids[selectedGridIndex].columns[column].kind == .audio {
             commands.yield(.level(column: column, level: level))
         }
+    }
+
+    /// Les niveaux affichés ont pu changer : un fader physique n'est accroché que s'il y est encore.
+    private func syncHardwareFaders() {
+        faderPickup.sync(screenLevels: currentGrid.columns.map(\.level))
+        publishWaitingFaders()
+    }
+
+    private func publishWaitingFaders() {
+        let waiting = faderPickup.waiting
+        if waiting != waitingFaders { waitingFaders = waiting }
     }
 
     /// Fader d'une colonne lumière déplacé **à l'écran** : règle le niveau et le répète vers LightKey (CC du fader de la
@@ -356,6 +413,7 @@ public final class ShowController {
         selection = nil
         playback = [:]
         syncAudio()
+        syncHardwareFaders()
     }
 
     // MARK: - Sortie audio
@@ -409,6 +467,7 @@ public final class ShowController {
         show = newShow
         if !show.grids.indices.contains(selectedGridIndex) { selectedGridIndex = show.grids.count - 1 }
         syncAudio()
+        syncHardwareFaders()
         onShowChange?(show)
 
         guard let undoManager else { return }

@@ -199,3 +199,51 @@ struct LockTests {
         #expect(controller.lockNotice == nil)
     }
 }
+
+/// Espace : lecture / pause du pad sélectionné.
+extension LockTests {
+    @Test func spaceStartsTheSelectedPadThenPausesIt() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: true, audio: audio)
+        let observer = Task { await controller.observePlayback() }
+        defer { observer.cancel() }
+        controller.selection = Self.a
+        controller.togglePlaybackOfSelection()
+        #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
+
+        await audio.send(PlaybackEvent(pad: pad.id, state: .playing(startedAt: 0), duration: 1))
+        #expect(await waitUntil { await MainActor.run { controller.playback[pad.id] != nil } })
+        controller.togglePlaybackOfSelection()
+        #expect(await waitUntil { await audio.commands.contains(.togglePause(pad.id)) })
+    }
+
+    @Test func returnPlaysTheSelectedPad() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: false, audio: audio)
+        controller.selection = Self.a
+        controller.playSelection()
+        #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
+    }
+
+    @Test func spaceResumesAPausedPad() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: false, audio: audio)
+        let observer = Task { await controller.observePlayback() }
+        defer { observer.cancel() }
+        controller.selection = Self.a
+        await audio.send(PlaybackEvent(pad: pad.id, state: .paused(elapsed: 1), duration: 4))
+        #expect(await waitUntil { await MainActor.run { controller.playback[pad.id] != nil } })
+        controller.togglePlaybackOfSelection()
+        #expect(await waitUntil { await audio.commands.contains(.togglePause(pad.id)) })
+        #expect(!(await audio.commands.contains(.trigger(pad.id))))
+    }
+
+    @Test func spaceDoesNothingWithoutSelection() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, _) = makeController(locked: false, audio: audio)
+        controller.selection = nil
+        controller.togglePlaybackOfSelection()
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(!(await audio.commands.contains { if case .trigger = $0 { true } else { false } }))
+    }
+}

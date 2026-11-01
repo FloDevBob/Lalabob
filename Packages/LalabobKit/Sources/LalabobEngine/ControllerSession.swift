@@ -35,6 +35,8 @@ public final class ControllerSession {
     /// File d'envoi vers « Lalabob Lumière » pour les faders (l'ordre des valeurs compte : la dernière doit gagner).
     @ObservationIgnored private let lightingOutbox: AsyncStream<MIDIEvent>.Continuation
     @ObservationIgnored private var lastLightFaderEvents: [Int: MIDIEvent] = [:]
+    /// Dernière position connue de chaque fader physique, gardée d'une fenêtre à l'autre (prise en main progressive).
+    @ObservationIgnored private var lastHardwareFaders: [Int: Double] = [:]
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "midi")
     @ObservationIgnored private var active: Active?
     @ObservationIgnored private var lastLEDs: [GridPosition: LEDState] = [:]
@@ -99,6 +101,7 @@ public final class ControllerSession {
         controller.lightPressHandler = { [weak self] position in self?.sendLightPress(at: position) }
         controller.lightFaderHandler = { [weak self] column, level in self?.sendLightFader(column: column, level: level) }
         controller.setConnectedController(active?.model)
+        controller.seedHardwareFaders(lastHardwareFaders)
         lastLEDs = [:]
         pushLEDs()
     }
@@ -127,6 +130,8 @@ public final class ControllerSession {
             await transport.stopListening(to: old.source)
             active = nil
             lastLEDs = [:]
+            lastHardwareFaders = [:]  // au rebranchement, on ne sait plus où sont les faders
+            attachedController?.seedHardwareFaders([:])
             attachedController?.setConnectedController(nil)
             log.info("Contrôleur débranché : \(old.model.displayName)")
         }
@@ -172,9 +177,12 @@ public final class ControllerSession {
                 case .padPressed(let position, let velocity) where velocity > 0:
                     attachedController?.pressFromController(at: position)
                 case .columnFader(let column, let value):
-                    attachedController?.setColumnLevel(column, level: value)
-                    // Le fader physique a changé ce que LightKey croit : la prochaine valeur de l'écran doit repartir.
-                    lastLightFaderEvents[column] = nil
+                    lastHardwareFaders[column] = value
+                    // Un fader pas encore accroché (autre onglet) est ignoré : le volume ne saute pas.
+                    if attachedController?.moveHardwareFader(column: column, value: value) == true {
+                        // Le fader physique a changé ce que LightKey croit : la prochaine valeur de l'écran doit repartir.
+                        lastLightFaderEvents[column] = nil
+                    }
                 default:
                     break  // relâchement, messages inconnus
                 }

@@ -5,11 +5,14 @@ import SwiftUI
 /// Fader vertical d'une colonne : rail, remplissage, poignée blanche arrondie, valeur en dB (ou `valueText`).
 /// `accessory` se place à droite du rail : le vumètre d'une colonne son (signal réel mesuré dans le moteur), le soleil
 /// d'une colonne lumière. Reste utilisable verrouillé (on règle en jouant). Double-clic : retour à `defaultLevel`.
+/// `hardwareMarker` : position réelle du fader physique tant qu'il n'a pas rejoint la valeur affichée (prise en main
+/// progressive) ; un repère ambré sur le rail dit « amenez le fader jusqu'ici ».
 struct VerticalFader<Accessory: View>: View {
     let name: String
     @Binding var level: Double
     var valueText: String?
     var defaultLevel = 0.8
+    var hardwareMarker: Double?
     @ViewBuilder var accessory: () -> Accessory
     @Environment(\.gridDensity) private var density
     private var trackHeight: CGFloat { density.faderTrackHeight }
@@ -32,6 +35,7 @@ struct VerticalFader<Accessory: View>: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Volume de \(name)")
         .accessibilityValue(shownValue)
+        .accessibilityHint(hardwareMarker == nil ? "" : "Le fader physique n'a pas encore rejoint cette valeur : il est ignoré jusque-là.")
         .accessibilityAdjustableAction { direction in
             let step = 0.05
             level = min(max(level + (direction == .increment ? step : -step), 0), 1)
@@ -50,6 +54,14 @@ struct VerticalFader<Accessory: View>: View {
                     .frame(width: 30, height: 20)
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .offset(y: -CGFloat(level) * travel)
+                if let hardwareMarker {
+                    // Même repère que le centre de la poignée : le fader physique y est à la même hauteur.
+                    Capsule().fill(Surface.lightAccent)
+                        .frame(width: 34, height: 3)
+                        .offset(y: -(CGFloat(hardwareMarker) * travel + 8.5))
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
             }
             .frame(maxWidth: .infinity)
             .contentShape(.rect)

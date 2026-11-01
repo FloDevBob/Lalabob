@@ -276,3 +276,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   trame par trame (blocs de 64) : déterministe. **Non concerné** : le **redémarrage** d'un son qui rejoue (nouvel appui en mode « Relancer ») reste une coupure suivie d'un départ immédiat (un fondu retarderait l'attaque ;
   un vrai enchaînement demanderait un 2ᵉ lecteur), et la pré-écoute de la bibliothèque. 11 tests (`StopFadeTests` : courbe, pas de marche > 0,02, monotone, stopAll, retrigger-arrêt, redémarrage pendant le fondu, pause) ;
   2 tests existants attendent désormais le silence après le fondu. **À écouter** : un son soutenu (nappe, voix) qu'on arrête — plus de clac ?
+- **Raccourcis de lecture du pad sélectionné (01/11/2026, demande de l'utilisateur)** : **Espace** = pause si le son joue, reprise s'il est en pause, lecture s'il est arrêté (cue lumière : envoi) ;
+  **Retour** = lecture / relance (selon « Nouvel appui »). Actifs quand la grille a le focus, aussi verrouillé ; Échap = Tout arrêter inchangé. `ShowController.togglePlaybackOfSelection` / `playSelection`
+  (`GridView.onKeyPress`). 4 tests (`LockTests`), verts dans Xcode (196 tests Engine). **À essayer** : Espace après un double-clic sur un pad,
+  puis après un clic dans l'inspecteur (le focus doit revenir à la grille en recliquant un pad). Non fait : arrêt du seul pad sélectionné au clavier.

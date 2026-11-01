@@ -50,6 +50,15 @@ struct GridView: View {
         }
         .onPasteCommand(of: [.plainText]) { _ in controller.pasteAtSelection() }
         .onDeleteCommand { controller.clearSelection() }
+        // Espace : lecture / pause du pad sélectionné ; Retour : lecture / relance.
+        .onKeyPress(.space, phases: .down) { _ in
+            controller.togglePlaybackOfSelection()
+            return .handled
+        }
+        .onKeyPress(.return, phases: .down) { _ in
+            controller.playSelection()
+            return .handled
+        }
     }
 
     private func indices(of kind: ColumnKind, in grid: PadGrid) -> [Int] {
@@ -93,7 +102,8 @@ struct ColumnView: View {
                 if column.kind == .audio {
                     VerticalFader(
                         name: column.name,
-                        level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) })
+                        level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
+                        hardwareMarker: controller.waitingFaders[index]
                     ) {
                         LevelMeter(column: index).frame(width: 14)
                     }
@@ -102,7 +112,8 @@ struct ColumnView: View {
                         name: column.name,
                         level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
                         valueText: lightValueText(column),
-                        defaultLevel: 1
+                        defaultLevel: 1,
+                        hardwareMarker: controller.waitingFaders[index]
                     ) {
                         Icon.sun.view(size: 16)
                             .foregroundStyle(Surface.lightAccent)

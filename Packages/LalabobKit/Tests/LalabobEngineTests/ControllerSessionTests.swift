@@ -177,12 +177,49 @@ struct ControllerSessionTests {
         await rig.transport.setPorts(sources: [Self.apcSource], destinations: [Self.apcDestination])
         #expect(await waitUntil { await rig.controller.connectedController == .apcMiniMK2 })
 
+        // Le fader 2 est d'abord à la valeur de l'écran (0,8 ≈ 102/127), puis il monte tout en haut.
+        await rig.transport.receive([.controlChange(channel: 0, controller: 49, value: 102)], from: Self.apcSource.id)
+        #expect(await waitUntil { await rig.controller.currentGrid.columns[1].level == 102.0 / 127 })  // accroché
         await rig.transport.receive(
             [.controlChange(channel: 0, controller: 49, value: 127), .controlChange(channel: 0, controller: 56, value: 0)],
             from: Self.apcSource.id)
         #expect(await waitUntil { await rig.controller.currentGrid.columns[1].level == 1 })
         #expect(await waitUntil { await rig.audio.commands.contains(.level(1, 1)) })
         #expect(rig.controller.currentGrid.columns[0].level == 0.8)  // le fader maître n'a rien touché
+    }
+
+    @Test("Un fader de l'APC loin de la valeur de l'écran est ignoré et son repère s'affiche")
+    func aFarFaderWaitsInsteadOfJumping() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [Self.apcSource], destinations: [Self.apcDestination])
+        #expect(await waitUntil { await rig.controller.connectedController == .apcMiniMK2 })
+
+        await rig.transport.receive([.controlChange(channel: 0, controller: 49, value: 127)], from: Self.apcSource.id)
+        #expect(await waitUntil { await rig.controller.waitingFaders[1] == 1 })
+        #expect(rig.controller.currentGrid.columns[1].level == 0.8)  // pas de saut
+        #expect(!(await rig.audio.commands.contains(.level(1, 1))))
+    }
+
+    @Test("Les faders connus suivent la session d'une fenêtre à l'autre, et sont oubliés au débranchement")
+    func faderPositionsFollowTheSession() async {
+        let rig = makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.setPorts(sources: [Self.apcSource], destinations: [Self.apcDestination])
+        #expect(await waitUntil { await rig.controller.connectedController == .apcMiniMK2 })
+        await rig.transport.receive([.controlChange(channel: 0, controller: 49, value: 0)], from: Self.apcSource.id)
+        #expect(await waitUntil { await rig.controller.waitingFaders[1] == 0 })
+
+        let other = ShowController(
+            show: Show(name: "Autre", grids: [PadGrid.empty(name: "G1")]), audio: RecordingAudioEngine(),
+            audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
+        rig.session.attach(other)
+        #expect(other.waitingFaders[1] == 0)  // l'autre spectacle sait déjà où est le fader
+
+        await rig.transport.setPorts(sources: [], destinations: [])
+        #expect(await waitUntil { await other.connectedController == nil })
+        #expect(other.waitingFaders.isEmpty)  // au rebranchement, on ne sait plus où ils sont
     }
 
     @Test("À la connexion, les LED reflètent l'écran")

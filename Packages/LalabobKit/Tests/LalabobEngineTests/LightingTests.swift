@@ -178,6 +178,10 @@ struct LightingTests {
         await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
         _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
 
+        rig.controller.setColumnLevel(6, level: 0.5)  // à l'écran (hors LightKey : pas de CC, voir plus bas)
+        try? await Task.sleep(for: .milliseconds(50))
+        // Le fader rejoint d'abord la valeur de l'écran, puis monte : l'écran le suit sans rien envoyer à LightKey.
+        await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 64)], from: ControllerSessionTests.apcSource.id)
         await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 127)], from: ControllerSessionTests.apcSource.id)
         #expect(await waitUntil { await rig.controller.currentGrid.columns[6].level == 1 })
         try? await Task.sleep(for: .milliseconds(150))
@@ -193,6 +197,7 @@ struct LightingTests {
 
         rig.controller.setLightFader(column: 6, level: 0.5)
         #expect(await waitUntil { await rig.transport.lighting.count == 1 })
+        await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 64)], from: ControllerSessionTests.apcSource.id)
         await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 127)], from: ControllerSessionTests.apcSource.id)
         #expect(await waitUntil { await rig.controller.currentGrid.columns[6].level == 1 })
         rig.controller.setLightFader(column: 6, level: 0.5)

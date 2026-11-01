@@ -557,7 +557,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
     }
 
     /// Redémarre le moteur (changement ou perte de sortie) et reprend les sons là où ils en étaient.
-    private func rebuild() {
+    func rebuild() {
         let now = ProcessInfo.processInfo.systemUptime
         let snapshot: [(pad: Pad.ID, elapsed: TimeInterval, paused: Bool)] = voices.compactMap { id, voice in
             switch voice.state {
