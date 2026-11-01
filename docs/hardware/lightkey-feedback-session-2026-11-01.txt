@@ -1,0 +1,53 @@
+Relevé du 01/11/2026 — journal du banc d'essai lumière (Copier), LightKey réglé sur l'appareil « Lalabob Lumière » (entrée + sortie).
+Format : heure, sens, message. « LightKey → » = reçu de LightKey ; « → LightKey » = envoyé par Lalabob. APC mini mk2, canal 1.
+Notes mappées dans LightKey ce jour-là : 14, 23, 27, 31, 32, 49, 54, 62, 63.
+
+14:35:53 LightKey → Note Off · canal 1 · note 63 · vélocité 0
+14:35:53 LightKey → Note Off · canal 1 · note 23 · vélocité 0
+14:35:53 LightKey → Note On · canal 1 · note 62 · vélocité 127
+14:35:53 LightKey → Note Off · canal 1 · note 32 · vélocité 0
+14:35:53 LightKey → Note On · canal 1 · note 49 · vélocité 127
+14:35:53 LightKey → Note Off · canal 1 · note 54 · vélocité 0
+14:35:53 LightKey → Note On · canal 1 · note 27 · vélocité 127
+14:36:19 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:19 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:36:19 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:25 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:25 LightKey → Note Off · canal 1 · note 62 · vélocité 0
+14:36:25 LightKey → Note Off · canal 1 · note 49 · vélocité 0
+14:36:25 LightKey → Note Off · canal 1 · note 27 · vélocité 0
+14:36:25 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:36:26 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:27 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:27 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:36:27 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:28 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:28 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:36:29 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:29 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:29 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:36:29 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:30 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:30 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:36:30 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:31 → LightKey Note On · canal 1 · note 14 · vélocité 127
+14:36:31 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:36:31 → LightKey Note Off · canal 1 · note 14 · vélocité 0
+14:36:43 → LightKey Note On · canal 1 · note 31 · vélocité 127
+14:36:43 LightKey → Note Off · canal 1 · note 31 · vélocité 0
+14:36:44 → LightKey Note Off · canal 1 · note 31 · vélocité 0
+-- à partir d'ici, cues basculées dans LightKey lui-même (rien envoyé par Lalabob) --
+14:36:51 LightKey → Note On · canal 1 · note 31 · vélocité 127
+14:36:53 LightKey → Note Off · canal 1 · note 31 · vélocité 0
+14:36:53 LightKey → Note On · canal 1 · note 31 · vélocité 127
+14:36:54 LightKey → Note Off · canal 1 · note 31 · vélocité 0
+14:36:55 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:36:56 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:36:58 LightKey → Note On · canal 1 · note 63 · vélocité 127
+14:36:59 LightKey → Note Off · canal 1 · note 63 · vélocité 0
+14:37:00 LightKey → Note On · canal 1 · note 63 · vélocité 127
+14:37:00 LightKey → Note Off · canal 1 · note 63 · vélocité 0
+14:37:01 LightKey → Note On · canal 1 · note 63 · vélocité 127
+14:37:02 LightKey → Note Off · canal 1 · note 63 · vélocité 0
+14:37:02 LightKey → Note On · canal 1 · note 63 · vélocité 127
+14:37:03 LightKey → Note Off · canal 1 · note 63 · vélocité 0

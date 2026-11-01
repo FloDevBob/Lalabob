@@ -15,20 +15,25 @@
    ignore (changement de programme, pitch bend…) apparaissent aussi.
 5. Regarder aussi la fenêtre *External Control* de LightKey : les messages de retour y sont personnalisables.
 
-## Relevé
+## Relevé (01/11/2026, APC mini mk2) — journal brut : `lightkey-feedback-session-2026-11-01.txt`
 
-| Scénario | Type | Canal | Numéro | Vélocité / valeur | Remarque |
+**Condition qui a débloqué le retour** : LightKey envoie son retour à la destination du **même nom que l'entrée**. Avec une destination « Lalabob Retour Lumière »
+seule, rien n'arrivait ; avec une destination « Lalabob Lumière » (même nom que la source), le retour arrive.
+
+| Scénario | Type | Canal | Numéro | Vélocité | Remarque |
 | --- | --- | --- | --- | --- | --- |
-| Cue lancée | | | | | |
-| Cue arrêtée | | | | | |
-| Cue changée de couleur | | | | | |
-| Cue supprimée | | | | | |
-| Démarrage de LightKey | | | | | |
-| Ouverture du spectacle | | | | | |
+| Cue allumée | Note On | 1 | note de la case (disposition APC) | 127 | aussi quand on la bascule dans LightKey lui-même |
+| Cue éteinte | Note Off | 1 | note de la case | 0 | |
+| Une cue en éteint d'autres (même groupe) | Note Off pour chacune éteinte, puis Note On pour la nouvelle | 1 | | 0 puis 127 | l'état affiché suit l'état réel de LightKey |
+| Démarrage / ouverture du spectacle (14:35:53) | rafale : un message par note appairée, On ou Off | 1 | toutes les notes appairées | 127 / 0 | donne l'état complet d'un coup ; les notes non appairées ne sont jamais citées |
+| Cue changée de couleur / supprimée | non relevé | | | | à essayer |
 
-## Conclusion (à cocher)
+Observations : la vélocité ne vaut que **127 ou 0** (aucune couleur dans le retour) ; une cue **bascule à chaque Note On** reçu (le Note Off envoyé au relâchement ne change rien) ;
+LightKey répond au Note On par le nouvel état (On si la cue démarre, Off si elle s'arrête).
 
-- ☐ **Cas A** : retour on/off seulement → Lalabob affiche la teinte choisie, allumée quand la cue est active.
-- ☐ **Cas B** : retour en couleur (vélocité = couleur, canal = comportement, ou personnalisé) → table vers RVB.
+## Conclusion
 
-Ensuite : copier les lignes relevées dans `Tests/…/Fixtures` (un fichier de messages par cas), puis passer à l'étape 2.
+- ☑ **Cas A** : retour on/off seulement → Lalabob affiche la teinte choisie, allumée quand la cue est active. (Cas B écarté tant qu'aucune vélocité autre que 127 / 0 n'est vue.)
+- ☐ Cas B : retour en couleur.
+
+Ensuite : fixtures Swift d'après ce journal (étape 2), puis étape 1 (relais).

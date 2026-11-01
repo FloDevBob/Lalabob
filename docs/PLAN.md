@@ -171,7 +171,11 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
   de LightKey, **Copier**), canal d'envoi réglable (1–16, répond à la question ouverte 1), option **relais d'essai** des appuis physiques sur les colonnes lumière (jamais les colonnes sons).
   `LightingTestBench` (Engine, inactif fenêtre fermée : aucun coût en scène) ; tout l'envoi vers LightKey passe par une seule file (`sendToLightKey`). 7 tests (`LightingTestBenchTests`).
   **À essayer** : ouvrir la fenêtre, cliquer une case, voir la note partir ; appuyer sur un pad ; déclencher une cue dans LightKey et lire le retour.
-- **Reste pour l'étape 0** : relever dans LightKey (cue lancée, arrêtée, changée de couleur, supprimée, démarrage, ouverture du spectacle), choisir cas A / B.
+- **Relevé fait (01/11/2026) → cas A** (voir `docs/hardware/lightkey-feedback.md`) : LightKey répond **seulement** à la destination du **même nom que l'entrée** (« Lalabob Lumière ») ;
+  retour = Note On vélocité 127 (cue allumée) / Note Off vélocité 0 (éteinte), canal 1, notes de la disposition APC ; une **rafale d'état complet** à l'ouverture du spectacle ; une cue en éteint d'autres → un Note Off
+  par cue éteinte ; chaque Note On **bascule** la cue. Pas de couleur dans le retour. **Conséquences** : la destination « Lalabob Retour Lumière » est inutile (à retirer à l'étape 1) ; un double envoi
+  (LightKey qui écoute aussi l'APC) bascule deux fois = aucun effet visible, piège à éviter ; le canal 16 dédié est à reconsidérer (le retour revient sur le canal appris, ici 1).
+- ~~Reste pour l'étape 0~~ **Reste pour l'étape 0** : relever dans LightKey (cue lancée, arrêtée, changée de couleur, supprimée, démarrage, ouverture du spectacle), choisir cas A / B.
 
 ## Risques suivis
 
