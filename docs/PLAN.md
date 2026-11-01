@@ -175,7 +175,7 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
   retour = Note On vélocité 127 (cue allumée) / Note Off vélocité 0 (éteinte), canal 1, notes de la disposition APC ; une **rafale d'état complet** à l'ouverture du spectacle ; une cue en éteint d'autres → un Note Off
   par cue éteinte ; chaque Note On **bascule** la cue. Pas de couleur dans le retour. **Conséquences** : la destination « Lalabob Retour Lumière » est inutile (à retirer à l'étape 1) ; un double envoi
   (LightKey qui écoute aussi l'APC) bascule deux fois = aucun effet visible, piège à éviter ; le canal 16 dédié est à reconsidérer (le retour revient sur le canal appris, ici 1).
-- ~~Reste pour l'étape 0~~ **Reste pour l'étape 0** : relever dans LightKey (cue lancée, arrêtée, changée de couleur, supprimée, démarrage, ouverture du spectacle), choisir cas A / B.
+- **Reste pour l'étape 0** : relever aussi « cue changée de couleur » et « cue supprimée » (non essayés), puis écrire les fixtures Swift d'après le journal brut (étape 2).
 
 ## Risques suivis
 
