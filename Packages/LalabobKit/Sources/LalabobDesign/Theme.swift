@@ -112,9 +112,9 @@ public enum Motion {
     /// Changement de grille : la page des pads défile (vers le bas en avançant dans les onglets, vers le haut en reculant).
     public static let pageScroll = Animation.smooth(duration: 0.42)
     /// Pastille de l'onglet actif qui glisse d'un onglet à l'autre.
-    public static let tabSelection = Animation.smooth(duration: 0.25)
-    /// Changement de valeur affichée (dB, %) et bascule du cadenas : très court, pour ne jamais retarder la lecture du chiffre.
-    public static let value = Animation.smooth(duration: 0.15)
+    public static let tabSelection = Animation.spring(duration: 0.4, bounce: 0.25)
+    /// Bascule du cadenas.
+    public static let value = Animation.smooth(duration: 0.3)
     /// Lueur d'un pad qui s'éteint à l'arrêt du son (jamais à l'allumage : l'attaque reste immédiate).
-    public static let glowOut = Animation.easeOut(duration: 0.35)
+    public static let glowOut = Animation.easeOut(duration: 0.7)
 }

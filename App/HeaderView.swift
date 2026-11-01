@@ -154,13 +154,17 @@ struct LockButton: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        content.animation(reduceMotion ? nil : Motion.value, value: controller.isLocked)
+    }
+
+    private var content: some View {
         let locked = controller.isLocked
-        Button {
+        return Button {
             controller.isLocked.toggle()
         } label: {
             IconLabel(locked ? "Verrouillé" : "Déverrouillé", icon: locked ? .lock : .lockOpen, size: 15)
                 .id(locked)
-                .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                .transition(.opacity.combined(with: .scale(scale: 0.6)))
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.horizontal, 10)
                 .frame(height: 28)
@@ -168,7 +172,6 @@ struct LockButton: View {
                 .foregroundStyle(locked ? Surface.textSecondary : Surface.lightAccent)
         }
         .buttonStyle(.plain)
-        .animation(reduceMotion ? nil : Motion.value, value: locked)
         .hoverHighlight()
         .interactiveCursor(.link)
         .help(HelpText.lock(locked: locked))
@@ -202,6 +205,7 @@ struct GridTabsView: View {
                     }
                 }
                 .padding(.horizontal, 4)
+                .animation(reduceMotion ? nil : Motion.tabSelection, value: controller.selectedGridIndex)
                 // Les onglets restent collés à gauche, même peu nombreux (le défilement ne sert qu'au-delà de la place).
                 .frame(minWidth: proxy.size.width, alignment: .leading)
             }
@@ -242,7 +246,6 @@ struct GridTabsView: View {
                     .matchedGeometryEffect(id: "selectedTab", in: tabHighlight)
             }
         }
-        .animation(reduceMotion ? nil : Motion.tabSelection, value: controller.selectedGridIndex)
         .contentShape(.rect(cornerRadius: 10))
         .hoverHighlight(cornerRadius: 10, enabled: !isSelected && renaming != grid.id)
         .interactiveCursor(.link, enabled: renaming != grid.id)

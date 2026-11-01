@@ -670,7 +670,6 @@ private enum TintSwatchImage {
 /// spectacle qu'au relâchement (une seule annulation) ; double-clic : retour à 0 dB.
 /// Le nouveau volume s'applique au prochain déclenchement du pad.
 private struct TrackGainGauge: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let name: String
     let gainDB: Double
     /// Appelé à chaque position pendant le glisser : le son en cours de lecture suit tout de suite.
@@ -716,8 +715,6 @@ private struct TrackGainGauge: View {
                 .font(.system(size: 9.5, design: .monospaced))
                 .foregroundStyle(Surface.textSecondary)
                 .monospacedDigit()
-                .contentTransition(.numericText())
-                .animation(reduceMotion ? nil : Motion.value, value: shownDB)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
