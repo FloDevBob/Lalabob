@@ -104,6 +104,25 @@ struct ColumnView: View {
     let index: Int
     let onPress: () -> Void
 
+    /// Petit bouton « stop » à côté du volume d'une colonne son : arrête tous les sons de la colonne. Sur l'APC mini mk2,
+    /// le bouton rond rouge sous la colonne fait la même chose. Les colonnes lumière n'en ont pas.
+    private var stopColumnButton: some View {
+        Button {
+            controller.stopColumn(index)
+        } label: {
+            Icon.stop.view(size: 9)
+                .frame(width: 22, height: 22)
+                .background(Color.red.opacity(0.85), in: .circle)
+                .foregroundStyle(.white)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .padding(6)
+        .interactiveCursor(.link)
+        .help("Arrêter tous les sons de cette colonne")
+        .accessibilityLabel("Arrêter la colonne \(index + 1)")
+    }
+
     /// Appairage lumière : le fader d'une colonne lumière est lui aussi à rattacher à un réglage de LightKey.
     /// Pointillés ambrés (qui pulsent sur la cible), contour plein une fois appairé ; un clic sur l'étiquette désigne
     /// ce fader comme cible, bouger le fader (à la main ou à l'écran) envoie son CC à LightKey.
@@ -203,6 +222,7 @@ struct ColumnView: View {
                     .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
             )
             .overlay { faderPairingOverlay(column) }
+            .overlay(alignment: .bottomTrailing) { if column.kind == .audio { stopColumnButton } }
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)

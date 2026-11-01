@@ -16,6 +16,7 @@ Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation L
 | ← → ↑ ↓ | Passe d'un pad à l'autre |
 | Espace / Retour | Pause-reprise / lecture du pad sélectionné |
 | **Échap** | **Tout arrêter** (fondu de 40 ms) |
+| Bouton ■ de la colonne / bouton rouge sous la colonne (APC) | Arrête tous les sons de cette colonne |
 | Faders | Volume des sons ; intensité côté LightKey pour les 2 colonnes de droite |
 | ⌘1 … ⌘9 | Changer de grille |
 

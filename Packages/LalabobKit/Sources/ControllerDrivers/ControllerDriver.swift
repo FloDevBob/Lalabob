@@ -54,6 +54,8 @@ public enum ControllerInput: Equatable, Sendable {
     case padReleased(GridPosition)
     /// Fader de colonne déplacé, valeur de 0 à 1.
     case columnFader(column: Int, value: Double)
+    /// Bouton « stop » sous une colonne enfoncé (APC mini mk2).
+    case columnStop(column: Int)
 }
 
 /// Un pilote traduit entre le langage d'un contrôleur et la grille 8×8 de Lalabob.
@@ -84,10 +86,23 @@ public protocol ControllerDriver: Sendable {
     /// Message que le contrôleur enverrait si son fader de cette colonne passait à `value` (0…1) ; `nil` s'il
     /// n'a pas de fader pour cette colonne. Sert à répéter vers LightKey un fader déplacé à l'écran.
     func faderEvent(column: Int, value: Double) -> MIDIEvent?
+
+    /// Les boutons « stop » sous les colonnes (APC mini mk2) : `litColumns` allumés, les autres éteints. Vide sinon.
+    /// Une exigence du protocole (et non une simple extension) pour que chaque pilote fournisse la sienne.
+    func stopButtonMessages(litColumns: Set<Int>) -> [MIDIEvent]
 }
 
 extension ControllerDriver {
     public func faderEvent(column: Int, value: Double) -> MIDIEvent? { nil }
+
+    /// Aucun bouton « stop » par défaut (Launchpad).
+    public func stopButtonMessages(litColumns: Set<Int>) -> [MIDIEvent] { [] }
+
+    /// Ce qu'on envoie en quittant l'app : toutes les LED éteintes, puis le retour au mode d'origine du contrôleur.
+    public var shutdownMessages: [MIDIEvent] {
+        ledMessages(Dictionary(uniqueKeysWithValues: GridPosition.all.map { ($0, LEDState.off) }))
+            + stopButtonMessages(litColumns: []) + disconnectionMessages
+    }
 }
 
 extension ControllerDriver {

@@ -46,6 +46,11 @@ public final class ControllerSession {
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "midi")
     @ObservationIgnored private var active: Active?
     @ObservationIgnored private var lastLEDs: [GridPosition: LEDState] = [:]
+    /// Boutons « stop » déjà envoyés au contrôleur (`nil` : rien d'envoyé depuis la connexion).
+    @ObservationIgnored private var lastStopColumns: Set<Int>?
+    /// La tâche qui vide la file d'envoi vers le contrôleur (on l'attend à la fermeture, voir `shutdown`).
+    @ObservationIgnored private var outboxTask: Task<Void, Never>?
+    @ObservationIgnored private var isShutDown = false
     /// Dernier état connu de chaque cue lumière (retour de LightKey), partagé par tous les spectacles ouverts.
     @ObservationIgnored private var lightStates: [GridPosition: LightState] = [:]
 
@@ -67,7 +72,7 @@ public final class ControllerSession {
         let (stream, continuation) = AsyncStream.makeStream(of: Outgoing.self, bufferingPolicy: .unbounded)
         self.outbox = continuation
         let log = self.log
-        Task.detached {
+        self.outboxTask = Task.detached {
             for await message in stream {
                 do { try await transport.send(message.events, to: message.destination) } catch {
                     log.error("Envoi MIDI échoué : \(error.localizedDescription)")
@@ -101,6 +106,7 @@ public final class ControllerSession {
             group.addTask { await self.watchTopology() }
             group.addTask { await self.watchInput() }
             group.addTask { await self.watchLEDs() }
+            group.addTask { await self.watchStopButtons() }
             group.addTask { await self.watchLightingFeedback() }
         }
     }
@@ -130,6 +136,23 @@ public final class ControllerSession {
         }
     }
 
+    // MARK: - Fermeture
+
+    /// À la fermeture de l'app : éteint toutes les LED du contrôleur (et ses boutons stop) et le remet dans son mode
+    /// d'origine (le Launchpad quitte le mode Programmeur). Attend que tout soit parti ; ne coupe aucun son.
+    /// Après cet appel, la session n'envoie plus rien au contrôleur.
+    public func shutdown() async {
+        guard !isShutDown else { return }
+        if let active {
+            outbox.yield(Outgoing(destination: active.destination, events: active.driver.shutdownMessages))
+        }
+        isShutDown = true
+        outbox.finish()
+        await outboxTask?.value
+        // CoreMIDI remet les messages au pilote USB de façon asynchrone : on lui laisse un instant avant de quitter.
+        if active != nil { try? await Task.sleep(for: .milliseconds(80)) }
+    }
+
     // MARK: - Fenêtre active
 
     /// Rattache la session au spectacle d'une fenêtre (devenue active). Les LED sont toutes renvoyées.
@@ -144,7 +167,9 @@ public final class ControllerSession {
         controller.seedHardwareFaders(lastHardwareFaders)
         controller.setLightStates(lightStates)
         lastLEDs = [:]
+        lastStopColumns = nil
         pushLEDs()
+        pushStopButtons()
     }
 
     /// Détache le spectacle d'une fenêtre qui se ferme (sans effet si ce n'est pas le spectacle rattaché).
@@ -183,8 +208,10 @@ public final class ControllerSession {
         let driver = found.model.driver(settings: ledSettings(for: found.model))
         active = Active(model: found.model, driver: driver, source: found.source, destination: found.destination)
         lastLEDs = [:]
+        lastStopColumns = nil
         send(driver.connectionMessages)
         pushLEDs()
+        pushStopButtons()
         attachedController?.setConnectedController(found.model)
         bench.setController(found.model)
         log.info("Contrôleur connecté : \(found.model.displayName)")
@@ -230,6 +257,8 @@ public final class ControllerSession {
                 case .padReleased(let position):
                     bench.setControllerPad(position, pressed: false)
                     if isLightColumn(position.column) { relayPad(position, pressed: false, driver: active.driver) }
+                case .columnStop(let column):
+                    attachedController?.stopColumn(column)
                 case .columnFader(let column, let value):
                     lastHardwareFaders[column] = value
                     // Un fader pas encore accroché (autre onglet) est ignoré : le volume ne saute pas.
@@ -332,13 +361,26 @@ public final class ControllerSession {
 
     // MARK: - LED
 
+    private func watchStopButtons() async {
+        for await _ in Observations({ [weak self] in self?.attachedController?.stopButtonColumns }) { pushStopButtons() }
+    }
+
+    /// Allume en rouge les boutons « stop » des colonnes son (APC mini mk2) ; ceux des colonnes lumière restent éteints.
+    private func pushStopButtons() {
+        guard let active, !isShutDown else { return }
+        let columns = attachedController?.stopButtonColumns ?? []
+        guard columns != lastStopColumns else { return }
+        lastStopColumns = columns
+        send(active.driver.stopButtonMessages(litColumns: columns))
+    }
+
     private func watchLEDs() async {
         for await _ in Observations({ [weak self] in self?.attachedController?.ledStates }) { pushLEDs() }
     }
 
     /// Envoie au contrôleur les LED qui ont changé depuis le dernier envoi.
     private func pushLEDs() {
-        guard let active, let desired = attachedController?.ledStates else { return }
+        guard let active, !isShutDown, let desired = attachedController?.ledStates else { return }
         let changes = LEDPlanner.changes(from: lastLEDs, to: desired)
         guard !changes.isEmpty else { return }
         lastLEDs = desired
@@ -346,7 +388,7 @@ public final class ControllerSession {
     }
 
     private func send(_ events: [MIDIEvent]) {
-        guard let active, !events.isEmpty else { return }
+        guard let active, !events.isEmpty, !isShutDown else { return }
         outbox.yield(Outgoing(destination: active.destination, events: events))
     }
 }

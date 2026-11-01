@@ -388,6 +388,21 @@ public final class ShowController {
         commands.yield(.stop(pad.id))
     }
 
+    /// Arrête tous les sons de cette colonne **de la grille affichée** (joués ou en pause), avec le fondu d'arrêt habituel.
+    /// Sans effet sur une colonne lumière ou une colonne sans son qui joue. Marche aussi verrouillé : c'est du jeu.
+    public func stopColumn(_ column: Int) {
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .audio else { return }
+        for case let pad? in currentGrid.columns[column].slots where playback[pad.id] != nil {
+            commands.yield(.stop(pad.id))
+        }
+    }
+
+    /// Colonnes dont le bouton « stop » est actif : les colonnes son de la grille affichée (celles de lumière n'en ont pas).
+    /// Le bouton de l'interface et la LED rouge du contrôleur suivent cet ensemble.
+    public var stopButtonColumns: Set<Int> {
+        Set(currentGrid.columns.indices.filter { currentGrid.columns[$0].kind == .audio })
+    }
+
     /// « Tout arrêter » (Échap).
     public func stopAll() {
         commands.yield(.stopAll)

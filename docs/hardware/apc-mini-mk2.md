@@ -15,7 +15,8 @@ Les appuis arrivent en Note On sur le canal 1 (0 en interne).
   - canaux 0 à 6 (affichés 1 à 7) : luminosité de 10 % à 100 % ;
   - canaux 7 à 15 : pulsation puis clignotement à différentes vitesses ⚠︎ (valeurs exactes à confirmer).
 - Un SysEx permet de fixer une couleur RVB libre par case : `F0 47 7F 4F 24 00 08 <pad> <pad> <R msb> <R lsb> <G msb> <G lsb> <B msb> <B lsb> F7` (chaque canal 0–255 coupé en poids fort 0/1 et 7 bits de poids faible) ⚠︎ **à valider sur le matériel**. Lalabob le propose en option : **« RVB libre (essai) »** dans le panneau de couleurs de l'en-tête (clic sur le nom du contrôleur). Par défaut : palette Akai. La pulsation reste celle de la palette (canal).
-- Boutons de piste (notes 100–107, rouge) et de scène (112–119, vert) : non utilisés pour l'instant.
+- **Boutons ronds sous les colonnes** (« track », notes 100 à 107) : LED rouge unique, **vélocité 1 = allumée, 0 = éteinte** ⚠︎ ; l'appui arrive en Note On (vélocité > 0). Lalabob les utilise comme boutons **stop de colonne** : allumés pour les colonnes son, éteints pour les colonnes lumière.
+- Boutons de scène (112–119, vert) : non utilisés pour l'instant.
 
 ## Faders
 

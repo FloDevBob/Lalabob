@@ -28,7 +28,17 @@ public struct APCMiniMK2Driver: ControllerDriver {
         ledMessages(Dictionary(uniqueKeysWithValues: GridPosition.all.map { ($0, LEDState.off) }))
     }
 
-    public var disconnectionMessages: [MIDIEvent] { connectionMessages }
+    /// L'APC n'a pas de mode à quitter : en s'en allant, Lalabob éteint ses LED (`shutdownMessages`).
+    public var disconnectionMessages: [MIDIEvent] { [] }
+
+    /// Boutons ronds sous les colonnes (« track », notes 100 à 107) : LED rouge unique, vélocité 1 = allumée, 0 = éteinte.
+    static let firstStopNote: UInt8 = 100
+
+    public func stopButtonMessages(litColumns: Set<Int>) -> [MIDIEvent] {
+        (0..<PadGrid.size).map { column in
+            .noteOn(channel: 0, note: Self.firstStopNote + UInt8(column), velocity: litColumns.contains(column) ? 1 : 0)
+        }
+    }
 
     public func note(for position: GridPosition) -> UInt8 {
         precondition(position.isValid)
@@ -45,6 +55,10 @@ public struct APCMiniMK2Driver: ControllerDriver {
     public func interpret(_ event: MIDIEvent) -> ControllerInput? {
         switch event {
         case let .noteOn(_, note, velocity):
+            if (Self.firstStopNote..<Self.firstStopNote + UInt8(PadGrid.size)).contains(note) {
+                // Seul l'appui compte : le relâchement d'un bouton stop (vélocité 0) ne fait rien.
+                return velocity > 0 ? .columnStop(column: Int(note - Self.firstStopNote)) : nil
+            }
             return position(forNote: note).map { .padPressed($0, velocity: velocity) }
         case let .noteOff(_, note, _):
             return position(forNote: note).map { .padReleased($0) }

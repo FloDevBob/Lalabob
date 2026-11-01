@@ -171,3 +171,73 @@ struct LightFeedbackTests {
         #expect(result.state == .on)
     }
 }
+
+/// Boutons « stop » sous les colonnes de l'APC mini mk2, et extinction des LED en quittant l'app.
+@Suite("Boutons stop et extinction")
+struct StopButtonTests {
+    private let apc = APCMiniMK2Driver()
+    private let launchpad = LaunchpadDriver(model: .launchpadMiniMK3)
+
+    @Test("Les 8 boutons sous les colonnes (notes 100 à 107) arrêtent la colonne correspondante")
+    func buttonsMapToColumns() {
+        for column in 0..<8 {
+            #expect(apc.interpret(.noteOn(channel: 0, note: UInt8(100 + column), velocity: 127)) == .columnStop(column: column))
+        }
+    }
+
+    @Test("Le relâchement, les boutons de scène et les notes voisines ne font rien")
+    func ignoredMessages() {
+        #expect(apc.interpret(.noteOn(channel: 0, note: 100, velocity: 0)) == nil)
+        #expect(apc.interpret(.noteOff(channel: 0, note: 100, velocity: 0)) == nil)
+        #expect(apc.interpret(.noteOn(channel: 0, note: 108, velocity: 127)) == nil)  // hors des 8 boutons
+        #expect(apc.interpret(.noteOn(channel: 0, note: 112, velocity: 127)) == nil)  // boutons de scène : inutilisés
+        #expect(apc.interpret(.noteOn(channel: 0, note: 99, velocity: 127)) == nil)
+        // Un appui sur un pad reste un appui sur un pad.
+        #expect(apc.interpret(.noteOn(channel: 0, note: 63, velocity: 127)) == .padPressed(GridPosition(column: 7, row: 0), velocity: 127))
+    }
+
+    @Test("Les boutons des colonnes demandées sont allumés (rouge), les autres éteints")
+    func stopButtonLEDs() {
+        let messages = apc.stopButtonMessages(litColumns: [0, 1, 5])
+        #expect(messages.count == 8)
+        let lit = messages.enumerated().filter { _, event in
+            if case .noteOn(_, _, let velocity) = event { velocity == 1 } else { false }
+        }.map(\.offset)
+        #expect(lit == [0, 1, 5])
+        #expect(messages[0] == .noteOn(channel: 0, note: 100, velocity: 1))
+        #expect(messages[7] == .noteOn(channel: 0, note: 107, velocity: 0))
+    }
+
+    @Test("Le Launchpad n'a pas de bouton stop")
+    func launchpadHasNone() {
+        #expect(launchpad.stopButtonMessages(litColumns: [0, 1]).isEmpty)
+        #expect(launchpad.interpret(.noteOn(channel: 0, note: 100, velocity: 127)) == nil)
+    }
+
+    @Test("APC : en quittant, les 64 pads et les 8 boutons sont éteints")
+    func apcShutdown() {
+        let messages = apc.shutdownMessages
+        #expect(messages.count == 64 + 8)
+        #expect(messages.allSatisfy { if case .noteOn(_, _, let velocity) = $0 { velocity == 0 } else { false } })
+        #expect(Set(messages.compactMap { if case .noteOn(_, let note, _) = $0 { note } else { nil } }).count == 72)
+    }
+
+    @Test("APC en RVB libre : les pads sont éteints en noir, les boutons en note")
+    func apcRGBShutdown() {
+        let messages = APCMiniMK2Driver(calibration: .standard, usesRGB: true).shutdownMessages
+        #expect(messages.count == 72)
+        #expect(messages.prefix(64).allSatisfy { if case .systemExclusive = $0 { true } else { false } })
+    }
+
+    @Test("Launchpad : LED éteintes d'abord, puis sortie du mode Programmeur en dernier")
+    func launchpadShutdown() {
+        let messages = launchpad.shutdownMessages
+        #expect(messages.last == launchpad.disconnectionMessages.last)
+        guard case .systemExclusive(let leds)? = messages.first else {
+            Issue.record("les LED doivent être éteintes en premier")
+            return
+        }
+        #expect(leds.count > 100)  // les 64 LED en un message
+        #expect(messages.count == 2)
+    }
+}
