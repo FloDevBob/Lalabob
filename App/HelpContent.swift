@@ -79,7 +79,7 @@ enum HelpContent {
                 "**Novation Launchpad Mini MK3** : grille 8×8 sans fader. Lalabob le met en **mode Programmeur** à la connexion ; il y reste jusqu'au débranchement.",
             ]),
             .paragraph("Les LED du contrôleur reflètent l'écran : un pad allumé à la couleur de son pad, qui **pulse** quand le son joue, **atténué** en pause ou quand une cue lumière est éteinte, éteint pour une case vide."),
-            .paragraph("**Couleurs pâles sur le Launchpad ?** Ses LED rendent les teintes de l'écran délavées. Cliquez sur le **nom du contrôleur** en haut à droite : l'**étalonnage des LED** règle saturation, profondeur (gamma) et luminosité, et les 64 LED suivent chaque mouvement. Le réglage est mémorisé. (L'APC mini mk2 a sa propre palette : rien à régler.)"),
+            .paragraph("**Couleurs pâles sur le Launchpad ?** Ses LED rendent les teintes de l'écran délavées. Cliquez sur le **nom du contrôleur** en haut à droite : l'**étalonnage des LED** règle saturation, profondeur (gamma) et luminosité, et les 64 LED suivent chaque mouvement. Le réglage est mémorisé. (L'APC mini mk2 a sa propre palette : rien à régler.) Sur l'**APC mini mk2**, le même panneau propose le mode **RVB libre** (essai) : les teintes de l'écran sont envoyées en couleurs libres et s'étalonnent de la même façon ; « Palette Akai » remet les couleurs d'origine."),
             .paragraph("Les faders se **raccrochent** : après un changement de grille, un fader physique n'agit qu'une fois revenu à la valeur affichée, pour que le volume ne saute pas."),
             .warning("Lalabob ne supporte pas deux contrôleurs en même temps. Si les deux sont branchés, le premier reconnu est utilisé."),
         ])
@@ -166,7 +166,7 @@ enum HelpContent {
         blocks: [
             .bullets([
                 "**Le contrôleur n'est pas reconnu** : vérifiez qu'il est branché en direct et attendez une seconde ; l'indicateur de l'en-tête passe au vert. Les LED reviennent seules après un rebranchement.",
-                "**Les couleurs du Launchpad sont pâles** : cliquez sur le nom du contrôleur dans l'en-tête et réglez l'étalonnage des LED (essayez « Réglage conseillé », puis montez le gamma).",
+                "**Les couleurs du contrôleur sont pâles ou fausses** : cliquez sur le nom du contrôleur dans l'en-tête et réglez l'étalonnage des LED (essayez « Réglage conseillé », puis montez le gamma).",
                 "**Un pad n'allume pas sa LED** : changez de grille et revenez, ou rebranchez le contrôleur ; Lalabob renvoie alors toutes les LED.",
                 "**Une cue lumière ne se lance pas ou semble ne rien faire** : LightKey écoute-t-il encore le contrôleur ? Il ne doit écouter que « Lalabob Lumière ».",
                 "**Aucun état de cue sur les pads** : la **sortie** de « Lalabob Lumière » est-elle activée dans LightKey ? Le banc d'essai (⌥⌘L) doit afficher des lignes « LightKey → » quand on lance une cue.",

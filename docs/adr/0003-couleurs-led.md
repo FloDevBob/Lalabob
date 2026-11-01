@@ -14,7 +14,8 @@ adressée par la vélocité, souvent éloignée de ces teintes.
 - Launchpad X / Mini MK3 / Pro MK3 : SysEx d'éclairage en **RVB** (type 3, 0–127 par canal),
   pour reproduire exactement la couleur vive de la maquette.
 - APC mini mk2 : palette par vélocité (`TintSpec.paletteVelocity`) et luminosité par canal MIDI.
-  Le SysEx RVB de l'APC pourra remplacer la palette après essai sur le matériel.
+  Le SysEx RVB de l'APC peut remplacer la palette : proposé en option (« RVB libre ») depuis le 01/11/2026, à valider sur le matériel avant d'en faire le défaut.
+- Les couleurs RVB sont **étalonnables** (saturation, gamma, luminosité : `LEDCalibration`) : les teintes de l'écran envoyées telles quelles paraissent délavées sur les LED d'un Launchpad.
 
 ## Conséquences
 

@@ -15,20 +15,29 @@ public enum ControllerModel: String, CaseIterable, Sendable {
     }
 
     /// Pilote correspondant, sans étalonnage (notes, entrées, messages : tout ce qui n'est pas de la couleur).
-    public var driver: any ControllerDriver { driver(calibration: .neutral) }
+    public var driver: any ControllerDriver { driver(settings: .neutral) }
 
-    /// Pilote avec l'étalonnage des couleurs (sans effet sur l'APC mini mk2 : sa palette est celle de Akai).
+    /// Pilote avec l'étalonnage des couleurs (Launchpad ; l'APC reste sur sa palette).
     public func driver(calibration: LEDCalibration) -> any ControllerDriver {
+        driver(settings: LEDSettings(calibration: calibration))
+    }
+
+    /// Pilote avec les réglages de couleur : étalonnage RVB du Launchpad, ou palette / RVB libre de l'APC mini mk2.
+    public func driver(settings: LEDSettings) -> any ControllerDriver {
         switch self {
         case .launchpadX, .launchpadMiniMK3, .launchpadProMK3:
-            return LaunchpadDriver(model: self, calibration: calibration)
+            return LaunchpadDriver(model: self, calibration: settings.calibration)
         case .apcMiniMK2:
-            return APCMiniMK2Driver()
+            return APCMiniMK2Driver(calibration: settings.calibration, usesRGB: settings.usesRGB)
         }
     }
 
-    /// Les LED de ce contrôleur sont en RVB : l'étalonnage a un effet.
+    /// Les LED de ce contrôleur sont toujours en RVB : l'étalonnage a toujours un effet. L'APC mini mk2 n'y est qu'en
+    /// mode « RVB libre ».
     public var hasRGBLEDs: Bool { self != .apcMiniMK2 }
+
+    /// Les réglages de couleur sont communs aux modèles d'une même famille (clé de mémorisation).
+    public var ledFamily: String { self == .apcMiniMK2 ? "apc" : "launchpad" }
 }
 
 /// État visuel demandé pour la LED d'une case.

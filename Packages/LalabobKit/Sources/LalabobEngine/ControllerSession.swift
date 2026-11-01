@@ -30,10 +30,10 @@ public final class ControllerSession {
 
     /// Banc d'essai de l'appairage lumière (inactif tant que sa fenêtre est fermée).
     public let bench = LightingTestBench()
-    /// Étalonnage des couleurs des LED RVB (Launchpad), mémorisé d'un lancement à l'autre.
-    public private(set) var ledCalibration: LEDCalibration
+    /// Réglages de couleur des LED par famille de contrôleur (Launchpad, APC), mémorisés d'un lancement à l'autre.
+    public private(set) var ledSettingsByFamily: [String: LEDSettings]
     @ObservationIgnored private let defaults: UserDefaults
-    static let calibrationDefaultsKey = "ledCalibration"
+    static let settingsDefaultsKey = "ledSettings"
     /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
@@ -58,9 +58,10 @@ public final class ControllerSession {
     public init(transport: any MIDITransport, defaults: UserDefaults = .standard) {
         self.transport = transport
         self.defaults = defaults
-        self.ledCalibration =
-            defaults.data(forKey: Self.calibrationDefaultsKey)
-            .flatMap { try? JSONDecoder().decode(LEDCalibration.self, from: $0) }?.clamped ?? .standard
+        self.ledSettingsByFamily =
+            (defaults.data(forKey: Self.settingsDefaultsKey)
+            .flatMap { try? JSONDecoder().decode([String: LEDSettings].self, from: $0) } ?? [:])
+            .mapValues(\.clamped)
 
         // Une seule file d'envoi : les messages partent dans l'ordre où on les a produits.
         let (stream, continuation) = AsyncStream.makeStream(of: Outgoing.self, bufferingPolicy: .unbounded)
@@ -106,16 +107,25 @@ public final class ControllerSession {
 
     // MARK: - Étalonnage des LED
 
-    /// Change l'étalonnage des couleurs : mémorisé, puis toutes les LED sont renvoyées avec les nouvelles couleurs.
-    public func setLEDCalibration(_ calibration: LEDCalibration) {
-        let calibration = calibration.clamped
-        guard calibration != ledCalibration else { return }
-        ledCalibration = calibration
-        if let data = try? JSONEncoder().encode(calibration) { defaults.set(data, forKey: Self.calibrationDefaultsKey) }
-        if var current = active {
-            current.driver = current.model.driver(calibration: calibration)
+    /// Les réglages de couleur de ce contrôleur (ceux de sa famille ; le réglage conseillé tant qu'on n'y a pas touché).
+    public func ledSettings(for model: ControllerModel) -> LEDSettings {
+        ledSettingsByFamily[model.ledFamily] ?? .standard
+    }
+
+    /// Change les réglages de couleur d'un contrôleur : mémorisés, puis, s'il est branché, toutes ses LED sont renvoyées.
+    public func setLEDSettings(_ settings: LEDSettings, for model: ControllerModel) {
+        let settings = settings.clamped
+        let previous = ledSettings(for: model)
+        guard settings != previous else { return }
+        ledSettingsByFamily[model.ledFamily] = settings
+        if let data = try? JSONEncoder().encode(ledSettingsByFamily) { defaults.set(data, forKey: Self.settingsDefaultsKey) }
+        if var current = active, current.model.ledFamily == model.ledFamily {
+            current.driver = current.model.driver(settings: settings)
             active = current
             lastLEDs = [:]
+            // En changeant de mode (palette ⇄ RVB), on repart d'une grille éteinte : un pad ne garde pas l'ancienne couleur.
+            // Un simple réglage de curseur ne passe pas par là : pas de scintillement.
+            if previous.usesRGB != settings.usesRGB { send(current.driver.connectionMessages) }
             pushLEDs()
         }
     }
@@ -170,7 +180,7 @@ public final class ControllerSession {
         guard let found else { return }
 
         await transport.listen(to: found.source)
-        let driver = found.model.driver(calibration: ledCalibration)
+        let driver = found.model.driver(settings: ledSettings(for: found.model))
         active = Active(model: found.model, driver: driver, source: found.source, destination: found.destination)
         lastLEDs = [:]
         send(driver.connectionMessages)

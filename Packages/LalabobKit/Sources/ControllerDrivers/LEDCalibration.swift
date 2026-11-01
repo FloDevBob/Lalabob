@@ -57,3 +57,25 @@ public struct LEDCalibration: Codable, Equatable, Sendable {
         return RGB(red: adjusted[0], green: adjusted[1], blue: adjusted[2])
     }
 }
+
+/// Réglages de couleur d'un contrôleur : l'étalonnage, et pour l'APC mini mk2 le mode d'envoi des couleurs.
+///
+/// Un jeu de réglages par **famille** de contrôleur (`ControllerModel.ledFamily`) : les Launchpad partagent les leurs,
+/// l'APC a les siens (ses LED ne rendent pas les couleurs comme celles d'un Launchpad).
+public struct LEDSettings: Codable, Equatable, Sendable {
+    public var calibration: LEDCalibration
+    /// APC mini mk2 seulement : envoyer des couleurs **RVB libres** (SysEx) au lieu de la palette fixe d'Akai.
+    /// Les teintes de l'écran sont alors reproduites et étalonnables comme sur un Launchpad. À valider sur le matériel ;
+    /// désactivé par défaut. Sans effet sur un Launchpad (toujours en RVB).
+    public var usesRGB: Bool
+
+    public init(calibration: LEDCalibration, usesRGB: Bool = false) {
+        self.calibration = calibration
+        self.usesRGB = usesRGB
+    }
+
+    public static let standard = LEDSettings(calibration: .standard)
+    public static let neutral = LEDSettings(calibration: .neutral)
+
+    public var clamped: LEDSettings { LEDSettings(calibration: calibration.clamped, usesRGB: usesRGB) }
+}

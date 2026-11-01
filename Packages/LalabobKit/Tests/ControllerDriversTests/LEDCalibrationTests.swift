@@ -99,3 +99,57 @@ struct LEDCalibrationTests {
                 == ControllerModel.apcMiniMK2.driver.ledMessages([position: .lit(.vert, .full)]))
     }
 }
+
+/// APC mini mk2 : palette d'Akai par défaut ; en mode « RVB libre », une couleur étalonnée par SysEx.
+@Suite("APC mini mk2 : couleurs RVB libres")
+struct APCRGBTests {
+    private let position = GridPosition(column: 0, row: 7)  // note 0
+    private let calibration = LEDCalibration(saturation: 1, gamma: 2, brightness: 1)
+
+    @Test("Par défaut, rien ne change : palette et canal de luminosité")
+    func paletteByDefault() {
+        let driver = APCMiniMK2Driver()
+        #expect(driver.ledMessages([position: .lit(.vert, .full)]) == [.noteOn(channel: 6, note: 0, velocity: Tint.vert.spec.paletteVelocity)])
+        #expect(driver.ledMessages([position: .off]) == [.noteOn(channel: 0, note: 0, velocity: 0)])
+        #expect(ControllerModel.apcMiniMK2.driver.ledMessages([position: .lit(.vert, .full)]) == driver.ledMessages([position: .lit(.vert, .full)]))
+    }
+
+    @Test("Le SysEx RVB coupe chaque canal en poids fort et 7 bits de poids faible")
+    func sysExEncoding() {
+        let message = APCMiniMK2Driver.rgbSysEx(pad: 9, color: RGB(red: 255, green: 128, blue: 5))
+        #expect(
+            message
+                == .systemExclusive([0xF0, 0x47, 0x7F, 0x4F, 0x24, 0x00, 0x08, 9, 9, 0x01, 0x7F, 0x01, 0x00, 0x00, 0x05, 0xF7]))
+        // Aucun octet de données ne dépasse 7 bits (sinon le SysEx est invalide).
+        if case .systemExclusive(let bytes) = message { #expect(bytes.dropFirst().dropLast().allSatisfy { $0 < 0x80 }) }
+    }
+
+    @Test("En RVB libre, une LED allumée envoie la couleur étalonnée, l'intensité s'applique ensuite")
+    func rgbUsesTheCalibration() {
+        let driver = APCMiniMK2Driver(calibration: calibration, usesRGB: true)
+        let full = calibration.apply(to: Tint.rouge.spec.vivid)
+        #expect(driver.ledMessages([position: .lit(.rouge, .full)]) == [APCMiniMK2Driver.rgbSysEx(pad: 0, color: full)])
+        #expect(driver.ledMessages([position: .lit(.rouge, .half)]) == [APCMiniMK2Driver.rgbSysEx(pad: 0, color: full.scaled(by: 0.5))])
+    }
+
+    @Test("En RVB libre, éteindre = noir ; la pulsation reste celle de la palette")
+    func rgbOffAndPulse() {
+        let driver = APCMiniMK2Driver(calibration: calibration, usesRGB: true)
+        #expect(driver.ledMessages([position: .off]) == [APCMiniMK2Driver.rgbSysEx(pad: 0, color: RGB(red: 0, green: 0, blue: 0))])
+        #expect(
+            driver.ledMessages([position: .pulsing(.vert)])
+                == [.noteOn(channel: APCMiniMK2Driver.pulseChannel, note: 0, velocity: Tint.vert.spec.paletteVelocity)])
+    }
+
+    @Test("Les réglages d'une famille choisissent le pilote ; chaque famille a sa clé")
+    func settingsPickTheDriver() {
+        let settings = LEDSettings(calibration: calibration, usesRGB: true)
+        let apc = ControllerModel.apcMiniMK2.driver(settings: settings)
+        #expect((apc as? APCMiniMK2Driver)?.usesRGB == true)
+        let launchpad = ControllerModel.launchpadMiniMK3.driver(settings: settings)
+        #expect((launchpad as? LaunchpadDriver)?.calibration == calibration)
+        #expect(ControllerModel.apcMiniMK2.ledFamily == "apc")
+        #expect(ControllerModel.launchpadX.ledFamily == ControllerModel.launchpadMiniMK3.ledFamily)
+        #expect(LEDSettings.standard.usesRGB == false)
+    }
+}

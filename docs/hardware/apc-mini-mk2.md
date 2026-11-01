@@ -14,7 +14,7 @@ Les appuis arrivent en Note On sur le canal 1 (0 en interne).
 - Note On sur la note de la case ; **vélocité = couleur** de la palette ; **canal = comportement** :
   - canaux 0 à 6 (affichés 1 à 7) : luminosité de 10 % à 100 % ;
   - canaux 7 à 15 : pulsation puis clignotement à différentes vitesses ⚠︎ (valeurs exactes à confirmer).
-- Un SysEx permet de fixer une couleur RVB libre par case (à évaluer, voir ADR 0003).
+- Un SysEx permet de fixer une couleur RVB libre par case : `F0 47 7F 4F 24 00 08 <pad> <pad> <R msb> <R lsb> <G msb> <G lsb> <B msb> <B lsb> F7` (chaque canal 0–255 coupé en poids fort 0/1 et 7 bits de poids faible) ⚠︎ **à valider sur le matériel**. Lalabob le propose en option : **« RVB libre (essai) »** dans le panneau de couleurs de l'en-tête (clic sur le nom du contrôleur). Par défaut : palette Akai. La pulsation reste celle de la palette (canal).
 - Boutons de piste (notes 100–107, rouge) et de scène (112–119, vert) : non utilisés pour l'instant.
 
 ## Faders
@@ -37,7 +37,7 @@ Apple Music lisent l'APC en même temps sans se gêner.
 
 - Les notes des pads suivent la disposition « 0 en bas à gauche, 63 en haut à droite, ligne par ligne » : les appuis sur les colonnes de droite ont donné les notes 6, 7, 14, 15, 22, 23, … 62, 63. Appui = Note On vélocité 127, relâchement = Note Off vélocité 0, canal 1.
 - Le retour de LightKey utilise ces mêmes notes (voir `lightkey-feedback.md`).
-- Non encore confirmés : les CC des faders (48 à 55 ⚠︎) et le comportement des LED à pulsation.
+- Non encore confirmés : les CC des faders (48 à 55 ⚠︎), le comportement des LED à pulsation et le SysEx RVB (voir ci-dessus).
 
 ## Matériel de la troupe
 

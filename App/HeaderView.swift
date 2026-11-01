@@ -71,16 +71,16 @@ struct HeaderView: View {
         audioUsage = await Task.detached { AudioFolderUsage.measure(directory: directory, used: used) }.value
     }
 
-    /// Le contrôleur connecté ; avec des LED RVB (Launchpad), un clic ouvre l'étalonnage des couleurs.
+    /// Le contrôleur connecté ; un clic ouvre les réglages de couleur de ses LED.
     @ViewBuilder
     private var controllerStatusControl: some View {
-        if let session = midiSession, controller.connectedController?.hasRGBLEDs == true {
+        if let session = midiSession, let model = controller.connectedController {
             Button { showsCalibration.toggle() } label: { controllerStatus }
                 .buttonStyle(.plain)
                 .hoverHighlight()
                 .interactiveCursor(.link)
-                .popover(isPresented: $showsCalibration, arrowEdge: .bottom) { LEDCalibrationView(session: session) }
-                .help("Régler les couleurs des LED du Launchpad")
+                .popover(isPresented: $showsCalibration, arrowEdge: .bottom) { LEDCalibrationView(session: session, model: model) }
+                .help("Régler les couleurs des LED de \(model.displayName)")
         } else {
             controllerStatus
         }
