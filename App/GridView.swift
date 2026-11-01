@@ -515,20 +515,23 @@ struct PadView: View {
                     RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                         .strokeBorder(Surface.lightAccent.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
                 }
-                Button {
-                    controller.pairingSend(at: position)
-                } label: {
-                    Icon.lightbulb.view(size: 13)
-                        .frame(width: 22, height: 22)
-                        .background(Surface.lightAccent, in: .circle)
-                        .foregroundStyle(Surface.window)
-                        .contentShape(.circle)
+                // Une cue a déjà son bouton rond dans le pad ; une case libre reçoit le même, en ambre.
+                if controller.pad(at: position) == nil {
+                    Button {
+                        controller.pairingSend(at: position)
+                    } label: {
+                        Icon.lightbulbFill.view(size: Self.buttonSize(for: density) * 0.5)
+                            .frame(width: Self.buttonSize(for: density), height: Self.buttonSize(for: density))
+                            .background(Surface.lightAccent, in: .circle)
+                            .foregroundStyle(Surface.window)
+                            .contentShape(.circle)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(6)
+                    .interactiveCursor(.link)
+                    .help("Envoyer la note de cette case à LightKey")
+                    .accessibilityLabel("Envoyer la note à LightKey")
                 }
-                .buttonStyle(.plain)
-                .padding(5)
-                .interactiveCursor(.link)
-                .help("Envoyer la note de cette case à LightKey")
-                .accessibilityLabel("Envoyer la note à LightKey")
             }
         }
     }
@@ -613,17 +616,16 @@ struct PadView: View {
     private func filled(_ pad: Pad, event: PlaybackEvent?) -> some View {
         let vivid = pad.tint.vividColor
         let lightState: LightState = pad.kind == .light ? controller.lightState(at: position) : .unknown
+        let outline: Double = event.map { $0.state.isPaused ? 0.45 : 1 } ?? (lightState == .on ? 1 : 0)
+        let halo: Double = event.map { $0.state.isPaused ? 0 : 0.45 } ?? (lightState == .on ? 0.45 : 0)
         return VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 4) {
                 InlinePadText(position: position, field: .title, text: pad.title, font: Typography.padTitle, editing: $editingField)
                 Spacer(minLength: 0)
-                if lightState != .unknown {
-                    Icon.lightbulb.view(size: 13)
-                        .foregroundStyle(lightState == .on ? vivid : pad.tint.labelColor.opacity(0.4))
-                }
                 if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
                 if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
                 if case .audio = pad.content { playStopButton(pad, event: event) }
+                if case .light = pad.content { cueButton(pad, state: lightState) }
             }
             InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
                 .opacity(0.88)
@@ -651,16 +653,39 @@ struct PadView: View {
         }
         .overlay(alignment: .bottom) { progressBar(event, color: vivid) }
         .overlay {
-            if let event {
-                RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
-                    .stroke(vivid.opacity(event.state.isPaused ? 0.45 : 1), lineWidth: 2)
-            } else if lightState == .on {
-                RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(vivid, lineWidth: 2)
-            }
+            RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(vivid.opacity(outline), lineWidth: 2)
         }
-        .shadow(
-            color: event.map { $0.state.isPaused ? .clear : vivid.opacity(0.45) } ?? (lightState == .on ? vivid.opacity(0.45) : .clear),
-            radius: 8)
+        .shadow(color: vivid.opacity(halo), radius: 8)
+        // La lueur s'éteint en fondu (0,35 s) quand le son s'arrête ; à l'allumage rien n'est animé.
+        .animation(reduceMotion || outline > 0 ? nil : Motion.glowOut, value: outline)
+    }
+
+    /// Bouton rond d'une cue lumière, du même dessin que le bouton lecture d'un son : une ampoule pleine qui envoie la cue
+    /// à LightKey (comme un double-clic ; marche aussi verrouillé). Sa couleur dit l'état renvoyé par LightKey : pleine
+    /// couleur du pad = allumée, atténuée = éteinte, neutre = LightKey n'a encore rien dit. En mode d'appairage, il envoie
+    /// la note et désigne la case comme cible.
+    private func cueButton(_ pad: Pad, state: LightState) -> some View {
+        let size = Self.buttonSize(for: density)
+        let isOn = state == .on
+        let isOff = state == .off
+        return Button {
+            if controller.isPairingLights, !controller.isLocked {
+                controller.pairingSend(at: position)
+            } else {
+                controller.audition(at: position)
+            }
+        } label: {
+            Icon.lightbulbFill.view(size: size * 0.5)
+                .frame(width: size, height: size)
+                .background(isOn ? pad.tint.vividColor : pad.tint.labelColor.opacity(isOff ? 0.10 : 0.18), in: .circle)
+                .foregroundStyle(isOn ? pad.tint.surfaceColor : pad.tint.labelColor.opacity(isOff ? 0.55 : 1))
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help(controller.isPairingLights ? "Envoyer la note de cette case à LightKey" : "Envoyer la cue à LightKey (double-clic sur le pad : pareil)")
+        .accessibilityLabel(controller.isPairingLights ? "Envoyer la note à LightKey" : "Envoyer la cue")
+        .accessibilityValue(isOn ? "Allumée" : isOff ? "Éteinte" : "")
     }
 
     /// Diamètre du bouton lecture / stop d'un pad : le plus grand que la hauteur du pad permet (titre + sous-titre

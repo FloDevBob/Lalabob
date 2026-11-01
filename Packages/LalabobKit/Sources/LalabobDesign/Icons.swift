@@ -8,7 +8,7 @@ import SwiftUI
 public enum Icon: String, CaseIterable, Sendable {
     case play, pause, stop, restart, loop
     /// Versions pleines (triangle, barres, carré) : plus lisibles dans un bouton rond. Même trait arrondi que les autres.
-    case playFill, pauseFill, stopFill
+    case playFill, pauseFill, stopFill, lightbulbFill
     case cut, copy, duplicate, paste, trash
     case plus, close, folder, search, sidebar
     case sun, music, note, lock, lockOpen, volume, warning, wave, stopAll, spotlight, more, lightbulb

@@ -151,6 +151,7 @@ struct PairingButton: View {
 /// Cadenas : fermé, le spectacle se joue mais ne se modifie pas (⌘L).
 struct LockButton: View {
     @Environment(ShowController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let locked = controller.isLocked
@@ -158,6 +159,8 @@ struct LockButton: View {
             controller.isLocked.toggle()
         } label: {
             IconLabel(locked ? "Verrouillé" : "Déverrouillé", icon: locked ? .lock : .lockOpen, size: 15)
+                .id(locked)
+                .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.horizontal, 10)
                 .frame(height: 28)
@@ -165,6 +168,7 @@ struct LockButton: View {
                 .foregroundStyle(locked ? Surface.textSecondary : Surface.lightAccent)
         }
         .buttonStyle(.plain)
+        .animation(reduceMotion ? nil : Motion.value, value: locked)
         .hoverHighlight()
         .interactiveCursor(.link)
         .help(HelpText.lock(locked: locked))
@@ -180,6 +184,8 @@ struct GridTabsView: View {
     @State private var renaming: PadGrid.ID?
     @State private var draftName = ""
     @FocusState private var nameFieldFocused: Bool
+    @Namespace private var tabHighlight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GeometryReader { proxy in
@@ -230,7 +236,13 @@ struct GridTabsView: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
-        .background(isSelected ? Surface.panel : .clear, in: .rect(cornerRadius: 10))
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 10).fill(Surface.panel)
+                    .matchedGeometryEffect(id: "selectedTab", in: tabHighlight)
+            }
+        }
+        .animation(reduceMotion ? nil : Motion.tabSelection, value: controller.selectedGridIndex)
         .contentShape(.rect(cornerRadius: 10))
         .hoverHighlight(cornerRadius: 10, enabled: !isSelected && renaming != grid.id)
         .interactiveCursor(.link, enabled: renaming != grid.id)

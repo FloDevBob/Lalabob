@@ -15,6 +15,7 @@ struct VerticalFader<Accessory: View>: View {
     var hardwareMarker: Double?
     @ViewBuilder var accessory: () -> Accessory
     @Environment(\.gridDensity) private var density
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isDragging = false
     private var trackHeight: CGFloat { density.faderTrackHeight }
 
@@ -32,6 +33,8 @@ struct VerticalFader<Accessory: View>: View {
                 .font(Typography.mono)
                 .foregroundStyle(Surface.textSecondary)
                 .monospacedDigit()
+                .contentTransition(.numericText())
+                .animation(reduceMotion ? nil : Motion.value, value: shownValue)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Volume de \(name)")

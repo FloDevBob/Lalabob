@@ -146,6 +146,11 @@ extension ContentView {
         content: .audio(clip: AudioClip(fileName: "essai.wav")))
     grid[GridPosition(column: 0, row: 0)] = Pad(
         title: "Rire", subtitle: "Public", tint: .ambre, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+    for (index, title) in ["Plein feu", "Noir", "Ambiance"].enumerated() {
+        grid[GridPosition(column: 6, row: index)] = Pad(
+            title: title, subtitle: "Cue", tint: [.orange, .azur, .rose][index],
+            content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+    }
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
     controller.selection = position
     return ContentView()
