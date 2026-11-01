@@ -25,6 +25,12 @@ public final class ShowController {
     public internal(set) var selectedPositions: Set<GridPosition> = []
     /// Case « principale » : celle que montre l'inspecteur quand elle est seule, et l'ancre des plages (Maj).
     var primarySelection: GridPosition?
+    /// Extrémité mobile de la sélection au clavier (Maj + flèches) ; l'autre extrémité est la case principale.
+    var selectionCursor: GridPosition?
+    /// Mode « Appairage lumière » : les cases lumière attendent qu'une cue de LightKey leur soit rattachée. Jamais enregistré.
+    public internal(set) var isPairingLights = false
+    /// Case lumière qui vient d'être appairée et dont le nom attend d'être saisi.
+    public internal(set) var pairingNaming: GridPosition?
     /// Affecter une case remplace toute la sélection par cette seule case (`nil` : tout désélectionner).
     public var selection: GridPosition? {
         get { primarySelection }
@@ -37,7 +43,11 @@ public final class ShowController {
     /// Verrouiller efface la sélection (l'inspecteur se ferme).
     public var isLocked: Bool {
         didSet {
-            if isLocked { selection = nil }
+            if isLocked {
+                selection = nil
+                isPairingLights = false  // aucun appairage en scène
+                pairingNaming = nil
+            }
             if !isLocked { lockNotice = nil }
         }
     }
@@ -189,6 +199,26 @@ public final class ShowController {
         case .toggle:
             toggleSelection(at: position)
         }
+    }
+
+    /// Flèches du clavier : déplace la sélection d'une case (sans sortir de la grille). Avec `extend` (Maj), la sélection
+    /// devient le rectangle entre la case principale et la nouvelle case, comme un Maj-clic ; verrouillé, il n'y a toujours
+    /// qu'une case. Sans sélection, la première flèche sélectionne la case en haut à gauche.
+    public func moveSelection(dx: Int, dy: Int, extend: Bool = false) {
+        guard let start = selectionCursor.flatMap({ selectedPositions.contains($0) ? $0 : nil }) ?? primarySelection else {
+            let first = GridPosition(column: 0, row: 0)
+            selection = first
+            selectionCursor = first
+            return
+        }
+        let last = PadGrid.size - 1
+        let target = GridPosition(column: min(max(start.column + dx, 0), last), row: min(max(start.row + dy, 0), last))
+        if extend, !isLocked {
+            selectRange(to: target)
+        } else {
+            selection = target
+        }
+        selectionCursor = target
     }
 
     /// Comment un clic modifie la sélection (déverrouillé).

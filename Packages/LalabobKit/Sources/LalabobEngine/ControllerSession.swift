@@ -189,6 +189,7 @@ public final class ControllerSession {
                     // Une colonne lumière ne touche jamais au son : l'appui part vers LightKey, rien d'autre.
                     if isLightColumn(position.column) {
                         relayPad(position, pressed: true, driver: active.driver)
+                        attachedController?.pairingPress(at: position)
                     } else {
                         attachedController?.pressFromController(at: position)
                     }
@@ -247,7 +248,9 @@ public final class ControllerSession {
             let driver = active?.driver ?? (attachedController?.lastControllerModel ?? .apcMiniMK2).driver
             var changed = false
             for event in events {
-                guard let (position, state) = driver.lightFeedback(for: event), lightStates[position] != state else { continue }
+                guard let (position, state) = driver.lightFeedback(for: event) else { continue }
+                attachedController?.lightFeedbackArrived(at: position)  // mode d'appairage : la case cible répond
+                guard lightStates[position] != state else { continue }
                 lightStates[position] = state  // le dernier message gagne : une rafale identique ne change rien
                 changed = true
             }

@@ -23,9 +23,13 @@ extension ShowController {
     @discardableResult
     public func newLightCue(at position: GridPosition) -> Bool {
         guard pad(at: position) == nil else { return false }
-        // La note envoyée à LightKey est celle du contrôleur (ADR 0004) : le message stocké ne sert pas.
+        return place(Self.blankLightPad(), at: position)
+    }
+
+    /// Une cue lumière vierge. La note envoyée à LightKey est celle du contrôleur (ADR 0006) : le message stocké ne sert pas.
+    static func blankLightPad() -> Pad {
         let cue = LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))
-        return place(Pad(title: "Nouvelle cue", tint: .ambre, content: .light(cue: cue)), at: position)
+        return Pad(title: "Nouvelle cue", tint: .ambre, content: .light(cue: cue))
     }
 
     @discardableResult

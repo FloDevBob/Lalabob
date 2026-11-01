@@ -196,11 +196,26 @@ public struct LightCue: Codable, Sendable, Equatable {
     public var behavior: LightBehavior
     /// Le logiciel lumière peut renvoyer l'état pour allumer la LED.
     public var ledFeedback: Bool
+    /// La cue a été appairée à une cue de LightKey (mode « Appairage lumière », ADR 0006). Sert à repérer, en mode
+    /// d'appairage, les cases libres ; LightKey seul sait vraiment ce qu'il y a derrière la note.
+    public var isPaired: Bool
 
-    public init(output: MIDIMessageSpec, behavior: LightBehavior = .impulse, ledFeedback: Bool = true) {
+    public init(output: MIDIMessageSpec, behavior: LightBehavior = .impulse, ledFeedback: Bool = true, isPaired: Bool = false) {
         self.output = output
         self.behavior = behavior
         self.ledFeedback = ledFeedback
+        self.isPaired = isPaired
+    }
+
+    private enum CodingKeys: String, CodingKey { case output, behavior, ledFeedback, isPaired }
+
+    /// Les spectacles enregistrés avant l'appairage n'ont pas `isPaired` : ils s'ouvrent comme non appairés.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        output = try container.decode(MIDIMessageSpec.self, forKey: .output)
+        behavior = try container.decode(LightBehavior.self, forKey: .behavior)
+        ledFeedback = try container.decode(Bool.self, forKey: .ledFeedback)
+        isPaired = try container.decodeIfPresent(Bool.self, forKey: .isPaired) ?? false
     }
 }
 
