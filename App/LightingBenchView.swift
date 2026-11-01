@@ -50,21 +50,21 @@ private struct BenchContent: View {
                 ok: bench.isControllerConnected,
                 title: bench.isControllerConnected ? "Contrôleur : \(bench.controllerName)" : "Contrôleur : aucun branché",
                 detail: bench.isControllerConnected ? nil : "Les notes de l'\(bench.controllerName) sont utilisées.")
-            StatusRow(ok: true, title: "Port créé : « Lalabob Lumière » (Lalabob → LightKey)", detail: nil)
+            StatusRow(ok: true, title: "Appareil créé : « Lalabob Lumière » (entrée et sortie)", detail: nil)
             StatusRow(
                 ok: bench.feedbackCount > 0,
                 title: bench.feedbackCount > 0
                     ? "Retour de LightKey reçu (\(bench.feedbackCount) messages)" : "Retour de LightKey : rien reçu pour l'instant",
-                detail: bench.feedbackCount > 0 ? nil : "Port « Lalabob Retour Lumière » (LightKey → Lalabob)")
+                detail: bench.feedbackCount > 0 ? nil : "Dans LightKey, activez l'entrée et la sortie de « Lalabob Lumière »")
         }
     }
 
     private var guide: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Comment essayer").font(.headline)
-            Text("1. Dans LightKey, réglages MIDI : entrée « Lalabob Lumière », retour (Send Feedback To) « Lalabob Retour Lumière ».")
+            Text("1. Dans LightKey, réglages MIDI : activez l'entrée et la sortie de « Lalabob Lumière », et désactivez votre contrôleur physique.")
             Text("2. Dans LightKey : clic droit sur une cue › External Control › Add Trigger…")
-            Text("3. Cliquez une case ci-dessous (ou appuyez sur un pad, option cochée) : LightKey apprend la note.")
+            Text("3. Cliquez une case ci-dessous (ou appuyez sur un pad de droite) : LightKey apprend la note.")
             Text("4. Relancez la cue : le journal montre ce que LightKey répond.")
         }
         .font(.callout)
@@ -74,11 +74,10 @@ private struct BenchContent: View {
 
     private var options: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle("Relayer vers LightKey les appuis du contrôleur sur les 2 colonnes de droite", isOn: $bench.relaysControllerPresses)
             Stepper(value: $bench.channel, in: 1...16) {
-                Text("Canal envoyé à LightKey : \(bench.channel)")
+                Text("Canal des clics sur la grille : \(bench.channel)")
             }
-            Text("Si LightKey écoute aussi le contrôleur directement, une cue peut partir deux fois pendant l'essai.")
+            Text("Les appuis sur les 2 colonnes de droite du contrôleur sont toujours relayés à LightKey, sur le canal 1. Si LightKey écoute aussi le contrôleur, une cue bascule deux fois : désactivez-le dans LightKey.")
                 .font(.caption)
                 .foregroundStyle(Surface.textTertiary)
         }

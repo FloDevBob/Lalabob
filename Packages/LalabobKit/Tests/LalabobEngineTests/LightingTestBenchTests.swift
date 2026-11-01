@@ -71,23 +71,23 @@ struct LightingTestBenchTests {
         #expect(bench.screenPressed.isEmpty)
     }
 
-    @Test("Sans le relais, un appui physique est seulement journalisé")
-    func physicalPressIsOnlyLogged() async {
+    @Test("Un appui physique est journalisé, puis relayé vers LightKey avec son relâchement")
+    func physicalPressIsLoggedAndRelayed() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
         await rig.transport.receive([.noteOn(channel: 0, note: 77, velocity: 100)], from: ControllerSessionTests.lpxSource.id)
         #expect(await waitUntil { await rig.session.bench.controllerPressed == [GridPosition(column: 6, row: 1)] })
-        #expect(rig.session.bench.entries.last?.direction == .fromController)
-        #expect(await rig.transport.lighting.isEmpty)
+        #expect(await waitUntil { await rig.session.bench.entries.map(\.direction) == [.fromController, .toLightKey] })
+        #expect(await waitUntil { await rig.transport.lighting == [.noteOn(channel: 0, note: 77, velocity: 127)] })
     }
 
-    @Test("Avec le relais, un appui physique sur une colonne lumière part vers LightKey, relâchement compris")
-    func relayForwardsLightColumnPresses() async {
-        let rig = makeRig()
+    @Test("Le relais marche aussi quand le banc d'essai est fermé, toujours sur le canal 1")
+    func relayWorksWithTheBenchClosed() async {
+        let rig = makeRig(open: false)
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
-        rig.session.bench.relaysControllerPresses = true
+        rig.session.bench.channel = 5  // ne concerne que les clics du banc
 
         await rig.transport.receive([.noteOn(channel: 0, note: 77, velocity: 100)], from: ControllerSessionTests.lpxSource.id)
         await rig.transport.receive([.noteOff(channel: 0, note: 77, velocity: 0)], from: ControllerSessionTests.lpxSource.id)
@@ -96,12 +96,11 @@ struct LightingTestBenchTests {
         #expect(rig.session.bench.controllerPressed.isEmpty)
     }
 
-    @Test("Le relais ne touche jamais les colonnes sons")
+    @Test("Les colonnes sons ne sont jamais relayées")
     func relayIgnoresSoundColumns() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
-        rig.session.bench.relaysControllerPresses = true
         // Haut à gauche du Launchpad = note 81 : une colonne son.
         await rig.transport.receive([.noteOn(channel: 0, note: 81, velocity: 100)], from: ControllerSessionTests.lpxSource.id)
         #expect(await waitUntil { await rig.session.bench.controllerPressed == [GridPosition(column: 0, row: 0)] })

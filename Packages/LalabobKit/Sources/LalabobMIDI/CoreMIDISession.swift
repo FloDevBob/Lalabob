@@ -17,10 +17,9 @@ public actor CoreMIDISession: MIDITransport {
     private var outputPort = MIDIPortRef()
     /// Source virtuelle « Lalabob Lumière » : sortie seule, Lalabob ne l'écoute jamais (pas de boucle).
     private var lightingSource = MIDIEndpointRef()
-    /// Destination virtuelle « Lalabob Retour Lumière » : LightKey y envoie son retour (entrée seule).
-    private var lightingFeedbackDestination = MIDIEndpointRef()
-    /// Destination virtuelle du même nom que la source (« Lalabob Lumière ») : pour LightKey, un seul appareil avec entrée et sortie.
-    private var lightingPairedDestination = MIDIEndpointRef()
+    /// Destination virtuelle du même nom que la source : pour LightKey, un seul appareil « Lalabob Lumière » avec entrée
+    /// et sortie. LightKey n'envoie son retour qu'à la destination qui porte le nom de son entrée (relevé du 01/11/2026).
+    private var lightingDestination = MIDIEndpointRef()
     private var listening: Set<MIDIPortID> = []
 
     /// Décodeurs UMP, un par source (un SysEx peut arriver en plusieurs envois).
@@ -41,10 +40,8 @@ public actor CoreMIDISession: MIDITransport {
     private let decoders = Decoders()
 
     public static let lightingPortName = "Lalabob Lumière"
-    public static let lightingFeedbackPortName = "Lalabob Retour Lumière"
     private static let lightingIDKey = "lightingPortUniqueID"
-    private static let lightingFeedbackIDKey = "lightingFeedbackPortUniqueID"
-    private static let lightingPairedIDKey = "lightingPairedPortUniqueID"
+    private static let lightingDestinationIDKey = "lightingPairedPortUniqueID"
     /// Clé du décodeur du retour de LightKey (ce n'est pas un identifiant de source).
     private static let feedbackDecoderKey = Int32.min
 
@@ -92,8 +89,6 @@ public actor CoreMIDISession: MIDITransport {
         Self.restoreUniqueID(of: lighting, key: Self.lightingIDKey, defaults: defaults)
 
         // Le retour de LightKey, journalisé tel quel (relevé du vrai protocole) puis décodé vers le flux.
-        // Deux destinations reçoivent le même retour : « Lalabob Retour Lumière » et, du même nom que la source,
-        // « Lalabob Lumière » (LightKey associe peut-être l'entrée et la sortie d'un appareil par leur nom).
         let feedbackLog = Logger(subsystem: "fr.lalabob.app", category: "lighting")
         func makeFeedbackDestination(name: String, idKey: String) throws -> MIDIEndpointRef {
             var destination = MIDIEndpointRef()
@@ -112,15 +107,13 @@ public actor CoreMIDISession: MIDITransport {
             Self.restoreUniqueID(of: destination, key: idKey, defaults: defaults)
             return destination
         }
-        let feedbackDestination = try makeFeedbackDestination(name: Self.lightingFeedbackPortName, idKey: Self.lightingFeedbackIDKey)
-        let pairedDestination = try makeFeedbackDestination(name: Self.lightingPortName, idKey: Self.lightingPairedIDKey)
+        let lightingDestination = try makeFeedbackDestination(name: Self.lightingPortName, idKey: Self.lightingDestinationIDKey)
 
         self.client = client
         self.inputPort = input
         self.outputPort = output
         self.lightingSource = lighting
-        self.lightingFeedbackDestination = feedbackDestination
-        self.lightingPairedDestination = pairedDestination
+        self.lightingDestination = lightingDestination
     }
 
     /// Redonne au port l'identifiant unique du lancement précédent (LightKey le retrouve sans nouveau réglage),

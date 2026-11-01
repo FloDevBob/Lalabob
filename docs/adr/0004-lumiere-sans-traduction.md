@@ -1,7 +1,7 @@
 # ADR 0004 — Lumière : LightKey écoute le contrôleur, Lalabob ne traduit rien
 
 - Date : 30 octobre 2026
-- État : acceptée (remplace la « traduction note → message » prévue au J3)
+- État : remplacée par l'ADR 0006 (1er novembre 2026) — acceptée à l'origine (remplaçait la « traduction note → message » prévue au J3)
 
 ## Contexte
 

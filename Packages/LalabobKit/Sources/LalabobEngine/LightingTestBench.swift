@@ -33,9 +33,7 @@ public final class LightingTestBench {
     public private(set) var entries: [Entry] = []
     /// Vrai tant que la fenêtre du banc est ouverte.
     public var isOpen = false
-    /// Relayer vers LightKey les appuis du contrôleur sur les colonnes lumière (essai de l'étape 1 du plan J7).
-    public var relaysControllerPresses = false
-    /// Canal MIDI (1 à 16) des messages envoyés à LightKey depuis le banc et par le relais.
+    /// Canal MIDI (1 à 16) des clics du banc d'essai. Les appuis du contrôleur sont toujours relayés sur le canal 1.
     public var channel = 1
     /// Contrôleur dont on utilise les notes : le contrôleur branché, sinon le dernier connu (APC mini mk2 par défaut).
     public private(set) var model: ControllerModel = .apcMiniMK2

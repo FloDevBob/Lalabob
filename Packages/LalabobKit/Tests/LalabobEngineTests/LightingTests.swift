@@ -83,15 +83,20 @@ struct LightingTests {
         #expect(await rig.transport.lighting.isEmpty)
     }
 
-    @Test("Un appui physique sur un pad lumière n'envoie rien sur le port virtuel ni au moteur audio")
-    func physicalPressIsLeftToLightKey() async {
+    @Test("Un appui physique sur un pad lumière est relayé à LightKey (Note On puis Note Off au relâchement) et ne touche aucun son")
+    func physicalPressIsRelayed() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await plugLaunchpad(rig)
 
         await rig.transport.receive([.noteOn(channel: 0, note: 77, velocity: 100)], from: ControllerSessionTests.lpxSource.id)
-        try? await Task.sleep(for: .milliseconds(250))
-        #expect(await rig.transport.lighting.isEmpty)
+        #expect(await waitUntil { await rig.transport.lighting == [.noteOn(channel: 0, note: 77, velocity: 127)] })
+        try? await Task.sleep(for: .milliseconds(250))  // pas de Note Off tant que le pad est tenu
+        #expect(await rig.transport.lighting.count == 1)
+
+        await rig.transport.receive([.noteOff(channel: 0, note: 77, velocity: 0)], from: ControllerSessionTests.lpxSource.id)
+        let expected: [MIDIEvent] = [.noteOn(channel: 0, note: 77, velocity: 127), .noteOff(channel: 0, note: 77, velocity: 0)]
+        #expect(await waitUntil { await rig.transport.lighting == expected })
         #expect(!(await rig.audio.commands.contains { if case .trigger = $0 { true } else { false } }))
     }
 
@@ -171,8 +176,8 @@ struct LightingTests {
         #expect(await rig.transport.lighting.isEmpty)
     }
 
-    @Test("Un fader physique règle l'écran mais n'envoie rien : LightKey l'a déjà reçu du contrôleur")
-    func physicalFaderIsNotForwarded() async {
+    @Test("Un fader physique règle l'écran et est relayé à LightKey, une fois par valeur")
+    func physicalFaderIsRelayed() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
@@ -180,28 +185,32 @@ struct LightingTests {
 
         rig.controller.setColumnLevel(6, level: 0.5)  // à l'écran (hors LightKey : pas de CC, voir plus bas)
         try? await Task.sleep(for: .milliseconds(50))
-        // Le fader rejoint d'abord la valeur de l'écran, puis monte : l'écran le suit sans rien envoyer à LightKey.
+        // Le fader rejoint d'abord la valeur de l'écran, puis monte : l'écran le suit, et LightKey reçoit chaque valeur une fois.
         await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 64)], from: ControllerSessionTests.apcSource.id)
         await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 127)], from: ControllerSessionTests.apcSource.id)
         #expect(await waitUntil { await rig.controller.currentGrid.columns[6].level == 1 })
-        try? await Task.sleep(for: .milliseconds(150))
-        #expect(await rig.transport.lighting.isEmpty)
+        let expected: [MIDIEvent] = [.controlChange(channel: 0, controller: 54, value: 64), .controlChange(channel: 0, controller: 54, value: 127)]
+        #expect(await waitUntil { await rig.transport.lighting == expected })
     }
 
-    @Test("Après un fader physique, la même valeur à l'écran est renvoyée (LightKey n'a plus l'ancienne)")
+    @Test("Après un fader physique, une valeur différente à l'écran est renvoyée ; la même valeur ne l'est pas")
     func screenValueIsResentAfterAPhysicalMove() async {
         let rig = makeRig()
         defer { rig.runner.cancel() }
         await rig.transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
         _ = await waitUntil { await rig.controller.connectedController == .apcMiniMK2 }
 
+        let half = ControllerModel.apcMiniMK2.driver.faderEvent(column: 6, value: 0.5)
         rig.controller.setLightFader(column: 6, level: 0.5)
         #expect(await waitUntil { await rig.transport.lighting.count == 1 })
+        // Le fader physique rejoint 0,5 (déjà connu de LightKey : rien de plus), puis monte (relayé).
         await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 64)], from: ControllerSessionTests.apcSource.id)
         await rig.transport.receive([.controlChange(channel: 0, controller: 54, value: 127)], from: ControllerSessionTests.apcSource.id)
         #expect(await waitUntil { await rig.controller.currentGrid.columns[6].level == 1 })
-        rig.controller.setLightFader(column: 6, level: 0.5)
         #expect(await waitUntil { await rig.transport.lighting.count == 2 })
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        #expect(await waitUntil { await rig.transport.lighting.count == 3 })
+        #expect(await rig.transport.lighting.last == half)
     }
 
     @Test("L'interface connaît le CC du fader d'une colonne lumière (APC, ou celui de l'APC pour un Launchpad)")

@@ -182,6 +182,11 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
   atténuée ; inconnue = rien ; VoiceOver lit « Allumée / Éteinte ». Pas de `isPaired` (pas encore utile : l'appairage automatique viendra à l'étape 4). **Non fait** : état remis à « inconnu » à la fermeture de
   LightKey (impossible à détecter par MIDI) ; ne jamais en déduire « allumé » d'un envoi (LightKey n'a pas toujours répondu, voir relevé). 6 tests Engine, 4 tests pilotes ; 217 Engine et 43 pilotes verts.
   **À essayer** : lancer une cue dans LightKey (pad allumé à l'écran, LED qui pulse), l'éteindre, ouvrir le spectacle LightKey (rafale d'état), deux fenêtres.
+- **Étape 1 — relais des appuis physiques (01/11/2026, branche `j7/relais-physique`, ADR 0006)** : un appui sur une colonne lumière est **relayé** à LightKey (Note On vélocité 127 à l'appui, Note Off au relâchement réel,
+  canal 1) et ne passe plus par `pressFromController` (aucun son touché) ; les **faders physiques** des colonnes lumière sont relayés (CC du pilote, une valeur identique n'est pas répétée). Le port « Lalabob Retour Lumière »
+  est **supprimé** (un seul appareil « Lalabob Lumière », source + destination du même nom). Le canal 16 est abandonné. Le relais ne dépend plus du banc d'essai (option retirée ; le banc garde un canal pour ses propres clics).
+  **Prérequis côté LightKey** : n'écouter que « Lalabob Lumière » (contrôleur physique désactivé), sinon chaque cue bascule deux fois. 217 tests Engine verts.
+  **À essayer** : APC débranché de LightKey ; un appui sur un pad lumière lance la cue **une seule fois** ; fader 7 / 8 ; aucun son ne s'arrête ; débrancher l'APC : les clics à l'écran marchent encore.
 - **Reste pour l'étape 0** : relever aussi « cue changée de couleur » et « cue supprimée » (non essayés), puis écrire les fixtures Swift d'après le journal brut (étape 2).
 
 ## Risques suivis

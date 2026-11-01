@@ -186,18 +186,21 @@ public final class ControllerSession {
                 switch active.driver.interpret(event) {
                 case .padPressed(let position, let velocity) where velocity > 0:
                     bench.setControllerPad(position, pressed: true)
-                    relayToLightKey(position, pressed: true, driver: active.driver)
-                    attachedController?.pressFromController(at: position)
+                    // Une colonne lumière ne touche jamais au son : l'appui part vers LightKey, rien d'autre.
+                    if isLightColumn(position.column) {
+                        relayPad(position, pressed: true, driver: active.driver)
+                    } else {
+                        attachedController?.pressFromController(at: position)
+                    }
                 case .padReleased(let position):
                     bench.setControllerPad(position, pressed: false)
-                    relayToLightKey(position, pressed: false, driver: active.driver)
+                    if isLightColumn(position.column) { relayPad(position, pressed: false, driver: active.driver) }
                 case .columnFader(let column, let value):
                     lastHardwareFaders[column] = value
                     // Un fader pas encore accroché (autre onglet) est ignoré : le volume ne saute pas.
-                    if attachedController?.moveHardwareFader(column: column, value: value) == true {
-                        // Le fader physique a changé ce que LightKey croit : la prochaine valeur de l'écran doit repartir.
-                        lastLightFaderEvents[column] = nil
-                    }
+                    attachedController?.moveHardwareFader(column: column, value: value)
+                    // Sur une colonne lumière, LightKey reçoit la valeur physique (et la retient comme dernier envoi).
+                    relayFader(column: column, value: value, driver: active.driver)
                 default:
                     break  // relâchement, messages inconnus
                 }
@@ -213,15 +216,21 @@ public final class ControllerSession {
         for event in events { lightingOutbox.yield(event) }
     }
 
-    /// Essai du relais : un appui physique sur une colonne lumière est répété vers LightKey (jamais sur une colonne son).
-    private func relayToLightKey(_ position: GridPosition, pressed: Bool, driver: any ControllerDriver) {
-        guard bench.relaysControllerPresses, position.isValid, isLightColumn(position.column) else { return }
+    /// LightKey n'écoute que Lalabob (ADR 0006) : l'appui physique sur une colonne lumière lui est relayé,
+    /// Note On à l'appui et Note Off au relâchement réel, sur le canal 1.
+    private func relayPad(_ position: GridPosition, pressed: Bool, driver: any ControllerDriver) {
+        guard position.isValid else { return }
         let note = driver.note(for: position)
-        sendToLightKey([
-            pressed
-                ? .noteOn(channel: bench.channelByte, note: note, velocity: 127)
-                : .noteOff(channel: bench.channelByte, note: note, velocity: 0)
-        ])
+        sendToLightKey([pressed ? .noteOn(channel: 0, note: note, velocity: 127) : .noteOff(channel: 0, note: note, velocity: 0)])
+    }
+
+    /// Fader physique d'une colonne lumière : le même CC part vers LightKey (une valeur inchangée n'est pas répétée).
+    private func relayFader(column: Int, value: Double, driver: any ControllerDriver) {
+        guard isLightColumn(column), let event = driver.faderEvent(column: column, value: value),
+            lastLightFaderEvents[column] != event
+        else { return }
+        lastLightFaderEvents[column] = event
+        sendToLightKey([event])
     }
 
     private func isLightColumn(_ column: Int) -> Bool {
