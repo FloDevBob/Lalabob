@@ -1,5 +1,6 @@
 import CoreMIDI
 import Foundation
+import os
 import Synchronization
 
 /// Session CoreMIDI de Lalabob : seul endroit de l'app qui parle à CoreMIDI.
@@ -9,12 +10,15 @@ import Synchronization
 public actor CoreMIDISession: MIDITransport {
     public nonisolated let incoming: AsyncStream<IncomingMIDI>
     public nonisolated let changes: AsyncStream<Void>
+    public nonisolated let lightingFeedback: AsyncStream<[MIDIEvent]>
 
     private var client = MIDIClientRef()
     private var inputPort = MIDIPortRef()
     private var outputPort = MIDIPortRef()
     /// Source virtuelle « Lalabob Lumière » : sortie seule, Lalabob ne l'écoute jamais (pas de boucle).
     private var lightingSource = MIDIEndpointRef()
+    /// Destination virtuelle « Lalabob Retour Lumière » : LightKey y envoie son retour (entrée seule).
+    private var lightingFeedbackDestination = MIDIEndpointRef()
     private var listening: Set<MIDIPortID> = []
 
     /// Décodeurs UMP, un par source (un SysEx peut arriver en plusieurs envois).
@@ -35,13 +39,20 @@ public actor CoreMIDISession: MIDITransport {
     private let decoders = Decoders()
 
     public static let lightingPortName = "Lalabob Lumière"
+    public static let lightingFeedbackPortName = "Lalabob Retour Lumière"
     private static let lightingIDKey = "lightingPortUniqueID"
+    private static let lightingFeedbackIDKey = "lightingFeedbackPortUniqueID"
+    /// Clé du décodeur du retour de LightKey (ce n'est pas un identifiant de source).
+    private static let feedbackDecoderKey = Int32.min
 
     public init(clientName: String = "Lalabob", defaults: UserDefaults = .standard) throws {
         let (incoming, incomingContinuation) = AsyncStream.makeStream(of: IncomingMIDI.self, bufferingPolicy: .unbounded)
         let (changes, changesContinuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
         self.incoming = incoming
         self.changes = changes
+        let (feedback, feedbackContinuation) = AsyncStream.makeStream(
+            of: [MIDIEvent].self, bufferingPolicy: .bufferingNewest(256))
+        self.lightingFeedback = feedback
 
         var client = MIDIClientRef()
         var status = MIDIClientCreateWithBlock(clientName as CFString, &client) { notification in
@@ -75,17 +86,43 @@ public actor CoreMIDISession: MIDITransport {
         var lighting = MIDIEndpointRef()
         status = MIDISourceCreateWithProtocol(client, Self.lightingPortName as CFString, ._1_0, &lighting)
         guard status == noErr else { throw MIDITransportError.sendFailed(status) }
-        let savedID = Int32(truncatingIfNeeded: defaults.integer(forKey: Self.lightingIDKey))
-        if savedID == 0 || MIDIObjectSetIntegerProperty(lighting, kMIDIPropertyUniqueID, savedID) != noErr {
-            var currentID: Int32 = 0
-            MIDIObjectGetIntegerProperty(lighting, kMIDIPropertyUniqueID, &currentID)
-            defaults.set(Int(currentID), forKey: Self.lightingIDKey)
+        Self.restoreUniqueID(of: lighting, key: Self.lightingIDKey, defaults: defaults)
+
+        // Le retour de LightKey : journalisé tel quel (relevé du vrai protocole), puis décodé vers le flux.
+        let feedbackLog = Logger(subsystem: "fr.lalabob.app", category: "lighting")
+        var feedbackDestination = MIDIEndpointRef()
+        status = MIDIDestinationCreateWithProtocol(
+            client, Self.lightingFeedbackPortName as CFString, ._1_0, &feedbackDestination
+        ) { eventList, _ in
+            var words: [UInt32] = []
+            for packet in eventList.unsafeSequence() {
+                words.append(contentsOf: Self.words(of: packet))
+            }
+            for line in UMPDescription.lines(for: words) {
+                feedbackLog.info("Retour LightKey : \(line, privacy: .public)")
+            }
+            let events = decoders.decode(words, from: Self.feedbackDecoderKey)
+            if !events.isEmpty { feedbackContinuation.yield(events) }
         }
+        guard status == noErr else { throw MIDITransportError.sendFailed(status) }
+        Self.restoreUniqueID(of: feedbackDestination, key: Self.lightingFeedbackIDKey, defaults: defaults)
 
         self.client = client
         self.inputPort = input
         self.outputPort = output
         self.lightingSource = lighting
+        self.lightingFeedbackDestination = feedbackDestination
+    }
+
+    /// Redonne au port l'identifiant unique du lancement précédent (LightKey le retrouve sans nouveau réglage),
+    /// ou mémorise celui que CoreMIDI vient de lui donner.
+    private static func restoreUniqueID(of endpoint: MIDIEndpointRef, key: String, defaults: UserDefaults) {
+        let savedID = Int32(truncatingIfNeeded: defaults.integer(forKey: key))
+        if savedID == 0 || MIDIObjectSetIntegerProperty(endpoint, kMIDIPropertyUniqueID, savedID) != noErr {
+            var currentID: Int32 = 0
+            MIDIObjectGetIntegerProperty(endpoint, kMIDIPropertyUniqueID, &currentID)
+            defaults.set(Int(currentID), forKey: key)
+        }
     }
 
     // MARK: - Ports

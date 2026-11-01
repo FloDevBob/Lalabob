@@ -160,6 +160,14 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.
 - **Terminé quand** : une répétition générale se déroule sans incident.
 
+### J7 — Appairage lumière et retour de LightKey 🚧 (branche `j7/relais-lumiere`, empilée sur `j6/curseurs-infobulles`)
+Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'ADR 0006 une fois le relevé fait).
+**Avancement** — étape 0 🟡 outil de relevé prêt, **relevé à faire sur le Mac de régie** (`docs/hardware/lightkey-feedback.md`) · étapes 1 à 5 : à faire.
+- **Fait (01/11/2026)** : destination virtuelle **« Lalabob Retour Lumière »** (`CoreMIDISession`, identifiant unique conservé), flux
+  `MIDITransport.lightingFeedback` (séparé de `incoming`), journal `OSLog` (sous-système `fr.lalabob.app`, catégorie `lighting`) des **mots UMP bruts**
+  (`UMPDescription`) : on voit ce que `UMPDecoder` écarte. Rien n'est encore branché sur l'interface ni sur les sons. 5 tests (`UMPDescriptionTests`) ; 204 tests Engine verts.
+- **Reste pour l'étape 0** : relever dans LightKey (cue lancée, arrêtée, changée de couleur, supprimée, démarrage, ouverture du spectacle), choisir cas A / B.
+
 ## Risques suivis
 
 | Risque | Parade |

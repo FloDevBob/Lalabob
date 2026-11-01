@@ -11,6 +11,8 @@ import Testing
 actor FakeMIDITransport: MIDITransport {
     nonisolated let incoming: AsyncStream<IncomingMIDI>
     nonisolated let changes: AsyncStream<Void>
+    nonisolated let lightingFeedback: AsyncStream<[MIDIEvent]>
+    private let feedbackContinuation: AsyncStream<[MIDIEvent]>.Continuation
     private let incomingContinuation: AsyncStream<IncomingMIDI>.Continuation
     private let changesContinuation: AsyncStream<Void>.Continuation
 
@@ -24,7 +26,11 @@ actor FakeMIDITransport: MIDITransport {
     init() {
         (incoming, incomingContinuation) = AsyncStream.makeStream(of: IncomingMIDI.self)
         (changes, changesContinuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+        (lightingFeedback, feedbackContinuation) = AsyncStream.makeStream(of: [MIDIEvent].self)
     }
+
+    /// Simule un message de LightKey sur « Lalabob Retour Lumière ».
+    func receiveLightingFeedback(_ events: [MIDIEvent]) { feedbackContinuation.yield(events) }
 
     func setPorts(sources: [MIDIPort], destinations: [MIDIPort]) {
         sourcePorts = sources
