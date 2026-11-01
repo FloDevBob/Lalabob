@@ -64,6 +64,7 @@ struct GridView: View {
 }
 
 struct ColumnView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.gridDensity) private var density
     /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
     private func lightValueText(_ column: Column) -> String {
@@ -90,9 +91,13 @@ struct ColumnView: View {
             }
             .frame(height: 30)
 
-            ForEach(0..<PadGrid.size, id: \.self) { row in
-                PadView(position: GridPosition(column: index, row: row), kind: column.kind, onPress: onPress)
+            // Les 8 pads de la colonne : seuls eux glissent quand on change d'onglet.
+            VStack(spacing: Metrics.padSpacing) {
+                ForEach(0..<PadGrid.size, id: \.self) { row in
+                    PadView(position: GridPosition(column: index, row: row), kind: column.kind, onPress: onPress)
+                }
             }
+            .modifier(GridChangeMotion(trigger: controller.currentGrid.id, enabled: !reduceMotion))
 
             // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
             // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
@@ -128,6 +133,40 @@ struct ColumnView: View {
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)
+    }
+}
+
+/// À chaque changement de grille (onglet), les 64 pads montent légèrement en se fondant : le regard suit le changement.
+/// Seuls les pads bougent (les noms de colonnes et les cartes de volume restent en place). Entrée seule (les données sont
+/// déjà celles de la nouvelle grille) ; pas de recréation de la vue, donc le focus clavier de la grille (⌘C, ⌘V…) est
+/// conservé. Inactif si « Réduire les animations » est coché.
+struct GridChangeMotion: ViewModifier {
+    let trigger: PadGrid.ID
+    let enabled: Bool
+
+    private struct Rise {
+        var offset: CGFloat = 0
+        var opacity = 1.0
+    }
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.keyframeAnimator(initialValue: Rise(), trigger: trigger) { view, value in
+                view.offset(y: value.offset).opacity(value.opacity)
+            } keyframes: { _ in
+                KeyframeTrack(\.offset) {
+                    LinearKeyframe(Motion.gridRiseDistance, duration: 0.001)
+                    CubicKeyframe(0, duration: Motion.gridChange)
+                }
+                KeyframeTrack(\.opacity) {
+                    LinearKeyframe(0, duration: 0.001)
+                    CubicKeyframe(1, duration: Motion.gridChange * 0.8)
+                }
+            }
+        } else {
+            content
+        }
     }
 }
 

@@ -66,7 +66,6 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     ScrollView {
                         GridView()
-                            .modifier(GridChangeMotion(trigger: controller.currentGrid.id, enabled: !reduceMotion))
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
                     }
@@ -87,39 +86,6 @@ struct ContentView: View {
             }
             .animation(reduceMotion ? nil : Motion.panel, value: libraryIsVisible)
             .animation(reduceMotion ? nil : Motion.panel, value: bottomBarIsVisible)
-        }
-    }
-}
-
-/// À chaque changement de grille (onglet), le contenu monte légèrement en se fondant : le regard suit le changement.
-/// Entrée seule (les données sont déjà celles de la nouvelle grille) ; pas de recréation de la vue, donc le focus
-/// clavier de la grille (⌘C, ⌘V…) est conservé. Inactif si « Réduire les animations » est coché.
-private struct GridChangeMotion: ViewModifier {
-    let trigger: PadGrid.ID
-    let enabled: Bool
-
-    private struct Rise {
-        var offset: CGFloat = 0
-        var opacity = 1.0
-    }
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if enabled {
-            content.keyframeAnimator(initialValue: Rise(), trigger: trigger) { view, value in
-                view.offset(y: value.offset).opacity(value.opacity)
-            } keyframes: { _ in
-                KeyframeTrack(\.offset) {
-                    LinearKeyframe(Motion.gridRiseDistance, duration: 0.001)
-                    CubicKeyframe(0, duration: Motion.gridChange)
-                }
-                KeyframeTrack(\.opacity) {
-                    LinearKeyframe(0, duration: 0.001)
-                    CubicKeyframe(1, duration: Motion.gridChange * 0.8)
-                }
-            }
-        } else {
-            content
         }
     }
 }

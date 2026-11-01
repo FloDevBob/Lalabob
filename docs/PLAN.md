@@ -262,7 +262,7 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   que son en-tête, fichier vide). Limite : durée annoncée du MP3 et durée lue diffèrent de quelques dizaines de ms (sans effet audible).
 - **Mouvements (01/11/2026)** — principe : courts (≈ 0,3 s), utiles (ils expliquent un changement), jamais décoratifs ; rien sur les vumètres ni les faders ; coupés par « Réduire les animations ».
   **Faits** : (1) la **bibliothèque** glisse depuis la gauche (fondu) en s'ouvrant, se fermant, ou au verrouillage ; (2) la **barre du bas** (inspecteur ou barre de sélection multiple) glisse depuis
-  le bas, seulement à l'apparition / disparition (passer d'un pad à l'autre ne l'anime pas) ; (3) **changement de grille (onglet)** : le contenu monte de 18 pt en se fondant (entrée seule : la
+  le bas, seulement à l'apparition / disparition (passer d'un pad à l'autre ne l'anime pas) ; (3) **changement de grille (onglet)** : **seuls les 64 pads** montent de 18 pt en se fondant (les noms de colonnes et les cartes de volume restent en place ; entrée seule : la
   vue n'est pas recréée, le focus clavier est conservé) ; (4) le **bandeau « verrouillé »** entre et sort en glissant. Réglages dans `Motion` (LalabobDesign). **Propositions non faites**
   (à valider) : retour visuel de l'appui sur un pad (léger enfoncement + éclat 120 ms), pastille de l'onglet actif qui glisse d'un onglet à l'autre (`matchedGeometryEffect`),
   `numericText` sur les valeurs dB / % / temps, fondu enchaîné de l'en-tête de l'inspecteur d'un pad à l'autre, fondu de sortie de la lueur d'un pad quand « Tout arrêter » le coupe, bascule du cadenas
