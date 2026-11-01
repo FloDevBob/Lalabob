@@ -41,5 +41,5 @@ ne sont pas utilisés par Lalabob pour l'instant.
 
 ## Matériel de la troupe
 
-Le **Launchpad Mini MK3** est un des deux contrôleurs de la troupe (avec l'AKAI APC mini). Le numéro de modèle `0D` de l'en-tête SysEx reste à confirmer sur le matériel ⚠︎.
+Le **Launchpad Mini MK3** est un des deux contrôleurs de la troupe (avec l'AKAI APC mini mk2). Le numéro de modèle `0D` de l'en-tête SysEx reste à confirmer sur le matériel ⚠︎.
 

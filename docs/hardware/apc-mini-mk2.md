@@ -41,4 +41,4 @@ Apple Music lisent l'APC en même temps sans se gêner.
 
 ## Matériel de la troupe
 
-Contrôleurs confirmés (01/11/2026) : **AKAI APC mini** (reconnu comme « APC mini mk2 ») et **Novation Launchpad Mini MK3** (voir `launchpad-mk3.md`).
+Contrôleurs confirmés (01/11/2026) : **AKAI APC mini mk2** et **Novation Launchpad Mini MK3** (voir `launchpad-mk3.md`).

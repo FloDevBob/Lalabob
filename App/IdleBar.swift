@@ -125,7 +125,7 @@ struct IdleContent: View {
             id: "controleur", icon: .volume, title: "Contrôleur et audio", headline: connected ?? "Aucun contrôleur",
             lines: [
                 connected == nil
-                    ? .init(text: "Branchez un Launchpad ou un APC mini", tone: .neutral)
+                    ? .init(text: "Branchez un Launchpad ou un APC mini mk2", tone: .neutral)
                     : .init(text: "Branché", tone: .ok),
                 output,
             ])

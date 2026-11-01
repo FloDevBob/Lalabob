@@ -81,7 +81,7 @@ struct HeaderView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(controller.connectedControllerName.map { "\($0), connecté" } ?? "Aucun contrôleur connecté")
-        .help(controller.connectedControllerName.map { "\($0) : contrôleur connecté" } ?? "Aucun Launchpad ni APC mini détecté : branchez-en un, il sera reconnu tout seul")
+        .help(controller.connectedControllerName.map { "\($0) : contrôleur connecté" } ?? "Aucun Launchpad ni APC mini mk2 détecté : branchez-en un, il sera reconnu tout seul")
     }
 
     private var outputPicker: some View {

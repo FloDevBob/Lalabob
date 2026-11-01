@@ -61,7 +61,7 @@ enum HelpContent {
             .paragraph(
                 "Lalabob est la régie son et lumière de la troupe : une grille de 8 colonnes de 8 pads. Les **6 colonnes de gauche** lancent des sons, les **2 colonnes de droite** pilotent les cues de LightKey."),
             .steps([
-                "Branchez votre contrôleur (**AKAI APC mini** ou **Novation Launchpad Mini MK3**). L'indicateur vert « Connecté » apparaît en haut à droite.",
+                "Branchez votre contrôleur (**AKAI APC mini mk2** ou **Novation Launchpad Mini MK3**). L'indicateur vert « Connecté » apparaît en haut à droite.",
                 "Choisissez la **sortie audio** dans la barre d'en-tête.",
                 "Créez un spectacle (Fichier ▸ Nouveau) ou ouvrez un fichier `.lalabob`. Un spectacle enregistré s'ouvre **verrouillé** : c'est le mode jeu.",
                 "Pour le préparer, ouvrez le cadenas (⌘L), puis glissez des sons sur les pads.",
@@ -75,7 +75,7 @@ enum HelpContent {
         blocks: [
             .paragraph("Lalabob reconnaît seul le contrôleur branché. Les deux de la troupe sont pris en charge :"),
             .bullets([
-                "**AKAI APC mini** : grille 8×8 et **faders**. Les faders 1 à 8 règlent les colonnes (volume pour les sons, intensité pour les 2 colonnes lumière). Le **9ᵉ fader est ignoré** : il reste libre pour un autre logiciel (par exemple le volume d'Apple Music).",
+                "**AKAI APC mini mk2** : grille 8×8 et **faders**. Les faders 1 à 8 règlent les colonnes (volume pour les sons, intensité pour les 2 colonnes lumière). Le **9ᵉ fader est ignoré** : il reste libre pour un autre logiciel (par exemple le volume d'Apple Music).",
                 "**Novation Launchpad Mini MK3** : grille 8×8 sans fader. Lalabob le met en **mode Programmeur** à la connexion ; il y reste jusqu'au débranchement.",
             ]),
             .paragraph("Les LED du contrôleur reflètent l'écran : un pad allumé à la couleur de son pad, qui **pulse** quand le son joue, **atténué** en pause ou quand une cue lumière est éteinte, éteint pour une case vide."),
