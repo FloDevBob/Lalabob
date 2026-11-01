@@ -70,22 +70,21 @@ struct ContentView: View {
                             .padding(.vertical, 12)
                     }
                     // Déverrouillé : le pad sélectionné. Verrouillé : le son lancé (version en lecture seule).
-                    // La barre glisse depuis le bas quand elle apparaît ou disparaît ; passer d'un pad à l'autre ne l'anime pas.
-                    if bottomBarIsVisible {
-                        VStack(spacing: 0) {
-                            Divider().overlay(Color.white.opacity(0.06))
-                            if controller.selectedPositions.count > 1, !controller.isLocked {
-                                MultiSelectionBar()
-                            } else if let selection = controller.selection {
-                                InspectorView(position: selection)
-                            }
+                    // La barre est toujours là : sans rien à régler, c'est l'écran de repos (`IdleBar`).
+                    VStack(spacing: 0) {
+                        Divider().overlay(Color.white.opacity(0.06))
+                        if controller.selectedPositions.count > 1, !controller.isLocked {
+                            MultiSelectionBar()
+                        } else if let selection = controller.selection, showsInspector(for: selection) {
+                            InspectorView(position: selection)
+                        } else {
+                            // Rien à régler : l'écran de repos garde la place (et la grille ne bouge pas).
+                            IdleBar(emptyPosition: nil)
                         }
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
             }
             .animation(reduceMotion ? nil : Motion.panel, value: libraryIsVisible)
-            .animation(reduceMotion ? nil : Motion.panel, value: bottomBarIsVisible)
         }
     }
 }
@@ -93,13 +92,6 @@ struct ContentView: View {
 extension ContentView {
     /// La bibliothèque est ouverte (et le spectacle déverrouillé : verrouillé, il n'y a pas de bibliothèque).
     fileprivate var libraryIsVisible: Bool { showsLibrary && !controller.isLocked }
-
-    /// La barre du bas est affichée : plusieurs pads sélectionnés, ou un pad dont le panneau a quelque chose à montrer.
-    fileprivate var bottomBarIsVisible: Bool {
-        if controller.selectedPositions.count > 1, !controller.isLocked { return true }
-        guard let selection = controller.selection else { return false }
-        return showsInspector(for: selection)
-    }
 
     /// Verrouillé, le panneau ne s'affiche que pour un son (les cases vides et les cues n'ont rien à y piloter).
     fileprivate func showsInspector(for position: GridPosition) -> Bool {
@@ -119,6 +111,7 @@ extension ContentView {
                 Button("Déverrouiller") { controller.isLocked = false }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .help("Ouvrir le cadenas pour pouvoir modifier (⌘L)")
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)

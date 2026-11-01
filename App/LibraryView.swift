@@ -16,9 +16,11 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 12) {
             TextField("Rechercher", text: $library.query)
                 .textFieldStyle(.roundedBorder)
+                .help("Filtrer les sons du dossier par nom")
 
             HStack {
                 Text("Favoris").font(.system(size: 11, weight: .semibold)).foregroundStyle(Surface.textTertiary)
+                    .help("Dossiers de sons épinglés")
                 Spacer()
                 Button("Ajouter un dossier", icon: .plus) { choosingFolder = true }
                     .labelStyle(.iconOnly)
@@ -78,7 +80,8 @@ struct LibraryView: View {
             }
             .buttonStyle(.plain)
             .disabled(item == nil)
-            .help(isPlaying ? "Arrêter la pré-écoute" : "Pré-écouter")
+            .interactiveCursor(.link, enabled: item != nil)
+            .help(item == nil ? "Sélectionnez d'abord un son dans la liste" : isPlaying ? "Arrêter la pré-écoute" : "Pré-écouter (double-clic sur un son : même chose)")
             .accessibilityLabel(isPlaying ? "Arrêter la pré-écoute" : "Pré-écouter")
 
             VStack(alignment: .leading, spacing: 4) {
@@ -148,6 +151,9 @@ struct LibraryView: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .hoverHighlight(enabled: !isCurrent)
+        .interactiveCursor(.link)
+        .help("Afficher les sons de ce dossier · clic droit : retirer des favoris")
         .contextMenu {
             Button("Retirer des favoris", role: .destructive) { library.removeFavorite(favorite.id) }
         }
@@ -178,6 +184,8 @@ struct LibraryView: View {
             if isSelected { RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.18)) }
         }
         .contentShape(.rect)
+        .hoverHighlight(enabled: !isSelected)
+        .help("Clic : sélectionner · Double-clic : pré-écouter · Glisser vers un pad pour l'utiliser")
         .onTapGesture(count: 2) {
             library.selectItem(item.id)
             togglePreview(item)

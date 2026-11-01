@@ -9,6 +9,7 @@ struct HeaderView: View {
     @Environment(PreviewController.self) private var preview
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Binding var showsLibrary: Bool
+    @State private var audioUsage = AudioFolderUsage.empty
 
     /// Nom du fichier du spectacle (sans « .lalabob »), ou « Nouveau spectacle » tant qu'il n'est pas enregistré.
     private var showName: String {
@@ -25,15 +26,18 @@ struct HeaderView: View {
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
+                .help(HelpText.library(shown: showsLibrary))
             }
 
-            Text("Lalabob")
+            Text("lalabob")
                 .font(Typography.logo)
                 .foregroundStyle(Surface.textPrimary)
             Text(showName)
                 .font(.system(size: 12))
                 .foregroundStyle(Surface.textTertiary)
                 .lineLimit(1)
+                .help("Nom du fichier du spectacle\n\(audioUsage.summary)")
+                .task(id: controller.show.usedAudioFileNames) { await refreshAudioUsage() }
 
             GridTabsView()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,11 +53,19 @@ struct HeaderView: View {
                 .keyboardShortcut(.escape, modifiers: [])
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
+                .help("Arrêter tous les sons (Échap)")
         }
         .padding(.leading, 88)  // boutons de fenêtre (rouge, jaune, vert : titre masqué) : ils finissent vers 70 pt, plus une marge de 18 pt
         .padding(.trailing, 20)
         .frame(height: 56)
         .background(Surface.chrome)
+    }
+
+    /// Mesure le dossier de sons hors du fil principal (l'infobulle du nom du spectacle).
+    private func refreshAudioUsage() async {
+        guard let directory = controller.audioDirectory else { return }
+        let used = controller.show.usedAudioFileNames
+        audioUsage = await Task.detached { AudioFolderUsage.measure(directory: directory, used: used) }.value
     }
 
     private var controllerStatus: some View {
@@ -68,6 +80,7 @@ struct HeaderView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(controller.connectedControllerName.map { "\($0), connecté" } ?? "Aucun contrôleur connecté")
+        .help(controller.connectedControllerName.map { "\($0) : contrôleur connecté" } ?? "Aucun Launchpad ni APC mini détecté : branchez-en un, il sera reconnu tout seul")
     }
 
     private var outputPicker: some View {
@@ -86,7 +99,7 @@ struct HeaderView: View {
         }
         .labelsHidden()
         .frame(width: 180)
-        .help("Sortie audio")
+        .help("Sortie audio du spectacle et de la pré-écoute")
     }
 }
 
@@ -107,7 +120,9 @@ struct LockButton: View {
                 .foregroundStyle(locked ? Surface.textSecondary : Surface.lightAccent)
         }
         .buttonStyle(.plain)
-        .help(locked ? "Ouvrir le cadenas pour modifier le spectacle (⌘L)" : "Verrouiller le spectacle pour jouer sans risque (⌘L)")
+        .hoverHighlight()
+        .interactiveCursor(.link)
+        .help(HelpText.lock(locked: locked))
         .accessibilityLabel(locked ? "Spectacle verrouillé" : "Spectacle déverrouillé")
         .accessibilityHint(locked ? "Déverrouille pour modifier" : "Verrouille pour jouer")
     }
@@ -172,6 +187,9 @@ struct GridTabsView: View {
         .frame(height: 32)
         .background(isSelected ? Surface.panel : .clear, in: .rect(cornerRadius: 10))
         .contentShape(.rect(cornerRadius: 10))
+        .hoverHighlight(cornerRadius: 10, enabled: !isSelected && renaming != grid.id)
+        .interactiveCursor(.link, enabled: renaming != grid.id)
+        .help(controller.isLocked ? "Grille \(index + 1) : \(grid.name)" : "Grille \(index + 1) : \(grid.name) · Double-cliquer pour renommer, glisser pour réordonner (⌘\(index + 1))")
         .onTapGesture(count: 2) {
             if controller.isLocked { controller.notifyLocked() } else { startRenaming(grid) }
         }

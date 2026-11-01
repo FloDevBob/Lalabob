@@ -51,14 +51,22 @@ struct GridView: View {
         .onPasteCommand(of: [.plainText]) { _ in controller.pasteAtSelection() }
         .onDeleteCommand { controller.clearSelection() }
         // Espace : lecture / pause du pad sélectionné ; Retour : lecture / relance.
+        // Pendant la saisie d'un titre (pad ou colonne), Espace et Retour appartiennent au champ de texte.
         .onKeyPress(.space, phases: .down) { _ in
+            guard !Self.isTypingInTextField else { return .ignored }
             controller.togglePlaybackOfSelection()
             return .handled
         }
         .onKeyPress(.return, phases: .down) { _ in
+            guard !Self.isTypingInTextField else { return .ignored }
             controller.playSelection()
             return .handled
         }
+    }
+
+    /// Un champ de texte a le focus (son éditeur de texte est le premier répondeur de la fenêtre).
+    private static var isTypingInTextField: Bool {
+        NSApp.keyWindow?.firstResponder is NSTextView
     }
 
     private func indices(of kind: ColumnKind, in grid: PadGrid) -> [Int] {
@@ -83,8 +91,14 @@ struct ColumnView: View {
         let column = controller.currentGrid.columns[index]
         VStack(spacing: Metrics.padSpacing) {
             HStack(spacing: 8) {
-                (column.kind == .audio ? Icon.music : Icon.spotlight).view(size: 16)
-                    .foregroundStyle(column.kind == .audio ? Surface.textSecondary : Surface.lightAccent)
+                // Pastille arrondie derrière l'icône (même principe que la carte d'astuce) : neutre pour les sons, ambrée pour la lumière.
+                let isAudio = column.kind == .audio
+                let tileTint = isAudio ? Surface.textSecondary : Surface.lightAccent
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(tileTint.opacity(isAudio ? 0.12 : 0.14))
+                    .frame(width: 26, height: 26)
+                    .overlay { (isAudio ? Icon.music : Icon.spotlight).view(size: 15).foregroundStyle(tileTint) }
+                    .accessibilityHidden(true)
                 ColumnTitle(index: index, name: column.name)
                 Spacer(minLength: 0)
                 Text("\(index + 1)")
@@ -253,7 +267,8 @@ struct ColumnTitle: View {
                     .font(font)
                     .foregroundStyle(Surface.textPrimary)
                     .lineLimit(1)
-                    .help(controller.isLocked ? "" : "Double-cliquer pour renommer la colonne")
+                    .help(HelpText.rename("la colonne", locked: controller.isLocked))
+                    .interactiveCursor(.horizontalText, enabled: !controller.isLocked)
                     .onTapGesture(count: 2) { start() }
             }
         }
@@ -329,6 +344,9 @@ struct PadView: View {
     var isInteractive = true
     let onPress: () -> Void
     @State private var dropHighlight: DropHighlight?
+    /// Le titre ou le sous-titre est en cours de modification (le curseur de la case reste une flèche pendant la saisie).
+    @State private var editingField: InlinePadText.Field?
+    private var isEditingText: Bool { editingField != nil }
 
     @ViewBuilder
     var body: some View {
@@ -370,6 +388,8 @@ struct PadView: View {
         // Verrouillé ou non : un clic sélectionne (le panneau s'ouvre), un double-clic joue. Le contrôleur, lui, joue d'un appui.
         .onTapGesture(count: 2) { controller.audition(at: position) }
         .simultaneousGesture(TapGesture().onEnded(activate))
+        // Pas de `!isEditingText` ici : faire basculer ce modificateur change la structure de la vue, SwiftUI recrée alors le
+        // titre en cours de modification et son champ s'ouvre vide (et sans focus).
         .modifier(PadDragSource(enabled: pad != nil && !controller.isLocked) {
             let token = PadDragToken.string(grid: controller.currentGrid.id, position: position)
             controller.beginDrag(from: position)
@@ -381,12 +401,24 @@ struct PadView: View {
             delegate: PadDropDelegate(position: position, controller: controller, highlight: $dropHighlight)
         )
         .contextMenu { PadContextMenu(position: position) }
+        // Main ouverte : le pad peut être saisi et glissé (déplacer, ⌥ pour copier). Flèche sinon.
+        .interactiveCursor(.grabIdle, enabled: pad != nil && !controller.isLocked && !isEditingText)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind == .audio ? "Case vide" : "Case lumière vide"))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { controller.audition(at: position) }
         .accessibilityAction(named: "Sélectionner") { activate() }
-        .help(pad == nil ? "" : "Clic : sélectionner · Double-clic : jouer")
+        .help(padHelp(pad))
+    }
+
+    private func padHelp(_ pad: Pad?) -> String {
+        if pad != nil {
+            return controller.isLocked
+                ? "Clic : sélectionner · Double-clic : jouer"
+                : "Clic : sélectionner · Double-clic : jouer · Glisser : déplacer (⌥ : copier)"
+        }
+        guard !controller.isLocked else { return "" }
+        return kind == .audio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
     }
 
     /// Clic : ⇧ étend la sélection en rectangle depuis l'ancre, ⌘ ajoute ou retire la case, sinon la case seule.
@@ -448,17 +480,36 @@ struct PadView: View {
         let vivid = pad.tint.vividColor
         return VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 4) {
-                Text(pad.title).font(Typography.padTitle).lineLimit(1)
+                InlinePadText(position: position, field: .title, text: pad.title, font: Typography.padTitle, editing: $editingField)
                 Spacer(minLength: 0)
                 if case .paused = event?.state { Icon.pause.view(size: 12) }
                 if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
+                if case .audio = pad.content { playStopButton(pad, event: event) }
             }
-            Text(pad.subtitle).font(Typography.padSubtitle).opacity(0.88).lineLimit(1)
+            InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
+                .opacity(0.88)
         }
         .foregroundStyle(pad.tint.labelColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(.horizontal, 11)
         .background(pad.tint.surfaceColor, in: .rect(cornerRadius: Metrics.padCornerRadius))
+        // Relief : liseré clair en haut du pad, qui s'estompe avant le milieu (simple décor, sous les contours d'état).
+        .overlay {
+            RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                .strokeBorder(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white.opacity(0.16), location: 0),
+                            .init(color: .white.opacity(0.03), location: 0.3),
+                            .init(color: .clear, location: 0.5),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+                .allowsHitTesting(false)
+        }
         .overlay(alignment: .bottom) { progressBar(event, color: vivid) }
         .overlay {
             if let event {
@@ -467,6 +518,25 @@ struct PadView: View {
             }
         }
         .shadow(color: event.map { $0.state.isPaused ? .clear : vivid.opacity(0.45) } ?? .clear, radius: 8)
+    }
+
+    /// Bouton à deux états à côté de l'égaliseur : triangle (lecture) tant que le son est à l'arrêt ou en pause,
+    /// carré (stop) quand il joue. Un vrai `Button` : seule sa petite zone capte la souris, le reste du pad garde
+    /// son clic / double-clic / glisser.
+    private func playStopButton(_ pad: Pad, event: PlaybackEvent?) -> some View {
+        let isPlaying: Bool = if case .playing = event?.state { true } else { false }
+        return Button {
+            controller.togglePlayStop(at: position)
+        } label: {
+            (isPlaying ? Icon.stop : Icon.play).view(size: 10)
+                .frame(width: 20, height: 20)
+                .background(isPlaying ? pad.tint.vividColor : pad.tint.labelColor.opacity(0.18), in: .circle)
+                .foregroundStyle(isPlaying ? pad.tint.surfaceColor : pad.tint.labelColor)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help(isPlaying ? "Arrêter ce son" : event?.state.isPaused == true ? "Reprendre ce son" : "Lancer ce son")
     }
 
     /// Barre de progression de 3 px ; figée et estompée en pause. Une boucle revient au début.
@@ -503,6 +573,94 @@ struct PadView: View {
                 RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                     .strokeBorder(Surface.emptyPadStroke, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
             )
+    }
+}
+
+/// Titre ou sous-titre d'un pad, modifiable sur place par un double-clic quand le spectacle est déverrouillé
+/// (Entrée ou clic ailleurs valide, Échap annule). Verrouillé, c'est un simple texte : le double-clic joue le pad.
+struct InlinePadText: View {
+    enum Field { case title, subtitle }
+
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
+    let field: Field
+    let text: String
+    let font: Font
+    /// Le champ en cours de modification sur ce pad (un seul à la fois).
+    @Binding var editing: Field?
+    private var isEditing: Bool { editing == field }
+
+    @State private var draft = ""
+    /// Position du curseur : à la fin du texte à l'ouverture (sinon macOS sélectionne tout).
+    @State private var selection: TextSelection?
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Group {
+            if isEditing {
+                TextField(field == .title ? "Titre" : "Sous-titre", text: $draft, selection: $selection)
+                    .textFieldStyle(.plain)
+                    .font(font)
+                    .focused($focused)
+                    .padding(.horizontal, 3)
+                    .background(Color.white.opacity(0.14), in: .rect(cornerRadius: 4))
+                    .onSubmit { focused = false }
+                    .onExitCommand { cancel() }
+                    .onChange(of: focused) { wasFocused, isFocused in
+                        if wasFocused, !isFocused { commit() }
+                    }
+            } else if controller.isLocked {
+                label
+            } else {
+                label
+                    .contentShape(.rect)
+                    .interactiveCursor(.horizontalText)
+                    .help(HelpText.rename(field == .title ? "le titre" : "le sous-titre", locked: false))
+                    // Le double-clic sur le texte modifie ; ailleurs sur le pad, il joue.
+                    .onTapGesture(count: 2) { start() }
+            }
+        }
+        // Verrouiller, changer de case ou de grille pendant la saisie l'abandonne.
+        .onChange(of: controller.isLocked) { cancel() }
+        .onChange(of: position) { cancel() }
+        .onChange(of: controller.selectedGridIndex) { cancel() }
+    }
+
+    private var label: some View {
+        Text(text)
+            .font(font)
+            .lineLimit(1)
+            // Un sous-titre vide garde sa ligne : on peut toujours double-cliquer pour en écrire un.
+            .frame(minWidth: 24, minHeight: 14, alignment: .leading)
+    }
+
+    private func start() {
+        guard !controller.isLocked else { return }
+        draft = text
+        selection = nil
+        editing = field
+        Task { @MainActor in
+            focused = true
+            // macOS sélectionne tout le texte quand le champ prend le focus : le curseur passe à la fin juste après.
+            try? await Task.sleep(for: .milliseconds(40))
+            if editing == field { selection = TextSelection(insertionPoint: draft.endIndex) }
+        }
+    }
+
+    private func cancel() {
+        guard isEditing else { return }
+        editing = nil
+        focused = false
+    }
+
+    private func commit() {
+        guard isEditing else { return }
+        let trimmed = draft.trimmingCharacters(in: .whitespaces)
+        switch field {
+        case .title: if !trimmed.isEmpty { controller.updatePad(at: position, title: trimmed) }
+        case .subtitle: controller.updatePad(at: position, subtitle: trimmed)
+        }
+        editing = nil
     }
 }
 

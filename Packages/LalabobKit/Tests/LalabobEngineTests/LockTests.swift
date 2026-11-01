@@ -247,3 +247,51 @@ extension LockTests {
         #expect(!(await audio.commands.contains { if case .trigger = $0 { true } else { false } }))
     }
 }
+
+/// Bouton lecture / stop d'un pad : un seul bouton à deux états, qui joue, arrête, ou reprend un son en pause.
+extension LockTests {
+    @Test func theToggleStartsAnIdlePadEvenWhenLocked() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: true, audio: audio)
+        controller.togglePlayStop(at: Self.a)
+        #expect(await waitUntil { await audio.commands.contains(.trigger(pad.id)) })
+    }
+
+    @Test func theToggleStopsAPlayingPad() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: false, audio: audio)
+        let observer = Task { await controller.observePlayback() }
+        defer { observer.cancel() }
+        await audio.send(PlaybackEvent(pad: pad.id, state: .playing(startedAt: 0), duration: 4))
+        #expect(await waitUntil { await MainActor.run { controller.playback[pad.id] != nil } })
+        controller.togglePlayStop(at: Self.a)
+        #expect(await waitUntil { await audio.commands.contains(.stop(pad.id)) })
+        #expect(!(await audio.commands.contains(.trigger(pad.id))))
+    }
+
+    @Test func theToggleResumesAPausedPadInsteadOfRestartingIt() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, pad) = makeController(locked: false, audio: audio)
+        let observer = Task { await controller.observePlayback() }
+        defer { observer.cancel() }
+        await audio.send(PlaybackEvent(pad: pad.id, state: .paused(elapsed: 1), duration: 4))
+        #expect(await waitUntil { await MainActor.run { controller.playback[pad.id] != nil } })
+        controller.togglePlayStop(at: Self.a)
+        #expect(await waitUntil { await audio.commands.contains(.togglePause(pad.id)) })
+        #expect(!(await audio.commands.contains(.trigger(pad.id))))
+    }
+
+    @Test func theToggleDoesNothingOnAnEmptyCell() async {
+        let audio = RecordingAudioEngine()
+        let (controller, _, _) = makeController(locked: false, audio: audio)
+        controller.togglePlayStop(at: GridPosition(column: 5, row: 7))
+        try? await Task.sleep(for: .milliseconds(100))
+        let played = await audio.commands.contains {
+            switch $0 {
+            case .trigger, .stop, .togglePause: true
+            default: false
+            }
+        }
+        #expect(!played)
+    }
+}

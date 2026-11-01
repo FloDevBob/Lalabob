@@ -45,7 +45,7 @@ fois ; des filets verticaux séparent les groupes sans rapport.
 **Bande du haut (52 px), pad son**, de gauche à droite :
 1. Transport : **un seul bloc (capsule)** regroupant Lecture / Relancer (bouton rond à la couleur du pad), Pause (ambre
    quand le son est en pause), Stop et, après un filet, Boucle (verte si active) ; puis temps écoulé / durée utile en mono
-   et badge « PAUSE ».
+   (pas de badge « PAUSE » : le bouton ambre suffit, décision du 01/11/2026).
 2. Titre (gras) et sous-titre (double-clic pour renommer, Entrée valide, Échap annule).
 3. À droite : nom du fichier d'origine (mono, discret, tronqué au milieu) · « Nouvel appui » + segmenté
    Relancer / Arrêter · **bouton couleur** (la pastille de la teinte en cours, **sans son nom**, plus une flèche) qui ouvre un
@@ -82,3 +82,24 @@ puis Couper, Copier, Coller, Dupliquer, Vider avec leurs raccourcis. Verrouillé
 **Panneau du bas verrouillé** : même disposition, en lecture seule, affiché pour le dernier son lancé (il apparaît dès le
 lancement d'une piste). Actifs : lecture / relance, pause, stop, tête de lecture sur l'onde, **volume du pad et fondus** (réglages de jeu).
 Figés ou masqués : titre et sous-titre, couleur, actions, nouvel appui, boucle, élagage (poignées masquées).
+
+**Barre du bas au repos** (02/11/2026) : la barre est toujours là (196 px), pour que la grille ne bouge pas. Quand il n'y a
+aucun réglage à montrer (rien de sélectionné, case vide, ou verrouillé sans son lancé), elle affiche l'écran de repos :
+une bande d'invite en haut (avec le menu d'actions si une case vide est sélectionnée), puis trois indicateurs —
+**grille en cours** (nombre de sons, pads en lecture), **contrôleur et audio** (contrôleur branché, sortie audio),
+**éclairage** (« Port Lalabob Lumière actif » : Lalabob ne peut pas savoir si LightKey écoute vraiment) — et une
+**astuce** (ampoule ambre, flèches pour en changer, une différente à chaque retour). Les astuces suivent le cadenas :
+certaines n'apparaissent que déverrouillé (préparer), une seule que verrouillé. Le mot « pad » est gardé partout ; la
+première astuce l'explique. Un pad lumière affiche aussi les indicateurs et l'astuce sous son en-tête.
+Textes des astuces : `App/Tips.swift`.
+
+**Curseurs, infobulles et survol (01/11/2026)** : les boutons du système (bordés, menus, sélecteurs) gardent la flèche, comme
+partout dans macOS ; la main (`.link`) n'est posée que sur les zones sans apparence de bouton (onglets, cadenas, transport,
+pastilles de teinte, puces de fondu, lignes de la bibliothèque, flèches des astuces). Main ouverte / fermée (`.grabIdle` /
+`.grabActive`) sur ce qu'on saisit : pads remplis (déverrouillé), faders, jauge de volume du pad. Double flèche
+(`.columnResize`) sur les poignées d'élagage et de fondu. Curseur de texte sur les titres, sous-titres et noms de colonnes
+quand on peut les renommer. Un contrôle verrouillé ou désactivé garde la flèche. Un léger éclaircissement (7 % de blanc, sans
+animation) au survol des onglets, du cadenas, du transport et des lignes de la bibliothèque ; **jamais sur les pads ni les
+vumètres**. Toute icône seule a une infobulle (verbe d'action, raccourci entre parenthèses) ; les actions cachées (double-clic,
+glisser) sont annoncées ; un contrôle refusé parce que verrouillé dit pourquoi. Code : `LalabobDesign/Interaction.swift`
+(`interactiveCursor`, `hoverHighlight`, `HelpText`).

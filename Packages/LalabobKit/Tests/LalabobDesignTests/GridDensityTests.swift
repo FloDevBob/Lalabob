@@ -12,19 +12,36 @@ struct GridDensityTests {
         8 * density.padHeight + density.faderTrackHeight + GridDensity.fixedHeight
     }
 
-    @Test func aTallWindowKeepsTheRegularSizes() {
+    @Test func aTallWindowMakesThePadsTallerButKeepsTheFaderSize() {
         let density = GridDensity.fitting(availableHeight: 1000)
-        #expect(density == .regular)
-        #expect(density.padHeight == Metrics.padHeight)
-        #expect(density.faderTrackHeight == 120)
+        #expect(density.padHeight > Metrics.padHeight)
+        #expect(density.faderTrackHeight == GridDensity.regular.faderTrackHeight)
+        #expect(total(density) <= 1000 + 0.5)
     }
 
-    @Test func theRegularSizesJustFitTheirOwnHeight() {
-        #expect(GridDensity.fitting(availableHeight: total(.regular)) == .regular)
+    @Test func theFaderTrackNeverChangesWhilePadsHaveRoomToShrink() {
+        // Tant que les pads n'ont pas atteint leur minimum, seuls eux s'adaptent : la piste du fader reste à 120 pt.
+        let atMinimum = GridDensity.fixedHeight + 8 * GridDensity.minimumPadHeight + GridDensity.regular.faderTrackHeight
+        for available in stride(from: atMinimum, through: 1600, by: 25) {
+            #expect(GridDensity.fitting(availableHeight: available).faderTrackHeight == 120)
+        }
     }
 
-    @Test(arguments: [700, 650, 600, 560, 540] as [CGFloat])
-    func aLowerWindowShrinksTheGridToFitExactly(_ available: CGFloat) {
+    @Test func padsGrowWithTheWindowUpToACap() {
+        let medium = GridDensity.fitting(availableHeight: 700).padHeight
+        let tall = GridDensity.fitting(availableHeight: 900).padHeight
+        #expect(tall > medium)
+        let huge = GridDensity.fitting(availableHeight: 5000)
+        #expect(huge.padHeight == GridDensity.maximumPadHeight)
+    }
+
+    @Test func theRegularSizesStillExistAsTheDefault() {
+        #expect(GridDensity.regular.padHeight == Metrics.padHeight)
+        #expect(GridDensity.regular.faderTrackHeight == 120)
+    }
+
+    @Test(arguments: [600, 560, 540, 520] as [CGFloat])
+    func aLowWindowShrinksThePadsThenTheFaderToFitExactly(_ available: CGFloat) {
         let density = GridDensity.fitting(availableHeight: available)
         #expect(density.padHeight < Metrics.padHeight)
         #expect(density.padHeight >= GridDensity.minimumPadHeight)
@@ -39,8 +56,8 @@ struct GridDensityTests {
     }
 
     @Test func shrinkingIsMonotonic() {
-        var previous = GridDensity.fitting(availableHeight: 1000)
-        for available in stride(from: 1000, through: 300, by: -20) {
+        var previous = GridDensity.fitting(availableHeight: 1600)
+        for available in stride(from: 1600, through: 300, by: -20) {
             let density = GridDensity.fitting(availableHeight: CGFloat(available))
             #expect(density.padHeight <= previous.padHeight)
             #expect(density.faderTrackHeight <= previous.faderTrackHeight)

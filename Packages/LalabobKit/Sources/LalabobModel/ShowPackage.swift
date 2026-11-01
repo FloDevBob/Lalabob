@@ -55,10 +55,7 @@ public enum ShowPackage {
         }
         let show = try decode(data)
         let audio = audioFileNames(in: children[audioFolderName])
-        let used = Set(
-            show.grids.flatMap(\.columns).flatMap(\.slots).compactMap { pad -> String? in
-                if case .audio(let clip) = pad?.content { clip.fileName } else { nil }
-            })
+        let used = show.usedAudioFileNames
         return Contents(show: show, audioFileNames: audio, missingAudio: used.subtracting(audio).sorted())
     }
 
@@ -69,14 +66,17 @@ public enum ShowPackage {
     }
 
     /// Paquet à écrire : `show.json`, plus le dossier `Audio/` existant complété par `adding` (nom → fichier).
+    /// Seuls les sons que le spectacle utilise encore sont écrits : un son retiré de la grille quitte le paquet à
+    /// l'enregistrement suivant, sinon le fichier ne ferait que grossir.
     public static func wrapper(
         for show: Show, audio: FileWrapper?, adding added: [String: FileWrapper] = [:]
     ) throws -> FileWrapper {
         let showFile = FileWrapper(regularFileWithContents: try encode(show))
         showFile.preferredFilename = showFileName
 
-        var audioChildren = audio?.fileWrappers ?? [:]
-        for (name, file) in added where AudioClip.isSafeFileName(name) && audioChildren[name] == nil {
+        let used = show.usedAudioFileNames
+        var audioChildren = (audio?.fileWrappers ?? [:]).filter { used.contains($0.key) }
+        for (name, file) in added where used.contains(name) && AudioClip.isSafeFileName(name) && audioChildren[name] == nil {
             file.preferredFilename = name
             audioChildren[name] = file
         }
@@ -89,6 +89,16 @@ public enum ShowPackage {
     private static func audioFileNames(in folder: FileWrapper?) -> [String] {
         guard let folder, folder.isDirectory, let children = folder.fileWrappers else { return [] }
         return children.filter { AudioClip.isSafeFileName($0.key) && $0.value.isRegularFile }.keys.sorted()
+    }
+}
+
+extension Show {
+    /// Noms des fichiers de `Audio/` que des pads utilisent (un son partagé par plusieurs pads compte une fois).
+    public var usedAudioFileNames: Set<String> {
+        Set(
+            grids.flatMap(\.columns).flatMap(\.slots).compactMap { pad -> String? in
+                if case .audio(let clip) = pad?.content { clip.fileName } else { nil }
+            })
     }
 }
 

@@ -44,7 +44,9 @@ nonisolated final class LalabobDocument: ReferenceFileDocument {
         }
         let directory = Self.makeWorkingDirectory()
         if let audio = ShowPackage.audioFolder(of: configuration.file) {
-            for name in contents.audioFileNames {
+            // Seulement les sons que des pads utilisent : un paquet ancien peut en garder d'inutiles, inutile de les copier.
+            let used = contents.show.usedAudioFileNames
+            for name in contents.audioFileNames where used.contains(name) {
                 try? audio.fileWrappers?[name]?.write(
                     to: directory.appending(path: name), options: [], originalContentsURL: nil)
             }

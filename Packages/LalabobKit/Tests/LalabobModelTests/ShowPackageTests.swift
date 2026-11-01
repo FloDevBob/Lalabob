@@ -88,13 +88,42 @@ struct ShowPackageTests {
         #expect(read.audioFileNames == ["rire.wav"])
     }
 
-    @Test("Écrire en ajoutant des sons conserve ceux qui y étaient")
+    @Test("Écrire en ajoutant des sons conserve ceux qui y étaient et sont encore utilisés")
     func addingAudioKeepsExistingFiles() throws {
+        var show = sampleShow()
+        show.grids[0][GridPosition(column: 0, row: 1)] = Pad(
+            title: "Porte", tint: .vert, content: .audio(clip: AudioClip(fileName: "porte.wav")))
         let existing = FileWrapper(directoryWithFileWrappers: ["rire.wav": FileWrapper(regularFileWithContents: Data([1]))])
         let added = ["porte.wav": FileWrapper(regularFileWithContents: Data([2]))]
-        let package = try ShowPackage.wrapper(for: sampleShow(), audio: existing, adding: added)
+        let package = try ShowPackage.wrapper(for: show, audio: existing, adding: added)
         let names = package.fileWrappers?[ShowPackage.audioFolderName]?.fileWrappers?.keys.sorted()
         #expect(names == ["porte.wav", "rire.wav"])
+    }
+
+    @Test("Un son que plus aucun pad n'utilise n'est pas réécrit dans le paquet")
+    func unusedAudioIsDroppedOnSave() throws {
+        let existing = FileWrapper(directoryWithFileWrappers: [
+            "rire.wav": FileWrapper(regularFileWithContents: Data([1])),
+            "ancien.wav": FileWrapper(regularFileWithContents: Data([2])),
+        ])
+        let added = ["jamais.wav": FileWrapper(regularFileWithContents: Data([3]))]
+        let package = try ShowPackage.wrapper(for: sampleShow(), audio: existing, adding: added)
+        let names = package.fileWrappers?[ShowPackage.audioFolderName]?.fileWrappers?.keys.sorted()
+        #expect(names == ["rire.wav"])
+    }
+
+    @Test("Un son utilisé par plusieurs pads est gardé une seule fois")
+    func sharedAudioIsKeptOnce() throws {
+        var show = sampleShow()
+        show.grids[0][GridPosition(column: 1, row: 0)] = Pad(
+            title: "Rire bis", tint: .rouge, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        #expect(show.usedAudioFileNames == ["rire.wav"])
+    }
+
+    @Test("Un son utilisé mais absent du paquet ne fait pas échouer l'enregistrement")
+    func missingUsedAudioStillWrites() throws {
+        let package = try ShowPackage.wrapper(for: sampleShow(), audio: nil)
+        #expect(package.fileWrappers?[ShowPackage.audioFolderName]?.fileWrappers?.isEmpty == true)
     }
 }
 

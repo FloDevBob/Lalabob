@@ -9,7 +9,7 @@ public enum Icon: String, CaseIterable, Sendable {
     case play, pause, stop, restart, loop
     case cut, copy, duplicate, paste, trash
     case plus, close, folder, search, sidebar
-    case sun, music, note, lock, lockOpen, volume, warning, wave, stopAll, spotlight, more
+    case sun, music, note, lock, lockOpen, volume, warning, wave, stopAll, spotlight, more, lightbulb
 
     var assetName: String { "icon-\(rawValue)" }
 

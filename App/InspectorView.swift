@@ -12,6 +12,7 @@ import SwiftUI
 /// - Bande du bas (pad son) : jauge de volume du pad (dB) et forme d'onde pleine largeur avec élagage ;
 ///   les fondus se règlent sur l'onde (puces sous la courbe, poignée de durée).
 /// Aucune information n'apparaît deux fois ; les groupes sans rapport sont séparés par un filet.
+/// Case vide : l'écran de repos (`IdleBar`). Pad lumière : son en-tête, puis les indicateurs et l'astuce (`IdleContent`).
 /// Verrouillé, une version allégée du même panneau reste affichée pour le son lancé : lecture, pause, stop, tête de
 /// lecture, volume du pad et fondus se règlent (réglages de jeu) ; couleur, actions, textes, boucle, « Nouvel appui »
 /// et élagage ne se modifient pas.
@@ -52,31 +53,16 @@ struct InspectorView: View {
                 case .light:
                     LightHeader(position: position, pad: pad)
                         .frame(height: Self.headerHeight)
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    IdleContent()
                 }
             } else {
-                emptyCell
-                    .frame(height: Self.headerHeight)
+                IdleBar(emptyPosition: position)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: Metrics.inspectorHeight, alignment: .topLeading)
+        .frame(maxWidth: .infinity)
+        .frame(height: Metrics.inspectorHeight, alignment: .topLeading)
         .background(Surface.panel)
-    }
-
-    @ViewBuilder
-    private var emptyCell: some View {
-        HStack(spacing: 8) {
-            Icon.plus.view(size: 15).foregroundStyle(Surface.textTertiary)
-            if controller.currentGrid.columns[position.column].kind == .light {
-                Text("Ajoutez une commande lumière — LightKey apprend la note de cette case sur le contrôleur.")
-            } else {
-                Text("Glissez un son de la bibliothèque ou du Finder sur cette case.")
-            }
-            Spacer(minLength: 8)
-            PadActionsMenu(position: position, hasPad: false)
-        }
-        .font(.system(size: 12))
-        .foregroundStyle(Surface.textTertiary)
-        .padding(.horizontal, 14)
     }
 }
 
@@ -231,6 +217,7 @@ private struct TitleFields: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .help(isEditable ? hint : "")
+                .interactiveCursor(.horizontalText, enabled: isEditable)
                 .onTapGesture(count: 2) { if isEditable { start(field) } }
         }
     }
@@ -279,14 +266,18 @@ private struct TransportControls: View {
                         .foregroundStyle(Surface.window)
                 }
                 .buttonStyle(.plain)
-                .help(isPlaying ? "Relancer" : "Lecture")
+                .interactiveCursor(.link)
+                .help(HelpText.play(isPlaying: isPlaying) + " (Retour)")
                 .accessibilityLabel(isPlaying ? "Relancer" : "Lecture")
 
-                groupButton(.pause, label: isPaused ? "Reprendre" : "Pause", active: isPaused, tint: Surface.lightAccent) {
+                groupButton(
+                    .pause, label: HelpText.pause(isPaused: isPaused), help: HelpText.pause(isPaused: isPaused) + " (Espace)",
+                    active: isPaused, tint: pad.tint.vividColor
+                ) {
                     controller.togglePause(at: position)
                 }
                 .disabled(event == nil)
-                groupButton(.stop, label: "Stop", active: false, tint: Surface.textSecondary) {
+                groupButton(.stop, label: "Stop", help: "Arrêter le son (fondu de 40 ms)", active: false, tint: Surface.textSecondary) {
                     controller.stop(at: position)
                 }
                 .disabled(event == nil)
@@ -294,7 +285,11 @@ private struct TransportControls: View {
                 Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1, height: 16).padding(.horizontal, 2)
                     .accessibilityHidden(true)
 
-                groupButton(.loop, label: "Boucle", active: clip.loops, tint: Surface.loopAccent) {
+                groupButton(
+                    .loop, label: "Boucle",
+                    help: controller.isLocked ? HelpText.lockedReason : HelpText.loop(isOn: clip.loops),
+                    active: clip.loops, tint: Surface.loopAccent
+                ) {
                     controller.setLoops(at: position, !clip.loops)
                 }
                 .disabled(controller.isLocked)
@@ -305,20 +300,12 @@ private struct TransportControls: View {
             .background(Surface.well, in: .capsule)
 
             timeLabel(event)
-            if isPaused {
-                Text("PAUSE")
-                    .font(.system(size: 9, weight: .bold))
-                    .padding(.horizontal, 6)
-                    .frame(height: 16)
-                    .background(Surface.lightAccent.opacity(0.18), in: .capsule)
-                    .foregroundStyle(Surface.lightAccent)
-            }
         }
         .fixedSize()
     }
 
     private func groupButton(
-        _ icon: Icon, label: String, active: Bool, tint: Color, action: @escaping () -> Void
+        _ icon: Icon, label: String, help: String, active: Bool, tint: Color, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             icon.view(size: 12)
@@ -328,7 +315,9 @@ private struct TransportControls: View {
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
-        .help(label)
+        .hoverHighlight(cornerRadius: 15)
+        .interactiveCursor(.link)
+        .help(help)
         .accessibilityLabel(label)
         .accessibilityAddTraits(active ? .isSelected : [])
     }
@@ -368,7 +357,7 @@ private struct RetriggerControl: View {
             .labelsHidden()
             .controlSize(.small)
             .frame(width: 140)
-            .help("Nouvel appui sur ce pad pendant la lecture : relancer depuis le début, ou arrêter")
+            .help("Si on rejoue ce pad pendant qu'il sonne : le relancer depuis le début, ou l'arrêter")
         }
         .fixedSize()
     }
@@ -401,7 +390,9 @@ private struct ColorPopoverButton: View {
             .background(shown ? Color.white.opacity(0.1) : Color.white.opacity(0.06), in: .rect(cornerRadius: 10))
         }
         .buttonStyle(.plain)
-        .help("Couleur du pad et intensité de la LED")
+        .hoverHighlight(cornerRadius: 10)
+        .interactiveCursor(.link)
+        .help("Couleur du pad et intensité de la LED du contrôleur")
         .accessibilityLabel("Couleur du pad : \(pad.tint.displayName)")
         .popover(isPresented: $shown, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 10) {
@@ -419,6 +410,7 @@ private struct ColorPopoverButton: View {
                                 }
                         }
                         .buttonStyle(.plain)
+                        .interactiveCursor(.link)
                         .help(tint.displayName)
                         .accessibilityLabel(tint.displayName)
                         .accessibilityAddTraits(tint == pad.tint ? .isSelected : [])
@@ -458,7 +450,7 @@ private nonisolated struct Chevron: Shape {
 /// Couper, copier, coller, dupliquer, vider : un menu « trois petits points », avec les raccourcis affichés.
 /// ⌫ (sans modifieur) reste géré par la grille : un raccourci sans modifieur volerait la touche Retour arrière
 /// dans les champs de texte ; le menu propose donc ⌘⌫ pour « Vider ».
-private struct PadActionsMenu: View {
+struct PadActionsMenu: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let hasPad: Bool
@@ -475,7 +467,8 @@ private struct PadActionsMenu: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .foregroundStyle(Surface.textSecondary)
-        .help("Actions sur le pad (\(controller.positionLabel(for: position)))")
+        .hoverHighlight(cornerRadius: 8)
+        .help("Couper, copier, coller, dupliquer ou vider ce pad (\(controller.positionLabel(for: position)))")
         .accessibilityLabel("Actions du pad")
     }
 }
@@ -693,7 +686,7 @@ private struct TrackGainGauge: View {
                 ZStack(alignment: .bottom) {
                     Capsule().fill(Color.white.opacity(0.1)).frame(width: 6)
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(.white)
+                        .fill(Color(white: 0.82))
                         .frame(width: 26, height: handleHeight)
                         .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                         .offset(y: -CGFloat(position) * travel)
@@ -713,6 +706,7 @@ private struct TrackGainGauge: View {
                         }
                 )
                 .onTapGesture(count: 2) { onCommit(0) }
+                .interactiveCursor(draggedDB == nil ? .grabIdle : .grabActive)
             }
             Text(Gain.formatDecibels(db: shownDB))
                 .font(.system(size: 9.5, design: .monospaced))

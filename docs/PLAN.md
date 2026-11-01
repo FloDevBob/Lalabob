@@ -280,3 +280,23 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   **Retour** = lecture / relance (selon « Nouvel appui »). Actifs quand la grille a le focus, aussi verrouillé ; Échap = Tout arrêter inchangé. `ShowController.togglePlaybackOfSelection` / `playSelection`
   (`GridView.onKeyPress`). 4 tests (`LockTests`), verts dans Xcode (196 tests Engine). **À essayer** : Espace après un double-clic sur un pad,
   puis après un clic dans l'inspecteur (le focus doit revenir à la grille en recliquant un pad). Non fait : arrêt du seul pad sélectionné au clavier.
+- **Curseurs, infobulles et survol (01/11/2026, demande de l'utilisateur)** : voir `docs/DESIGN.md`. `interactiveCursor` / `hoverHighlight` / `HelpText`
+  (`LalabobDesign/Interaction.swift`), 4 tests (`HelpTextTests`). Compile ; tests Design verts. **À essayer à la souris** : chaque zone survolée, verrouillé puis déverrouillé ;
+  le curseur repasse-t-il bien en flèche sur un bouton grisé ? la main fermée pendant un glisser de fader ?
+- **Poids des spectacles : sons embarqués, nettoyés (01/11/2026, étude « embarquer ou lier », piste A)** : les sons restent **dans** le paquet `.lalabob` (un seul fichier à copier sur
+  l'autre Mac, aucun lien cassé possible en scène). Trois corrections : (1) à l'enregistrement, **un son que plus aucun pad n'utilise quitte le paquet**
+  (`ShowPackage.wrapper` filtre sur `Show.usedAudioFileNames` ; annuler la suppression d'un pad le réintègre tant que le spectacle reste ouvert) ; (2) à l'ouverture,
+  **seuls les sons utilisés sont copiés** dans le dossier de travail (un ancien paquet alourdi s'ouvre plus vite) ; (3) l'**infobulle du nom du spectacle** (en-tête)
+  affiche le poids des sons et ce qui sera retiré (`AudioFolderUsage`). 4 tests modèle + 4 tests Engine. Pistes écartées : liens (cassés, signets sandbox par fichier) et
+  mode double (Ableton / QLab), à rouvrir seulement si un vrai spectacle devient trop lourd. **À essayer** : ouvrir un vrai `.lalabob`, retirer un pad, ⌘S, comparer
+  la taille du paquet ; survoler le nom du spectacle.
+- **Grille : les pads suivent la hauteur, les faders non (01/11/2026, demande de l'utilisateur)** : `GridDensity.fitting` donne maintenant toute la hauteur libre aux **pads**
+  (plus hauts dans une grande fenêtre, jusqu'à `maximumPadHeight` = 110 pt) ; la **piste des faders reste à 120 pt**. Elle ne rétrécit (jusqu'à 64 pt) qu'en dernier recours,
+  quand les pads ont atteint leur minimum (38 pt) dans une fenêtre basse. 12 tests (`GridDensityTests`). **À essayer** : agrandir et réduire la fenêtre, plein écran.
+- **Bouton lecture / stop sur chaque pad son (01/11/2026, demande de l'utilisateur)** : un bouton rond à deux états à côté de l'égaliseur, dans la rangée du titre : triangle (à l'arrêt ou en pause) /
+  carré (en lecture). `ShowController.togglePlayStop(at:)` : joue un son à l'arrêt, **reprend** un son en pause, arrête un son qui joue ; marche verrouillé ; sans effet sur une case vide ou une cue
+  lumière (pas de bouton). 4 tests (`LockTests`). Pas de bouton sur les pads lumière. **À essayer** : cliquer le bouton sans que le pad se déplace ; glisser un pad par ailleurs ; pad de 38 pt (fenêtre basse).
+- **Titre et sous-titre modifiables sur le pad (01/11/2026, demande de l'utilisateur)** : déverrouillé, un **double-clic sur le titre ou le sous-titre d'un pad** (dans la grille) le modifie sur place
+  (`InlinePadText`, `GridView.swift`) ; Entrée ou clic ailleurs valide, Échap annule, un titre vide est refusé (comme dans l'inspecteur) ; un double-clic ailleurs sur le pad le joue toujours.
+  Verrouillé : rien ne change (le double-clic joue). Passe par `updatePad` : une annulation (⌘Z). Sans test automatique (vue SwiftUI).
+  **À essayer** : double-clic sur le titre, sur le sous-titre (même vide), Échap, changer d'onglet pendant la saisie, ⌘Z.

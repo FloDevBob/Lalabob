@@ -69,6 +69,7 @@ struct WaveformEditor: View {
                         }
                 )
                 .clipShape(.rect(cornerRadius: 10))
+                .help("Clic ou glisser : placer la tête de lecture")
             }
             .background(Surface.well, in: .rect(cornerRadius: 10))
             .overlay {
@@ -156,6 +157,8 @@ struct WaveformEditor: View {
             }
             .contentShape(.rect.inset(by: -8))
             .offset(x: x(time, width) - 2)
+            .interactiveCursor(.columnResize)
+            .help(isStart ? "Glisser pour régler le début du son (élagage)" : "Glisser pour régler la fin du son (élagage)")
             .gesture(
                 DragGesture(coordinateSpace: .named("wave"))
                     .onChanged { value in
@@ -205,6 +208,7 @@ struct WaveformEditor: View {
                     Icon.close.view(size: 9)
                 }
                 .buttonStyle(.plain)
+                .interactiveCursor(.link)
                 .help("Retirer le \(name.lowercased())")
                 .accessibilityLabel("Retirer le \(name.lowercased())")
             } else {
@@ -217,6 +221,7 @@ struct WaveformEditor: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .interactiveCursor(.link)
                 .help("Ajouter un \(name.lowercased())")
                 .accessibilityLabel("Ajouter un \(name.lowercased())")
             }
@@ -246,6 +251,8 @@ struct WaveformEditor: View {
                 .overlay(Circle().stroke(.black.opacity(0.4), lineWidth: 1))
                 .contentShape(.circle.inset(by: -8))
                 .position(x: x(min(max(handleTime, start), end), width), y: 4)
+                .interactiveCursor(.columnResize)
+                .help("Glisser pour régler la durée du \(isIn ? "fondu d'entrée" : "fondu de sortie")")
                 .gesture(
                     DragGesture(coordinateSpace: .named("wave"))
                         .onChanged { drag in

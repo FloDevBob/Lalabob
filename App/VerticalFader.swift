@@ -15,6 +15,7 @@ struct VerticalFader<Accessory: View>: View {
     var hardwareMarker: Double?
     @ViewBuilder var accessory: () -> Accessory
     @Environment(\.gridDensity) private var density
+    @State private var isDragging = false
     private var trackHeight: CGFloat { density.faderTrackHeight }
 
     private var shownValue: String { valueText ?? Gain.formatDecibels(level: level) }
@@ -50,7 +51,7 @@ struct VerticalFader<Accessory: View>: View {
                 Capsule().fill(Surface.textSecondary.opacity(0.5))
                     .frame(width: 6, height: max(CGFloat(level) * travel + 10, 0))
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(.white)
+                    .fill(Color(white: 0.82))
                     .frame(width: 30, height: 20)
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .offset(y: -CGFloat(level) * travel)
@@ -66,11 +67,16 @@ struct VerticalFader<Accessory: View>: View {
             .frame(maxWidth: .infinity)
             .contentShape(.rect)
             .gesture(
-                DragGesture(minimumDistance: 0).onChanged { value in
-                    level = min(max(1 - Double((value.location.y - 10) / travel), 0), 1)
-                }
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        isDragging = true
+                        level = min(max(1 - Double((value.location.y - 10) / travel), 0), 1)
+                    }
+                    .onEnded { _ in isDragging = false }
             )
             .onTapGesture(count: 2) { level = defaultLevel }
+            .interactiveCursor(isDragging ? .grabActive : .grabIdle)
+            .help("Volume de \(name) : glisser pour régler · double-clic : \(valueText == nil ? Gain.formatDecibels(level: defaultLevel) : "valeur par défaut")")
         }
     }
 }

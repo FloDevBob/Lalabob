@@ -55,9 +55,10 @@ public enum Typography {
     public static let mono = Font.system(size: 11, design: .monospaced)
 }
 
-/// Hauteurs de la grille qui s'adaptent à la fenêtre : pads et piste des faders rétrécissent quand la fenêtre est
-/// basse (plein écran d'un portable), jusqu'à un minimum lisible, pour que la grille, les cartes de volume et la barre
-/// du bas restent visibles sans défiler. Pure, donc testable.
+/// Hauteurs de la grille qui s'adaptent à la fenêtre. Les **pads** absorbent toute la hauteur disponible : plus hauts
+/// quand la fenêtre l'est (jusqu'à `maximumPadHeight`), plus bas quand elle l'est moins. La **piste des faders** garde
+/// sa taille (120 pt) ; elle ne rétrécit qu'en dernier recours, quand les pads ont atteint leur minimum lisible
+/// (petite fenêtre, plein écran d'un portable). Sous ce minimum, la zone défile. Pure, donc testable.
 public struct GridDensity: Equatable, Sendable {
     public var padHeight: CGFloat
     public var faderTrackHeight: CGFloat
@@ -67,11 +68,13 @@ public struct GridDensity: Equatable, Sendable {
         self.faderTrackHeight = faderTrackHeight
     }
 
-    /// Les dimensions de la maquette (fenêtre haute).
+    /// Les dimensions de la maquette (valeur par défaut avant la mesure de la fenêtre).
     public static let regular = GridDensity(padHeight: Metrics.padHeight, faderTrackHeight: 120)
 
     /// En dessous, le titre et le sous-titre d'un pad ne tiennent plus.
     public static let minimumPadHeight: CGFloat = 38
+    /// Au-delà, un pad devient une grande dalle sans intérêt de plus.
+    public static let maximumPadHeight: CGFloat = 110
     public static let minimumFaderTrackHeight: CGFloat = 64
 
     /// Hauteur de tout ce qui n'est ni pad ni piste de fader : en-tête de colonne, espaces, carte de volume (marges,
@@ -79,19 +82,20 @@ public struct GridDensity: Equatable, Sendable {
     public static let fixedHeight: CGFloat = 152
 
     /// Densité qui tient dans `availableHeight` (la zone de la grille, sans l'en-tête de la fenêtre ni la barre du bas).
-    /// Fenêtre assez haute : dimensions de la maquette. Sinon pads et piste rétrécissent ensemble ; au minimum, la zone
-    /// défile.
     public static func fitting(availableHeight: CGFloat) -> GridDensity {
         guard availableHeight.isFinite else { return .regular }
         let rows = CGFloat(8)
-        let regularFree = rows * regular.padHeight + regular.faderTrackHeight
+        let track = regular.faderTrackHeight
         let free = availableHeight - fixedHeight
-        guard free < regularFree else { return .regular }
 
-        let trackShare = regular.faderTrackHeight / regularFree
-        let track = min(max(free * trackShare, minimumFaderTrackHeight), regular.faderTrackHeight)
-        let pad = min(max((free - track) / rows, minimumPadHeight), regular.padHeight)
-        return GridDensity(padHeight: pad, faderTrackHeight: track)
+        // Cas courant : la piste garde sa taille, les pads prennent le reste.
+        let pad = (free - track) / rows
+        if pad >= minimumPadHeight {
+            return GridDensity(padHeight: min(pad, maximumPadHeight), faderTrackHeight: track)
+        }
+        // Fenêtre basse : pads au minimum, la piste cède ce qu'il faut (jusqu'à son propre minimum).
+        let shrunkTrack = min(max(free - rows * minimumPadHeight, minimumFaderTrackHeight), track)
+        return GridDensity(padHeight: minimumPadHeight, faderTrackHeight: shrunkTrack)
     }
 }
 

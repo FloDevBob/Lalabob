@@ -322,6 +322,17 @@ public final class ShowController {
         }
     }
 
+    /// Bouton lecture / stop d'un pad son : arrête un son qui joue, reprend un son en pause, lance un son à l'arrêt.
+    /// Marche aussi verrouillé (c'est du jeu). Sans effet sur une case vide ou une cue lumière.
+    public func togglePlayStop(at position: GridPosition) {
+        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        switch playback[pad.id]?.state {
+        case .playing: stop(at: position)
+        case .paused: togglePause(at: position)
+        default: play(at: position)
+        }
+    }
+
     /// Retour : lecture / relance du pad sélectionné (son : selon son réglage « Nouvel appui »).
     public func playSelection() {
         guard let position = selection else { return }

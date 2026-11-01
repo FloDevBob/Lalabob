@@ -14,8 +14,7 @@ Le projet n'accepte aucune dépendance tierce sans accord explicite et sans ADR.
   Seules les icônes utilisées sont copiées en SVG dans `LalabobDesign/Resources/Icons.xcassets`
   (images modèles, données vectorielles conservées) ; l'épaisseur du trait est reportée sur chaque tracé
   et `currentColor` remplacé par du noir pour le moteur SVG d'Xcode.
-  Le **projecteur** (colonnes lumière) et le **cadenas ouvert** n'existent pas dans Iconoir : ils sont dessinés
-  dans le même style.
+  Le **projecteur** (colonnes lumière), le **cadenas ouvert** et l'**ampoule** (astuces) sont dessinés dans le même style.
 - **Fredoka** (Google Fonts, licence SIL OFL 1.1), fichier variable `Fredoka.ttf` dans `LalabobDesign/Resources/Fonts`,
   enregistré pour le processus au lancement (`Fonts.register()`), sans modifier `Info.plist`.
 - Aucune bibliothèque Swift, aucun gestionnaire de paquets : uniquement des fichiers, avec leurs licences
