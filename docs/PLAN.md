@@ -268,3 +268,5 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
   (à valider) : retour visuel de l'appui sur un pad (léger enfoncement + éclat 120 ms), pastille de l'onglet actif qui glisse d'un onglet à l'autre (`matchedGeometryEffect`),
   `numericText` sur les valeurs dB / % / temps, fondu enchaîné de l'en-tête de l'inspecteur d'un pad à l'autre, fondu de sortie de la lueur d'un pad quand « Tout arrêter » le coupe, bascule du cadenas
   (l'icône se transforme). À éviter : tout mouvement sur les pads pendant le jeu, rebonds, parallaxe.
+- **Zone lumière sans carte (01/11/2026, demande de l'utilisateur)** : la grande carte ambrée (fond + cadre arrondi) autour des 2 colonnes lumière est supprimée ; une **ligne verticale ambrée** (1 pt) les sépare des
+  colonnes sons, au même emplacement, avec les marges de la grille (réponses : « même emplacement » et « touche d'ambre discrète » — ligne, icône projecteur, liseré des cartes de fader). Zone de largeur fixe (264 pt).

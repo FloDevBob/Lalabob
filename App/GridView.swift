@@ -6,7 +6,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import os
 
-/// La grille : 6 colonnes sons, puis 2 colonnes lumière dans une zone ambrée.
+/// La grille : 6 colonnes sons, une ligne de séparation ambrée, puis 2 colonnes lumière.
 /// Elle reçoit ⌘X / ⌘C / ⌘V / ⌫ quand elle a le focus (un clic sur un pad le lui donne) ;
 /// verrouillée, ces commandes sont refusées par `ShowController` avec un message.
 struct GridView: View {
@@ -23,25 +23,19 @@ struct GridView: View {
             }
             .frame(maxWidth: .infinity)
 
+            // Zone lumière : plus de carte ni de fond, une simple ligne verticale ambrée la sépare des colonnes sons
+            // (une zone fixe à droite, comme un panneau latéral qu'on ne referme pas).
+            Rectangle()
+                .fill(Surface.lightAccent.opacity(0.28))
+                .frame(width: 1)
+                .accessibilityHidden(true)
+
             HStack(spacing: Metrics.columnSpacing) {
                 ForEach(indices(of: .light, in: grid), id: \.self) { index in
                     ColumnView(index: index, onPress: { focused = true })
                 }
             }
-            // Marge horizontale seulement : les en-têtes et les pads des colonnes lumière doivent tomber à la même
-            // hauteur que ceux des colonnes sons (le cadre ambré déborde, lui, de 8 px en haut et en bas).
-            .padding(.horizontal, 8)
-            .frame(maxHeight: .infinity, alignment: .top)
-            .background {
-                RoundedRectangle(cornerRadius: Metrics.panelCornerRadius)
-                    .fill(Surface.lightZone)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Metrics.panelCornerRadius)
-                            .stroke(Surface.lightAccent.opacity(0.12))
-                    )
-                    .padding(.vertical, -8)
-            }
-            .frame(width: 280)
+            .frame(width: 264)
         }
         .focusable()
         .focusEffectDisabled()
