@@ -15,7 +15,8 @@ public actor CoreMIDISession: MIDITransport {
     private var client = MIDIClientRef()
     private var inputPort = MIDIPortRef()
     private var outputPort = MIDIPortRef()
-    /// Source virtuelle « Lalabob Lumière » : sortie seule, Lalabob ne l'écoute jamais (pas de boucle).
+    /// Source virtuelle « Lalabob Lumière » : Lalabob → LightKey (notes et CC). Lalabob ne l'écoute jamais : le retour de
+    /// LightKey arrive sur la destination du même nom (`lightingDestination`), jamais sur cette source (pas de boucle).
     private var lightingSource = MIDIEndpointRef()
     /// Destination virtuelle du même nom que la source : pour LightKey, un seul appareil « Lalabob Lumière » avec entrée
     /// et sortie. LightKey n'envoie son retour qu'à la destination qui porte le nom de son entrée (relevé du 01/11/2026).

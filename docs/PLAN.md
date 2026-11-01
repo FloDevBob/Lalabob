@@ -6,7 +6,7 @@ Copie de travail du plan (version d'origine : https://claude.ai/artifact/UZQWshX
 ## Objectif
 
 Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette (voir `docs/DESIGN.md`).
-7 jalons ; chacun livre une app qui se lance, des tests verts et un essai sur le vrai matériel.
+8 jalons (J0 à J7) ; chacun livre une app qui se lance, des tests verts et un essai sur le vrai matériel.
 
 ## Décisions prises (30 octobre 2026)
 
@@ -15,7 +15,7 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 | Mac de régie | macOS 26 et 27 → cible macOS 26 minimum |
 | Outils | Xcode 27.1, Swift 6.4 (mode Swift 6 strict), XcodeGen |
 | Signature | Locale (« Sign to Run Locally »), sans compte Apple. Pas de notarisation pour l'instant |
-| Logiciel lumière | LightKey, via un port MIDI virtuel créé par Lalabob (« Lalabob Lumière ») |
+| Logiciel lumière | LightKey, via un appareil MIDI virtuel créé par Lalabob (« Lalabob Lumière », source + destination du même nom). LightKey n'écoute que lui ; Lalabob relaie les appuis et faders et lit l'état des cues (ADR 0006, 01/11/2026) |
 | Sortie audio | Une seule, choisie dans la barre d'en-tête parmi les sorties branchées |
 | Pré-écoute | Sur cette même sortie, désactivée en mode Spectacle |
 | Faders physiques | APC mini mk2 : faders 1–8 → faders de colonne. Le 9e est ignoré (mappé dans un autre logiciel pour le volume d'Apple Music ; CoreMIDI permet à plusieurs apps de lire l'APC) |
@@ -61,6 +61,7 @@ Une app macOS native, modulaire, maintenable et sûre, qui reproduit la maquette
 - **Terminé quand** : sur chaque contrôleur disponible, un appui joue le bon son, les LED ont les couleurs de l'écran, les faders de l'APC bougent ceux de l'écran, y compris après débranchement. Points ⚠︎ de `docs/hardware/` vérifiés.
 
 ### J3 — Lumière (LightKey) 🟡 code terminé, essai réel à faire (branche `j3/lumiere`, empilée sur `j2/controleurs`)
+> **Remplacé par le J7 (ADR 0006, 01/11/2026)** : LightKey n'écoute plus le contrôleur, Lalabob relaie tout. Cette section garde l'historique ; les cases d'essai ci-dessous sont reprises dans le J7.
 **Décision du 30/10/2026 (ADR 0004)** : les notes des pads sont déjà mappées dans LightKey, qui écoute directement le contrôleur. **Pas de traduction.**
 - Appui physique sur un pad lumière : rien côté Lalabob (LightKey le reçoit). LED : couleur du pad, en permanence.
 - Clic à l'écran (Live) : la même note que le contrôleur est envoyée sur le port virtuel « Lalabob Lumière » (Note On 127, Note Off après 100 ms) ; note du contrôleur connecté ou du dernier connu.
@@ -160,26 +161,29 @@ réduits (`controlSize(.mini)`), ligne de métadonnées et rappel « Glissez les
 - Installation sur les deux Mac de régie, guide d'utilisation d'une page.
 - **Terminé quand** : une répétition générale se déroule sans incident.
 
-### J7 — Appairage lumière et retour de LightKey 🚧 (branche `j7/relais-lumiere`, empilée sur `j6/curseurs-infobulles`)
-Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'ADR 0006 une fois le relevé fait).
-**Avancement** — étape 0 🟡 outil de relevé prêt, **relevé à faire sur le Mac de régie** (`docs/hardware/lightkey-feedback.md`) · étapes 1 à 5 : à faire.
+### J7 — Appairage lumière et retour de LightKey 🟡 code terminé, essai réel à faire (branches `j7/…`, empilées sur `j6/curseurs-infobulles`)
+Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (remplace la 0004) ; relevé : `docs/hardware/lightkey-feedback.md`.
+**Avancement** — étape 0 ✅ relevé (cas A) · étape 1 ✅ relais · étapes 2 et 3 ✅ état sur pads et LED · étape 4 ✅ mode d'appairage (+ faders) · **étape 5 : essai réel sur le Mac de régie** (check-list du plan détaillé).
+**Reste du J7** : essai réel ; fixtures Swift d'après le journal brut (`lightkey-feedback-session-2026-11-01.txt`) ; relever « cue supprimée » et le retour éventuel d'un fader ; comportement à la fermeture de LightKey (rien ne le signale en MIDI).
+**Branches** : `j7/relais-lumiere` (banc d'essai, relevé) → `j7/etat-lumiere` → `j7/relais-physique` → `j7/mode-appairage` → `j7/appairage-faders` → `j7/icone-app` → `j7/documentation`.
+**Historique détaillé des étapes** (ce qui suit est le journal de bord, dans l'ordre où les choses ont été faites ; les mentions « à retirer » ou « pas encore » y sont des états passés).
 - **Fait (01/11/2026)** : destination virtuelle **« Lalabob Retour Lumière »** (`CoreMIDISession`, identifiant unique conservé), flux
   `MIDITransport.lightingFeedback` (séparé de `incoming`), journal `OSLog` (sous-système `fr.lalabob.app`, catégorie `lighting`) des **mots UMP bruts**
-  (`UMPDescription`) : on voit ce que `UMPDecoder` écarte. Rien n'est encore branché sur l'interface ni sur les sons. 5 tests (`UMPDescriptionTests`) ; 204 tests Engine verts.
+  (`UMPDescription`) : on voit ce que `UMPDecoder` écarte. Rien n'était branché sur l'interface ni sur les sons à ce stade. 5 tests (`UMPDescriptionTests`) ; 204 tests Engine verts.
 - **Banc d'essai lumière (01/11/2026, demande de l'utilisateur)** : fenêtre **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L) pour essayer l'appairage sans Terminal : état du contrôleur et des
   deux ports, grille 8×8 (clic = Note On tant que le bouton est enfoncé, numéros de note, retour de LightKey affiché sur la case), journal en direct (contrôleur / vers LightKey /
-  de LightKey, **Copier**), canal d'envoi réglable (1–16, répond à la question ouverte 1), option **relais d'essai** des appuis physiques sur les colonnes lumière (jamais les colonnes sons).
+  de LightKey, **Copier**), canal d'envoi réglable (1–16, répond à la question ouverte 1), option **relais d'essai** des appuis physiques sur les colonnes lumière (jamais les colonnes sons) — retirée à l'étape 1 : le relais est devenu permanent.
   `LightingTestBench` (Engine, inactif fenêtre fermée : aucun coût en scène) ; tout l'envoi vers LightKey passe par une seule file (`sendToLightKey`). 7 tests (`LightingTestBenchTests`).
   **À essayer** : ouvrir la fenêtre, cliquer une case, voir la note partir ; appuyer sur un pad ; déclencher une cue dans LightKey et lire le retour.
 - **Relevé fait (01/11/2026) → cas A** (voir `docs/hardware/lightkey-feedback.md`) : LightKey répond **seulement** à la destination du **même nom que l'entrée** (« Lalabob Lumière ») ;
   retour = Note On vélocité 127 (cue allumée) / Note Off vélocité 0 (éteinte), canal 1, notes de la disposition APC ; une **rafale d'état complet** à l'ouverture du spectacle ; une cue en éteint d'autres → un Note Off
-  par cue éteinte ; chaque Note On **bascule** la cue. Pas de couleur dans le retour. **Conséquences** : la destination « Lalabob Retour Lumière » est inutile (à retirer à l'étape 1) ; un double envoi
+  par cue éteinte ; chaque Note On **bascule** la cue. Pas de couleur dans le retour. **Conséquences** : la destination « Lalabob Retour Lumière » est inutile (retirée à l'étape 1) ; un double envoi
   (LightKey qui écoute aussi l'APC) bascule deux fois = aucun effet visible, piège à éviter ; le canal 16 dédié est à reconsidérer (le retour revient sur le canal appris, ici 1).
 - **Étapes 2 et 3 — état des cues sur les pads (01/11/2026, branche `j7/etat-lumiere`)** : le retour de LightKey (cas A) alimente `ShowController.lightStates`
   (`LightState` : inconnu / éteint / allumé, jamais enregistré, **par case** : c'est la note du contrôleur, la même sur toutes les grilles). Le **dernier message gagne** (une rafale de couleur ne change rien).
   `ControllerDriver.lightFeedback(for:)` (pilote pur : Note On > 0 = allumée, Note Off = éteinte, canal ignoré), `ControllerSession` tient l'état pour tous les spectacles et le donne à chaque fenêtre rattachée.
   **LED** (`LEDPlanner`) : cue allumée = pulsation, éteinte = teinte atténuée (25 %), inconnue = comme avant. **Pad** (`GridView`) : cue allumée = contour et halo à la couleur vive, ampoule vive ; éteinte = ampoule
-  atténuée ; inconnue = rien ; VoiceOver lit « Allumée / Éteinte ». Pas de `isPaired` (pas encore utile : l'appairage automatique viendra à l'étape 4). **Non fait** : état remis à « inconnu » à la fermeture de
+  atténuée ; inconnue = rien ; VoiceOver lit « Allumée / Éteinte ». `isPaired` n'existait pas encore (ajouté à l'étape 4). **Non fait** : état remis à « inconnu » à la fermeture de
   LightKey (impossible à détecter par MIDI) ; ne jamais en déduire « allumé » d'un envoi (LightKey n'a pas toujours répondu, voir relevé). 6 tests Engine, 4 tests pilotes ; 217 Engine et 43 pilotes verts.
   **À essayer** : lancer une cue dans LightKey (pad allumé à l'écran, LED qui pulse), l'éteindre, ouvrir le spectacle LightKey (rafale d'état), deux fenêtres.
 - **Étape 1 — relais des appuis physiques (01/11/2026, branche `j7/relais-physique`, ADR 0006)** : un appui sur une colonne lumière est **relayé** à LightKey (Note On vélocité 127 à l'appui, Note Off au relâchement réel,
@@ -203,7 +207,7 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
   principal (comme un Maj-clic), maintenir la touche répète ; verrouillé, une seule case ; ignorées pendant la saisie d'un texte et avec ⌘ / ⌥ / ⌃. `ShowController.moveSelection(dx:dy:extend:)`, 9 tests (`ArrowNavigationTests`).
   La grille doit avoir le focus (un clic sur un pad le lui donne).
 - **Icône de l'app (01/11/2026)** : `AppIcon.appiconset` complet (10 tailles, de 16 à 1024 px, `idiom: mac`) ; compilée dans l'app (`AppIcon.icns`, `CFBundleIconName`). À vérifier à l'œil dans le Dock et le Finder (macOS garde l'ancienne icône en cache : relancer l'app ou `killall Dock`).
-- **Reste pour l'étape 0** : relever aussi « cue changée de couleur » et « cue supprimée » (non essayés), puis écrire les fixtures Swift d'après le journal brut (étape 2).
+- **Reste pour l'étape 0** : « cue supprimée » n'a pas été relevé ; les fixtures Swift d'après le journal brut ne sont pas écrites.
 
 ## Risques suivis
 
@@ -212,7 +216,7 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
 | Latence / craquements à forte charge | Test de charge dès J1, Instruments |
 | Comportements MIDI non documentés (APC surtout) | Pilotes isolés, messages enregistrés, essais matériels tôt |
 | Glisser-déposer SwiftUI limité (⌥ pour dupliquer) | Repli AppKit pour la grille si besoin |
-| Format MIDI attendu par LightKey | Sans objet : LightKey apprend les notes du contrôleur (ADR 0004) |
+| Format MIDI attendu par LightKey | Relevé le 01/11/2026 : Note On / Note Off, canal 1, notes de la disposition du contrôleur (ADR 0006) |
 - **Tête de lecture déplaçable et menu « ⋯ » (31/10/2026)** : un clic ou un glisser sur l'onde place la tête de lecture
   (la position est appliquée au relâchement ; le son reprend à ce point, en restant en pause s'il l'était ; sur un pad à l'arrêt,
   il démarre à ce point). `AudioEngineControlling.seek`, `AudioClip.playbackOffset` (borné à la partie élaguée),

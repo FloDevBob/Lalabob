@@ -17,7 +17,7 @@ public final class LightingTestBench {
         case fromController
         /// Ce que Lalabob envoie à LightKey sur « Lalabob Lumière ».
         case toLightKey
-        /// Ce que LightKey renvoie sur « Lalabob Retour Lumière ».
+        /// Ce que LightKey renvoie à la destination « Lalabob Lumière » (retour d'état des cues).
         case fromLightKey
     }
 

@@ -32,3 +32,10 @@ Apple Music lisent l'APC en même temps sans se gêner.
 - Nom réel du port vu par CoreMIDI : _à noter_ (la détection cherche « apc mini mk2 »).
 - Réponse à la requête d'identité : _à noter_ ; Lalabob vérifie seulement le fabricant Akai `47`.
 - Confirmer les CC 48 à 56 des faders ⚠︎ et les canaux de pulsation (le son en lecture utilise le canal 9).
+
+## Confirmé en essai réel (01/11/2026)
+
+- Les notes des pads suivent la disposition « 0 en bas à gauche, 63 en haut à droite, ligne par ligne » : les appuis sur les colonnes de droite ont donné les notes 6, 7, 14, 15, 22, 23, … 62, 63. Appui = Note On vélocité 127, relâchement = Note Off vélocité 0, canal 1.
+- Le retour de LightKey utilise ces mêmes notes (voir `lightkey-feedback.md`).
+- Non encore confirmés : les CC des faders (48 à 55 ⚠︎) et le comportement des LED à pulsation.
+

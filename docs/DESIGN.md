@@ -59,8 +59,9 @@ largeur (zones élaguées assombries, poignées d'élagage, tête de lecture). *
 droite (sortie) ; une fois actif, la puce affiche la durée (« 0,8 s ») avec une croix pour le retirer, et une poignée au
 bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il n'y a plus de bouton « Fondus ».
 
-**Pad lumière** (ADR 0004, pas de traduction) : une seule bande — titre, bouton **Tester** et rappel de la note envoyée
-à LightKey, puis couleur (popover) et actions.
+**Pad lumière** (ADR 0006) : une seule bande — titre, bouton **Tester** et rappel de la note envoyée
+à LightKey, puis couleur (popover) et actions. L'état allumé / éteint ne vient pas de l'inspecteur : il se lit sur le pad
+(voir « Appairage lumière » plus bas).
 
 ## Interactions
 
@@ -107,5 +108,8 @@ glisser) sont annoncées ; un contrôle refusé parce que verrouillé dit pourqu
 **Appairage lumière** (01/11/2026, ADR 0006) : bouton « Appairage » dans l'en-tête (déverrouillé). Barre du bas dédiée (196 px) : trois étapes (LightKey › External Control › Add Trigger…, appui sur un pad
 ou clic sur son ampoule, nom de la cue), case cible, état « En attente de LightKey… » / « Appairée ✓ », boutons « C'est appairé », « Retirer l'appairage », « Terminer ». Cases lumière : pointillés ambrés ; cible : pointillés qui pulsent ;
 appairée : contour plein ; ampoule ambrée en bas à droite de chaque case lumière. Cue allumée dans LightKey : contour, halo et ampoule à la couleur du pad ; éteinte : ampoule atténuée.
+Les **faders** des colonnes lumière s'appairent de la même façon : la carte du fader a le même contour et une étiquette « Appairer / En attente… / Appairé ✓ » ; bouger le fader (main ou écran) le désigne comme cible. Échap reste « Tout arrêter » pendant l'appairage.
+
+**Banc d'essai lumière** (Fenêtre ▸ Banc d'essai lumière, ⌥⌘L) : fenêtre d'essai séparée (état du contrôleur et des ports, grille 8×8 cliquable avec les numéros de note, journal en direct « Contrôleur → / → LightKey / LightKey → », bouton Copier, canal des clics). Ne coûte rien fenêtre fermée.
 
 **Clavier dans la grille** (01/11/2026) : ← → ↑ ↓ changent de pad, Maj + flèche étend la sélection en rectangle, Espace / Retour jouent, ⌘C / ⌘X / ⌘V / ⌘D / ⌫ agissent sur la sélection.

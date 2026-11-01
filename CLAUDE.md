@@ -16,7 +16,7 @@ MIDI vers LightKey. Sécurité de scène avant tout : **le son ne doit jamais s'
 - `App/` est fine : vues SwiftUI qui lisent `ShowController` et envoient des commandes.
 - Tout le reste vit dans `Packages/LalabobKit`, un module par responsabilité :
   - `LalabobModel` : types valeur (`struct`, `Codable`, `Sendable`). Aucun import d'Apple framework hors Foundation.
-  - `LalabobMIDI` : messages MIDI en valeurs ; l'accès CoreMIDI sera isolé dans un `actor`.
+  - `LalabobMIDI` : messages MIDI en valeurs, codec UMP, protocole `MIDITransport` ; tout l'accès CoreMIDI est isolé dans l'`actor` `CoreMIDISession`.
   - `ControllerDrivers` : un pilote = une `struct` pure qui conforme `ControllerDriver`. Pas d'état, pas d'E/S.
   - `LalabobAudio` : AVAudioEngine derrière `AudioEngineControlling`.
   - `LalabobEngine` : `ShowController` (`@MainActor @Observable`), seule source de vérité.
@@ -52,7 +52,9 @@ Skills du dépôt : `lalabob-feature` (déroulé d'une tâche), `midi-driver` (p
 
 - **Plan, jalons, décisions** : @docs/PLAN.md — lire avant toute tâche ; le mettre à jour quand un jalon avance.
 - **Maquette décrite** (écrans, états, interactions) : @docs/DESIGN.md
-- Protocoles matériels : `docs/hardware/` ; décisions d'architecture : `docs/adr/`.
+- **Guide d'utilisation** (une page, pour la régie) : `docs/GUIDE.md`.
+- Protocoles matériels : `docs/hardware/` (dont le relevé du retour de LightKey) ; décisions d'architecture : `docs/adr/`.
+- **Lumière (ADR 0006)** : LightKey n'écoute que « Lalabob Lumière » ; Lalabob relaie les appuis et faders des colonnes lumière et lit l'état des cues dans le retour. Jamais d'état « allumé » déduit d'un envoi.
 - Liens d'origine (nécessitent un compte claude.ai) : maquette https://claude.ai/artifact/B82jshC6LzSB3FBxi7cAia,
   plan https://claude.ai/artifact/UZQWshXj9GUVkjtFMFBJcm.
 

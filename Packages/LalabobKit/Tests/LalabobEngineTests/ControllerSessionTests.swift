@@ -29,7 +29,7 @@ actor FakeMIDITransport: MIDITransport {
         (lightingFeedback, feedbackContinuation) = AsyncStream.makeStream(of: [MIDIEvent].self)
     }
 
-    /// Simule un message de LightKey sur « Lalabob Retour Lumière ».
+    /// Simule un message de retour de LightKey (destination « Lalabob Lumière »).
     func receiveLightingFeedback(_ events: [MIDIEvent]) { feedbackContinuation.yield(events) }
 
     func setPorts(sources: [MIDIPort], destinations: [MIDIPort]) {

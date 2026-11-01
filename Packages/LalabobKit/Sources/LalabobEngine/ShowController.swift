@@ -439,9 +439,10 @@ public final class ShowController {
         if waiting != waitingFaders { waitingFaders = waiting }
     }
 
-    /// Fader d'une colonne lumière déplacé **à l'écran** : règle le niveau et le répète vers LightKey (CC du fader de la
-    /// même colonne sur le contrôleur, via « Lalabob Lumière »). Un fader physique passe par `setColumnLevel` : LightKey
-    /// l'a déjà reçu du contrôleur, le répéter le ferait deux fois. Sans effet sur une colonne son (`setColumnLevel`).
+    /// Fader d'une colonne lumière déplacé **à l'écran** : règle le niveau et l'envoie à LightKey (CC du fader de la même
+    /// colonne sur le contrôleur, via « Lalabob Lumière »). Un fader physique suit un autre chemin : `ControllerSession` le
+    /// relaie à LightKey et `moveHardwareFader` règle l'écran (ADR 0006). Sans effet sur une colonne son (`setColumnLevel`).
+    /// En mode d'appairage, bouger le fader le désigne aussi comme cible (`pairingFaderMoved`).
     public func setLightFader(column: Int, level: Double) {
         guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .light else { return }
         let level = Gain.faderLevel(level)

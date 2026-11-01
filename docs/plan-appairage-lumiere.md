@@ -1,6 +1,6 @@
 # Plan — Appairage lumière et retour de LightKey (J7)
 
-Statut : proposé (01/11/2026). Branches : une par étape, `j7/…`, une PR chacune (voir `CLAUDE.md`).
+Statut : **réalisé le 01/11/2026 (étapes 0 à 4), essai réel (étape 5) à faire** — voir `docs/PLAN.md` (J7) et l'ADR 0006. Ce fichier garde le plan d'origine ; des écarts sont notés dans PLAN (Échap reste « Tout arrêter », pas d'état `LightPairingMode`, canal 1 et non 16, port « Retour » supprimé). Branches : une par étape, `j7/…`, une PR chacune (voir `CLAUDE.md`).
 À fusionner dans `docs/PLAN.md` (section J7) quand la première branche est ouverte.
 
 ## Objectif

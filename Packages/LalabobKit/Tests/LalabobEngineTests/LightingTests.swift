@@ -7,8 +7,8 @@ import Testing
 
 @testable import LalabobEngine
 
-/// Colonnes lumière : LightKey écoute directement le contrôleur. Un clic à l'écran envoie la même note
-/// sur le port virtuel « Lalabob Lumière » ; un appui physique n'y envoie rien (sinon la cue partirait deux fois).
+/// Colonnes lumière (ADR 0006) : LightKey n'écoute que « Lalabob Lumière ». Un clic à l'écran et un appui physique y
+/// envoient la même note (Note On, puis Note Off au relâchement) ; un fader physique y envoie son CC. Aucun son n'est touché.
 @MainActor
 @Suite("Lumière", .serialized)
 struct LightingTests {

@@ -45,8 +45,8 @@ public protocol MIDITransport: Sendable {
     var incoming: AsyncStream<IncomingMIDI> { get }
     /// Émet à chaque branchement, débranchement ou changement de la configuration MIDI.
     var changes: AsyncStream<Void> { get }
-    /// Messages que LightKey envoie à Lalabob sur le port virtuel « Lalabob Retour Lumière ».
-    /// Flux séparé de `incoming` : un retour de LightKey n'est jamais pris pour un contrôleur.
+    /// Retour de LightKey : messages reçus par la destination virtuelle « Lalabob Lumière » (Note On = cue allumée,
+    /// Note Off = éteinte). Flux séparé de `incoming` : un retour de LightKey n'est jamais pris pour un contrôleur.
     var lightingFeedback: AsyncStream<[MIDIEvent]> { get }
 
     func sources() async -> [MIDIPort]
@@ -58,6 +58,6 @@ public protocol MIDITransport: Sendable {
 
     func send(_ events: [MIDIEvent], to destination: MIDIPortID) async throws
 
-    /// Émet des messages sur le port virtuel « Lalabob Lumière » (une source que LightKey écoute).
+    /// Émet des messages sur la source virtuelle « Lalabob Lumière », la seule que LightKey écoute (ADR 0006).
     func sendLighting(_ events: [MIDIEvent]) async throws
 }
