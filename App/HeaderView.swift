@@ -9,6 +9,8 @@ struct HeaderView: View {
     @Environment(PreviewController.self) private var preview
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Binding var showsLibrary: Bool
+    @Environment(\.midiSession) private var midiSession
+    @State private var showsCalibration = false
     @State private var audioUsage = AudioFolderUsage.empty
 
     /// Nom du fichier du spectacle (sans « .lalabob »), ou « Nouveau spectacle » tant qu'il n'est pas enregistré.
@@ -43,7 +45,7 @@ struct HeaderView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // À droite : contrôleur, sortie audio, cadenas, Tout arrêter.
-            controllerStatus
+            controllerStatusControl
             outputPicker
             PairingButton()
             LockButton()
@@ -67,6 +69,21 @@ struct HeaderView: View {
         guard let directory = controller.audioDirectory else { return }
         let used = controller.show.usedAudioFileNames
         audioUsage = await Task.detached { AudioFolderUsage.measure(directory: directory, used: used) }.value
+    }
+
+    /// Le contrôleur connecté ; avec des LED RVB (Launchpad), un clic ouvre l'étalonnage des couleurs.
+    @ViewBuilder
+    private var controllerStatusControl: some View {
+        if let session = midiSession, controller.connectedController?.hasRGBLEDs == true {
+            Button { showsCalibration.toggle() } label: { controllerStatus }
+                .buttonStyle(.plain)
+                .hoverHighlight()
+                .interactiveCursor(.link)
+                .popover(isPresented: $showsCalibration, arrowEdge: .bottom) { LEDCalibrationView(session: session) }
+                .help("Régler les couleurs des LED du Launchpad")
+        } else {
+            controllerStatus
+        }
     }
 
     private var controllerStatus: some View {

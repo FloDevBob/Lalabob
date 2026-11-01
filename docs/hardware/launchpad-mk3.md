@@ -32,7 +32,7 @@ ne sont pas utilisés par Lalabob pour l'instant.
 
 - [ ] Octets modèle des Mini MK3 et Pro MK3.
 - [ ] Le Pro MK3 utilise bien la même grille 11–88 en mode Programmeur.
-- [ ] Rendu des couleurs RVB à côté de l'écran (ajuster si besoin dans `LaunchpadDriver.sevenBit`).
+- [ ] Rendu des couleurs RVB à côté de l'écran : **étalonnage réglable** depuis l'en-tête (clic sur le nom du contrôleur), voir `LEDCalibration`. Réglage conseillé au départ : saturation 1,2 · gamma 2,0 · luminosité 1,0 (valeurs à affiner sur le Mini MK3 de la troupe).
 
 ## Relevés à faire au jalon 2 (essai matériel)
 

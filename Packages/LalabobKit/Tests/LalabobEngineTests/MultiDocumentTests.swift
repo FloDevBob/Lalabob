@@ -41,7 +41,7 @@ struct MultiDocumentTests {
         // La fenêtre B devient active : toutes les LED sont renvoyées avec ses couleurs, les appuis vont à B.
         await transport.clearSent()
         session.attach(b)
-        let driver = ControllerModel.launchpadX.driver
+        let driver = ControllerModel.launchpadX.driver(calibration: .standard)  // l'étalonnage par défaut de la session
         let expectedFirstPad = driver.ledMessages([GridPosition(column: 0, row: 0): .lit(.rouge, .full)])
         #expect(await waitUntil {
             let sent = await transport.sentEvents(to: ControllerSessionTests.lpxDestination.id)

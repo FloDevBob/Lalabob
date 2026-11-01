@@ -114,7 +114,7 @@ struct ControllerSessionTests {
 
         #expect(await waitUntil { await rig.controller.connectedController == .launchpadX })
         #expect(await waitUntil { await rig.transport.listening == [Self.lpxSource.id] })
-        let driver = ControllerModel.launchpadX.driver
+        let driver = ControllerModel.launchpadX.driver(calibration: .standard)  // l'étalonnage par défaut de la session
         let sent = await rig.transport.sentEvents(to: Self.lpxDestination.id)
         #expect(sent.starts(with: driver.connectionMessages))
         #expect(await rig.transport.sentEvents(to: Self.lpxDAWDestination.id).isEmpty)
@@ -235,7 +235,7 @@ struct ControllerSessionTests {
         await plugLaunchpad(rig)
         #expect(await waitUntil { await rig.transport.sentEvents(to: Self.lpxDestination.id).count > 2 })
 
-        let driver = ControllerModel.launchpadX.driver
+        let driver = ControllerModel.launchpadX.driver(calibration: .standard)  // l'étalonnage par défaut de la session
         let expected = driver.ledMessages([GridPosition(column: 0, row: 0): .lit(.vert, .full)])
         let sent = await rig.transport.sentEvents(to: Self.lpxDestination.id)
         // Le message complet de la grille contient la spec du pad allumé ; on vérifie la note 81.
@@ -260,7 +260,7 @@ struct ControllerSessionTests {
         await rig.transport.clearSent()
 
         await rig.audio.send(PlaybackEvent(pad: rig.pad.id, state: .playing(startedAt: 0), duration: 2))
-        let driver = ControllerModel.launchpadX.driver
+        let driver = ControllerModel.launchpadX.driver(calibration: .standard)  // l'étalonnage par défaut de la session
         let expected = driver.ledMessages([GridPosition(column: 0, row: 0): .pulsing(.vert)])
         #expect(await waitUntil { await rig.transport.sentEvents(to: Self.lpxDestination.id) == expected })
     }
@@ -294,7 +294,7 @@ struct ControllerSessionTests {
 
         await plugLaunchpad(rig)
         #expect(await waitUntil { await rig.controller.connectedController == .launchpadX })
-        let driver = ControllerModel.launchpadX.driver
+        let driver = ControllerModel.launchpadX.driver(calibration: .standard)  // l'étalonnage par défaut de la session
         #expect(await waitUntil { await rig.transport.sentEvents(to: Self.lpxDestination.id).starts(with: driver.connectionMessages) })
         // Les appuis sont de nouveau pris en compte.
         await rig.transport.receive([.noteOn(channel: 0, note: 81, velocity: 100)], from: Self.lpxSource.id)

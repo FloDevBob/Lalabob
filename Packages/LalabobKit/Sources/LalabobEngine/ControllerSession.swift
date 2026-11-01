@@ -30,6 +30,10 @@ public final class ControllerSession {
 
     /// Banc d'essai de l'appairage lumière (inactif tant que sa fenêtre est fermée).
     public let bench = LightingTestBench()
+    /// Étalonnage des couleurs des LED RVB (Launchpad), mémorisé d'un lancement à l'autre.
+    public private(set) var ledCalibration: LEDCalibration
+    @ObservationIgnored private let defaults: UserDefaults
+    static let calibrationDefaultsKey = "ledCalibration"
     /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
@@ -46,13 +50,17 @@ public final class ControllerSession {
     @ObservationIgnored private var lightStates: [GridPosition: LightState] = [:]
 
     /// Session rattachée à un seul spectacle (tests, aperçus).
-    public convenience init(controller: ShowController, transport: any MIDITransport) {
-        self.init(transport: transport)
+    public convenience init(controller: ShowController, transport: any MIDITransport, defaults: UserDefaults = .standard) {
+        self.init(transport: transport, defaults: defaults)
         attach(controller)
     }
 
-    public init(transport: any MIDITransport) {
+    public init(transport: any MIDITransport, defaults: UserDefaults = .standard) {
         self.transport = transport
+        self.defaults = defaults
+        self.ledCalibration =
+            defaults.data(forKey: Self.calibrationDefaultsKey)
+            .flatMap { try? JSONDecoder().decode(LEDCalibration.self, from: $0) }?.clamped ?? .standard
 
         // Une seule file d'envoi : les messages partent dans l'ordre où on les a produits.
         let (stream, continuation) = AsyncStream.makeStream(of: Outgoing.self, bufferingPolicy: .unbounded)
@@ -93,6 +101,22 @@ public final class ControllerSession {
             group.addTask { await self.watchInput() }
             group.addTask { await self.watchLEDs() }
             group.addTask { await self.watchLightingFeedback() }
+        }
+    }
+
+    // MARK: - Étalonnage des LED
+
+    /// Change l'étalonnage des couleurs : mémorisé, puis toutes les LED sont renvoyées avec les nouvelles couleurs.
+    public func setLEDCalibration(_ calibration: LEDCalibration) {
+        let calibration = calibration.clamped
+        guard calibration != ledCalibration else { return }
+        ledCalibration = calibration
+        if let data = try? JSONEncoder().encode(calibration) { defaults.set(data, forKey: Self.calibrationDefaultsKey) }
+        if var current = active {
+            current.driver = current.model.driver(calibration: calibration)
+            active = current
+            lastLEDs = [:]
+            pushLEDs()
         }
     }
 
@@ -146,7 +170,7 @@ public final class ControllerSession {
         guard let found else { return }
 
         await transport.listen(to: found.source)
-        let driver = found.model.driver
+        let driver = found.model.driver(calibration: ledCalibration)
         active = Active(model: found.model, driver: driver, source: found.source, destination: found.destination)
         lastLEDs = [:]
         send(driver.connectionMessages)

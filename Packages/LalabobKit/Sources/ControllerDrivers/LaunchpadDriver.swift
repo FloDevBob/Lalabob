@@ -10,10 +10,13 @@ import LalabobModel
 /// - Grille : note = (rangée depuis le bas + 1) × 10 + (colonne + 1), soit 11 en bas à gauche, 88 en haut à droite.
 public struct LaunchpadDriver: ControllerDriver {
     public let model: ControllerModel
+    /// Étalonnage des couleurs RVB (`.neutral` : la couleur de l'écran telle quelle, pour les tests).
+    public let calibration: LEDCalibration
 
-    public init(model: ControllerModel) {
+    public init(model: ControllerModel, calibration: LEDCalibration = .neutral) {
         precondition(model != .apcMiniMK2, "Utilisez APCMiniMK2Driver")
         self.model = model
+        self.calibration = calibration
     }
 
     /// Octet modèle de l'en-tête SysEx.
@@ -75,7 +78,8 @@ public struct LaunchpadDriver: ControllerDriver {
                 case .off:
                     return [0x00, index, 0x00]
                 case let .lit(tint, intensity):
-                    let color = intensity.apply(to: tint.spec.vivid)
+                    // Étalonnage d'abord (la couleur de la LED), intensité ensuite (la commande de la LED).
+                    let color = intensity.apply(to: calibration.apply(to: tint.spec.vivid))
                     return [0x03, index] + Self.sevenBit(color)
                 case let .pulsing(tint):
                     return [0x02, index, tint.spec.paletteVelocity]

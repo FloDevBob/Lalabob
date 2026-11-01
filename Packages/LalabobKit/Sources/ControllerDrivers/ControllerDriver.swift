@@ -14,15 +14,21 @@ public enum ControllerModel: String, CaseIterable, Sendable {
         }
     }
 
-    /// Pilote correspondant.
-    public var driver: any ControllerDriver {
+    /// Pilote correspondant, sans étalonnage (notes, entrées, messages : tout ce qui n'est pas de la couleur).
+    public var driver: any ControllerDriver { driver(calibration: .neutral) }
+
+    /// Pilote avec l'étalonnage des couleurs (sans effet sur l'APC mini mk2 : sa palette est celle de Akai).
+    public func driver(calibration: LEDCalibration) -> any ControllerDriver {
         switch self {
         case .launchpadX, .launchpadMiniMK3, .launchpadProMK3:
-            return LaunchpadDriver(model: self)
+            return LaunchpadDriver(model: self, calibration: calibration)
         case .apcMiniMK2:
             return APCMiniMK2Driver()
         }
     }
+
+    /// Les LED de ce contrôleur sont en RVB : l'étalonnage a un effet.
+    public var hasRGBLEDs: Bool { self != .apcMiniMK2 }
 }
 
 /// État visuel demandé pour la LED d'une case.
