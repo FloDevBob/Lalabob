@@ -26,10 +26,12 @@ seule, rien n'arrivait ; avec une destination « Lalabob Lumière » (même nom 
 | Cue éteinte | Note Off | 1 | note de la case | 0 | |
 | Une cue en éteint d'autres (même groupe) | Note Off pour chacune éteinte, puis Note On pour la nouvelle | 1 | | 0 puis 127 | l'état affiché suit l'état réel de LightKey |
 | Démarrage / ouverture du spectacle (14:35:53) | rafale : un message par note appairée, On ou Off | 1 | toutes les notes appairées | 127 / 0 | donne l'état complet d'un coup ; les notes non appairées ne sont jamais citées |
-| Cue changée de couleur / supprimée | non relevé | | | | à essayer |
+| Cue changée de couleur | Note Off (cue éteinte) ou paire Note On / Note Off (cue 14) répétés à chaque réglage | 1 | note de la case | 0 (ou 127 puis 0) | **la couleur n'est pas transmise** : LightKey renvoie seulement l'état courant, plusieurs fois de suite |
+| Touche réassignée dans LightKey | Note Off sur la nouvelle note | 1 | | 0 | à 14:40:55 et 14:44:17 un appui sur la 62 n'a pas produit de Note On en retour : le retour n'est donc **pas toujours un reflet fiable** (à comprendre) |
+| Cue supprimée | non relevé | | | | à essayer |
 
 Observations : la vélocité ne vaut que **127 ou 0** (aucune couleur dans le retour) ; une cue **bascule à chaque Note On** reçu (le Note Off envoyé au relâchement ne change rien) ;
-LightKey répond au Note On par le nouvel état (On si la cue démarre, Off si elle s'arrête).
+LightKey répond au Note On par le nouvel état (On si la cue démarre, Off si elle s'arrête). Une même note peut recevoir une rafale de messages identiques (réglage de couleur) : seul le changement d'état compte.
 
 ## Conclusion
 

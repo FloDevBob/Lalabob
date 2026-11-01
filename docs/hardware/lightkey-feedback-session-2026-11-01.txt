@@ -51,3 +51,24 @@ Notes mappées dans LightKey ce jour-là : 14, 23, 27, 31, 32, 49, 54, 62, 63.
 14:37:02 LightKey → Note Off · canal 1 · note 63 · vélocité 0
 14:37:02 LightKey → Note On · canal 1 · note 63 · vélocité 127
 14:37:03 LightKey → Note Off · canal 1 · note 63 · vélocité 0
+
+-- Suite (14:40 à 14:44) : la touche 62 a été réassignée dans LightKey et sa couleur changée plusieurs fois --
+14:40:42 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:40:42 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:40:42 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:40:42 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:40:42 LightKey → Note On · canal 1 · note 14 · vélocité 127
+14:40:42 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:40:42 LightKey → Note Off · canal 1 · note 14 · vélocité 0
+14:40:45 LightKey → Note Off · canal 1 · note 62, 23, 54, 49, 32, 31, 27, 14, 63 · vélocité 0   (rafale : les 9 notes appairées, toutes Off)
+14:40:55 Contrôleur → Note On · canal 1 · note 62 · vélocité 127
+14:40:55 → LightKey Note On · canal 1 · note 62 · vélocité 127
+14:40:55 LightKey → Note Off · canal 1 · note 62 · vélocité 0
+14:40:56 Contrôleur → Note Off · canal 1 · note 62 · vélocité 0
+14:40:56 → LightKey Note Off · canal 1 · note 62 · vélocité 0
+14:41:02 à 14:41:23 : une vingtaine de « LightKey → Note Off · note 62 · vélocité 0 », rien envoyé par Lalabob (changements de couleur)
+14:44:17 Contrôleur → Note On · canal 1 · note 62 · vélocité 127
+14:44:17 → LightKey Note On · canal 1 · note 62 · vélocité 127
+14:44:18 Contrôleur → Note Off · canal 1 · note 62 · vélocité 0
+14:44:18 → LightKey Note Off · canal 1 · note 62 · vélocité 0
+14:44:29 à 14:44:34 : huit « LightKey → Note Off · note 62 · vélocité 0 » (changements de couleur)
