@@ -85,6 +85,8 @@ public actor AVAudioEngineController: AudioEngineControlling {
         var state: PlaybackState = .idle
         var generation = 0
         var envelopeTask: Task<Void, Never>?
+        /// Rendu hors ligne : fondu d'arrêt en cours, compté en secondes de son rendu (pas en temps réel).
+        var offlineFade: (startVolume: Float, elapsed: TimeInterval)?
 
         init(format: AVAudioFormat) { self.format = format }
     }
@@ -271,7 +273,12 @@ public actor AVAudioEngineController: AudioEngineControlling {
         result.reserveCapacity(frames * 2)
         var remaining = frames
         while remaining > 0 {
-            let count = AVAudioFrameCount(min(remaining, Int(offline.maxFrames)))
+            // Un fondu d'arrêt est en cours : petits blocs (64 trames) pour que le volume suive la courbe de près.
+            let fading = voices.values.contains { $0.offlineFade != nil }
+            let count = AVAudioFrameCount(min(remaining, fading ? 64 : Int(offline.maxFrames)))
+            for voice in voices.values {
+                if let fade = voice.offlineFade { voice.player.volume = fade.startVolume * StopFade.gain(elapsed: fade.elapsed) }
+            }
             guard try engine.renderOffline(count, to: offline.buffer) == .success,
                 let channels = offline.buffer.floatChannelData
             else { throw AudioEngineError.renderFailed }
@@ -280,6 +287,17 @@ public actor AVAudioEngineController: AudioEngineControlling {
                 result.append(channels[1][i])
             }
             remaining -= Int(count)
+            for voice in voices.values {
+                guard var fade = voice.offlineFade else { continue }
+                fade.elapsed += Double(count) / offline.format.sampleRate
+                if fade.elapsed >= StopFade.duration {
+                    voice.player.stop()
+                    voice.player.volume = 1
+                    voice.offlineFade = nil
+                } else {
+                    voice.offlineFade = fade
+                }
+            }
         }
         return result
     }
@@ -335,6 +353,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
         let wasActive = voice.state.isActive
         voice.generation = -1
         voice.envelopeTask?.cancel()
+        voice.offlineFade = nil
         voice.player.stop()
         engine.detach(voice.player)
         engine.detach(voice.gainNode)
@@ -350,6 +369,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
         nextGeneration += 1
         voice.generation = nextGeneration
         voice.envelopeTask?.cancel()
+        voice.offlineFade = nil  // un départ pendant un fondu d'arrêt : le fondu est abandonné, le volume est remis ci-dessous
         voice.player.stop()
 
         let now = ProcessInfo.processInfo.systemUptime
@@ -369,14 +389,48 @@ public actor AVAudioEngineController: AudioEngineControlling {
         emit(pad)
     }
 
+    /// Arrête un son : l'état passe tout de suite à « arrêté » (interface, LED), mais le son descend à zéro en
+    /// `StopFade.duration` avant que le lecteur ne soit coupé. Un son en pause ne sonne pas : arrêt net.
     private func stopVoice(_ pad: Pad.ID) {
         guard let voice = voices[pad], voice.state.isActive else { return }
+        let wasSounding: Bool = if case .playing = voice.state { true } else { false }
         nextGeneration += 1
         voice.generation = nextGeneration  // invalide les callbacks de fin en attente
         voice.envelopeTask?.cancel()
-        voice.player.stop()
         voice.state = .idle
+        if wasSounding { beginFadeOut(pad, voice: voice) } else { voice.player.stop() }
         emit(pad)
+    }
+
+    private func beginFadeOut(_ pad: Pad.ID, voice: Voice) {
+        let startVolume = voice.player.volume
+        if offline != nil {
+            // Pas d'horloge en rendu hors ligne : `renderOffline` fait avancer le fondu trame par trame.
+            voice.offlineFade = (startVolume, 0)
+            return
+        }
+        let generation = voice.generation
+        let began = ProcessInfo.processInfo.systemUptime
+        voice.envelopeTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, await self.stepFadeOut(pad, generation: generation, began: began, startVolume: startVolume)
+                else { return }
+                try? await Task.sleep(for: .milliseconds(4))
+            }
+        }
+    }
+
+    /// Une étape du fondu d'arrêt ; `false` quand il est fini (le lecteur est alors coupé) ou périmé (nouveau départ).
+    private func stepFadeOut(_ pad: Pad.ID, generation: Int, began: TimeInterval, startVolume: Float) -> Bool {
+        guard let voice = voices[pad], voice.generation == generation else { return false }
+        let elapsed = ProcessInfo.processInfo.systemUptime - began
+        guard elapsed < StopFade.duration else {
+            voice.player.stop()
+            voice.player.volume = 1  // remis pendant le silence : le mélangeur lisse les changements de volume, l'attaque du prochain départ resterait molle
+            return false
+        }
+        voice.player.volume = startVolume * StopFade.gain(elapsed: elapsed)
+        return true
     }
 
     private func finished(_ pad: Pad.ID, generation: Int) {
@@ -516,6 +570,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
             guard let voice = voices.removeValue(forKey: id) else { continue }
             voice.generation = -1
             voice.envelopeTask?.cancel()
+            voice.offlineFade = nil
             voice.player.stop()
             engine.detach(voice.player)
             engine.detach(voice.gainNode)

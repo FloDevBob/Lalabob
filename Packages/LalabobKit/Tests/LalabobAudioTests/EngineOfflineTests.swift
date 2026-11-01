@@ -156,7 +156,8 @@ struct EngineOfflineTests {
         await engine.trigger(ids[0])
         #expect(await engine.state(of: ids[0]) == .idle)
         let out = try await engine.renderOffline(frames: 4410)
-        #expect(peak(out[...]) == 0)
+        // L'arrêt se fait par un fondu très bref (StopFade) : le silence est complet une fois celui-ci écoulé.
+        #expect(peak(out[(2 * StopFadeEngineTests.fadeFramesAt44k + 400)...]) == 0)
     }
 
     @Test func stopAllSilencesEverything() async throws {
@@ -170,7 +171,7 @@ struct EngineOfflineTests {
         _ = try await engine.renderOffline(frames: 4410)
         await engine.stopAll()
         let out = try await engine.renderOffline(frames: 4410)
-        #expect(peak(out[...]) == 0)
+        #expect(peak(out[(2 * StopFadeEngineTests.fadeFramesAt44k + 400)...]) == 0)
         for id in ids { #expect(await engine.state(of: id) == .idle) }
     }
 
