@@ -105,8 +105,6 @@ extension EnvironmentValues {
 public enum Motion {
     /// Ouverture et fermeture d'un panneau (bibliothèque à gauche, barre du bas).
     public static let panel = Animation.smooth(duration: 0.28)
-    /// Durée de l'entrée d'une grille après un changement d'onglet.
-    public static let gridChange: Double = 0.3
-    /// De combien de points le contenu de la nouvelle grille monte en arrivant.
-    public static let gridRiseDistance: CGFloat = 18
+    /// Changement de grille : la page des pads défile (vers le bas en avançant dans les onglets, vers le haut en reculant).
+    public static let pageScroll = Animation.smooth(duration: 0.42)
 }

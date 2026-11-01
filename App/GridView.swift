@@ -64,7 +64,6 @@ struct GridView: View {
 }
 
 struct ColumnView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.gridDensity) private var density
     /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
     private func lightValueText(_ column: Column) -> String {
@@ -91,13 +90,8 @@ struct ColumnView: View {
             }
             .frame(height: 30)
 
-            // Les 8 pads de la colonne : seuls eux glissent quand on change d'onglet.
-            VStack(spacing: Metrics.padSpacing) {
-                ForEach(0..<PadGrid.size, id: \.self) { row in
-                    PadView(position: GridPosition(column: index, row: row), kind: column.kind, onPress: onPress)
-                }
-            }
-            .modifier(GridChangeMotion(trigger: controller.currentGrid.id, enabled: !reduceMotion))
+            // Les 8 pads de la colonne : seuls eux défilent (comme une page) quand on change d'onglet.
+            PadsPager(column: index, kind: column.kind, onPress: onPress)
 
             // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
             // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
@@ -136,36 +130,87 @@ struct ColumnView: View {
     }
 }
 
-/// À chaque changement de grille (onglet), les 64 pads montent légèrement en se fondant : le regard suit le changement.
-/// Seuls les pads bougent (les noms de colonnes et les cartes de volume restent en place). Entrée seule (les données sont
-/// déjà celles de la nouvelle grille) ; pas de recréation de la vue, donc le focus clavier de la grille (⌘C, ⌘V…) est
-/// conservé. Inactif si « Réduire les animations » est coché.
-struct GridChangeMotion: ViewModifier {
-    let trigger: PadGrid.ID
-    let enabled: Bool
+/// Les 8 pads d'une colonne, vus comme une page : quand on change de grille, la nouvelle page défile depuis le bas et
+/// l'ancienne sort par le haut si on avance dans les onglets (depuis le haut et par le bas si on recule), comme le
+/// défilement d'une grande page web. Seuls les pads bougent : noms de colonnes et cartes de volume restent en place.
+///
+/// La page affichée est mémorisée ici (`displayedGridID`) et non lue sur la grille courante : au changement d'onglet,
+/// l'ancienne page reste à l'écran jusqu'à ce que le mouvement commence (pas d'image intermédiaire avec les pads de la
+/// nouvelle grille à leur place). L'ancienne page n'est plus qu'une image de l'ancienne grille, sans interaction.
+/// Pas de recréation de la grille : le focus clavier (⌘C, ⌘V…) est conservé. Sans mouvement si « Réduire les animations ».
+struct PadsPager: View {
+    @Environment(ShowController.self) private var controller
+    @Environment(\.gridDensity) private var density
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let column: Int
+    let kind: ColumnKind
+    let onPress: () -> Void
 
-    private struct Rise {
-        var offset: CGFloat = 0
-        var opacity = 1.0
+    @State private var displayedGridID: PadGrid.ID?
+    @State private var outgoing: PadGrid?
+    /// +1 : on avance (la nouvelle page arrive par le bas) ; -1 : on recule (elle arrive par le haut).
+    @State private var direction: CGFloat = 1
+    /// 0 : début du défilement, 1 : terminé.
+    @State private var progress: CGFloat = 1
+    @State private var changeCount = 0
+
+    private var height: CGFloat {
+        CGFloat(PadGrid.size) * density.padHeight + CGFloat(PadGrid.size - 1) * Metrics.padSpacing
     }
 
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if enabled {
-            content.keyframeAnimator(initialValue: Rise(), trigger: trigger) { view, value in
-                view.offset(y: value.offset).opacity(value.opacity)
-            } keyframes: { _ in
-                KeyframeTrack(\.offset) {
-                    LinearKeyframe(Motion.gridRiseDistance, duration: 0.001)
-                    CubicKeyframe(0, duration: Motion.gridChange)
-                }
-                KeyframeTrack(\.opacity) {
-                    LinearKeyframe(0, duration: 0.001)
-                    CubicKeyframe(1, duration: Motion.gridChange * 0.8)
-                }
+    private var displayedGrid: PadGrid {
+        controller.show.grids.first { $0.id == displayedGridID } ?? controller.currentGrid
+    }
+
+    var body: some View {
+        ZStack {
+            if let outgoing {
+                page(outgoing, isInteractive: false)
+                    .offset(y: -direction * progress * height)
+                    .opacity(1 - 0.5 * progress)
             }
-        } else {
-            content
+            page(displayedGrid, isInteractive: true)
+                .offset(y: direction * (1 - progress) * height)
+                .opacity(0.5 + 0.5 * progress)
+        }
+        .frame(height: height)
+        // Coupe ce qui sort de la colonne, mais laisse la lueur d'un pad en lecture déborder un peu.
+        .mask(Rectangle().padding(EdgeInsets(top: -Metrics.padSpacing, leading: -10, bottom: -Metrics.padSpacing, trailing: -10)))
+        .onAppear { displayedGridID = controller.currentGrid.id }
+        .onChange(of: controller.currentGrid.id) { oldID, newID in change(from: oldID, to: newID) }
+    }
+
+    private func page(_ grid: PadGrid, isInteractive: Bool) -> some View {
+        VStack(spacing: Metrics.padSpacing) {
+            ForEach(0..<PadGrid.size, id: \.self) { row in
+                PadView(
+                    position: GridPosition(column: column, row: row), kind: kind, grid: grid,
+                    isInteractive: isInteractive, onPress: onPress)
+            }
+        }
+    }
+
+    private func change(from oldID: PadGrid.ID, to newID: PadGrid.ID) {
+        let grids = controller.show.grids
+        guard !reduceMotion, let oldGrid = grids.first(where: { $0.id == oldID }),
+            let oldIndex = grids.firstIndex(where: { $0.id == oldID }),
+            let newIndex = grids.firstIndex(where: { $0.id == newID })
+        else {
+            outgoing = nil
+            displayedGridID = newID  // grille supprimée, annulation… : on affiche tout de suite la nouvelle
+            return
+        }
+        // Ce qui est vraiment à l'écran (si un mouvement précédent n'est pas fini, c'est la page affichée, pas l'ancienne).
+        outgoing = displayedGrid.id == oldID ? displayedGrid : oldGrid
+        displayedGridID = newID
+        direction = newIndex > oldIndex ? 1 : -1
+        progress = 0
+        changeCount += 1
+        let thisChange = changeCount
+        withAnimation(Motion.pageScroll) {
+            progress = 1
+        } completion: {
+            if changeCount == thisChange { outgoing = nil }
         }
     }
 }
@@ -273,11 +318,30 @@ struct PadView: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let kind: ColumnKind
+    /// La grille dont on affiche la case (celle de la page à l'écran, pas forcément la grille courante pendant un défilement).
+    let grid: PadGrid
+    /// `false` : simple image de l'ancienne page pendant un défilement (ni clic, ni glisser, ni menu).
+    var isInteractive = true
     let onPress: () -> Void
     @State private var dropHighlight: DropHighlight?
 
+    @ViewBuilder
     var body: some View {
-        let pad = controller.pad(at: position)
+        if isInteractive {
+            interactiveBody
+        } else {
+            Group {
+                if let pad = grid[position] { filled(pad, event: nil) } else { empty }
+            }
+            .frame(height: density.padHeight)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private var interactiveBody: some View {
+        let pad = grid[position]
         let event = pad.flatMap { controller.playback[$0.id] }
         let isSelected = controller.selectedPositions.contains(position)
 
