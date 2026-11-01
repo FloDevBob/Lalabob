@@ -89,13 +89,31 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     public var level: Double
     /// Exactement `PadGrid.size` cases ; `nil` = case vide.
     public var slots: [Pad?]
+    /// Colonne lumière : son fader a été appairé à un réglage de LightKey (mode « Appairage lumière »).
+    public var isFaderPaired: Bool
 
-    public init(id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?]) {
+    public init(
+        id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?], isFaderPaired: Bool = false
+    ) {
         self.id = id
         self.name = name
         self.kind = kind
         self.level = level
         self.slots = slots
+        self.isFaderPaired = isFaderPaired
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired }
+
+    /// Les spectacles d'avant l'appairage des faders n'ont pas `isFaderPaired` : ils s'ouvrent non appairés.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        kind = try container.decode(ColumnKind.self, forKey: .kind)
+        level = try container.decode(Double.self, forKey: .level)
+        slots = try container.decode([Pad?].self, forKey: .slots)
+        isFaderPaired = try container.decodeIfPresent(Bool.self, forKey: .isFaderPaired) ?? false
     }
 
     public static func empty(name: String, kind: ColumnKind) -> Column {

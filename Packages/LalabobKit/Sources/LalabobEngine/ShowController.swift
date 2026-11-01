@@ -31,12 +31,15 @@ public final class ShowController {
     public internal(set) var isPairingLights = false
     /// Case lumière qui vient d'être appairée et dont le nom attend d'être saisi.
     public internal(set) var pairingNaming: GridPosition?
+    /// Appairage lumière : la colonne dont le fader est la cible (au lieu d'un pad).
+    public internal(set) var pairingFader: Int?
     /// Affecter une case remplace toute la sélection par cette seule case (`nil` : tout désélectionner).
     public var selection: GridPosition? {
         get { primarySelection }
         set {
             primarySelection = newValue
             selectedPositions = newValue.map { [$0] } ?? []
+            if newValue != nil { pairingFader = nil }  // la cible de l'appairage est un pad ou un fader, jamais les deux
         }
     }
     /// Cadenas : verrouillé, le spectacle se joue (clic, contrôleur, faders, onglets) mais ne se modifie pas.
@@ -47,6 +50,7 @@ public final class ShowController {
                 selection = nil
                 isPairingLights = false  // aucun appairage en scène
                 pairingNaming = nil
+                pairingFader = nil
             }
             if !isLocked { lockNotice = nil }
         }
@@ -443,6 +447,7 @@ public final class ShowController {
         let level = Gain.faderLevel(level)
         setColumnLevel(column, level: level)
         lightFaderHandler?(column, level)
+        pairingFaderMoved(column: column)
     }
 
     /// Numéro de CC que LightKey reçoit pour le fader de cette colonne lumière (celui du contrôleur connu, ou de l'APC

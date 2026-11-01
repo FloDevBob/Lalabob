@@ -15,6 +15,7 @@ extension ShowController {
         if active, refuseWhileLocked() { return }
         isPairingLights = active
         pairingNaming = nil
+        pairingFader = nil
         if active, !(selection.map(isLightCell) ?? false) {
             selection = nextUnpairedLightPosition(after: nil)
         }
@@ -50,12 +51,73 @@ extension ShowController {
         pairCue(at: position)
     }
 
-    /// Appairage confirmé à la main (« C'est appairé ») pour la case cible.
+    /// Appairage confirmé à la main (« C'est appairé ») pour la cible : le fader désigné, sinon la case sélectionnée.
     @discardableResult
     public func confirmPairing() -> Bool {
-        guard isPairingLights, let target = selection else { return false }
+        guard isPairingLights else { return false }
+        if let column = pairingFader { return pairFader(column: column) }
+        guard let target = selection else { return false }
         return pairCue(at: target)
     }
+
+    // MARK: - Faders
+
+    private func isLightFader(_ column: Int) -> Bool {
+        (0..<PadGrid.size).contains(column) && currentGrid.columns[column].kind == .light
+    }
+
+    /// Le fader de cette colonne lumière est appairé.
+    public func isFaderPaired(column: Int) -> Bool {
+        guard (0..<PadGrid.size).contains(column) else { return false }
+        return currentGrid.columns[column].isFaderPaired
+    }
+
+    /// Désigne le fader d'une colonne lumière comme cible (sans rien envoyer : il suffit ensuite de le bouger).
+    public func selectPairingFader(column: Int) {
+        guard isPairingLights, !isLocked, isLightFader(column) else { return }
+        selection = nil
+        pairingFader = column
+    }
+
+    /// Un fader lumière bouge (à la main ou à l'écran) : le CC part vers LightKey, et ce fader devient la cible.
+    func pairingFaderMoved(column: Int) {
+        selectPairingFader(column: column)
+    }
+
+    /// LightKey a répondu par le CC de ce fader : si c'est la cible, il est appairé.
+    func faderFeedbackArrived(column: Int) {
+        guard isPairingLights, !isLocked, pairingFader == column, !isFaderPaired(column: column) else { return }
+        pairFader(column: column)
+    }
+
+    @discardableResult
+    func pairFader(column: Int) -> Bool {
+        guard isPairingLights else { return false }
+        let done = commit("Appairer le fader") { show, grid in
+            guard (0..<PadGrid.size).contains(column), show.grids[grid].columns[column].kind == .light,
+                !show.grids[grid].columns[column].isFaderPaired
+            else { return false }
+            show.grids[grid].columns[column].isFaderPaired = true
+            return true
+        }
+        if done { pairingFader = nextUnpairedFader(after: column) }
+        return done
+    }
+
+    /// « Retirer l'appairage » du fader : ne touche pas à LightKey.
+    @discardableResult
+    public func unpairFader(column: Int) -> Bool {
+        commit("Retirer l'appairage du fader") { show, grid in
+            guard (0..<PadGrid.size).contains(column), show.grids[grid].columns[column].isFaderPaired else { return false }
+            show.grids[grid].columns[column].isFaderPaired = false
+            return true
+        }
+    }
+
+    private func nextUnpairedFader(after column: Int) -> Int? {
+        currentGrid.columns.indices.first { $0 > column && currentGrid.columns[$0].kind == .light && !currentGrid.columns[$0].isFaderPaired }
+    }
+    
 
     /// Marque la cue de la case comme appairée (la crée si la case est libre) : une seule annulation.
     @discardableResult

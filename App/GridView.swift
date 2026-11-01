@@ -100,8 +100,51 @@ struct ColumnView: View {
     }
 
     @Environment(ShowController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let index: Int
     let onPress: () -> Void
+
+    /// Appairage lumière : le fader d'une colonne lumière est lui aussi à rattacher à un réglage de LightKey.
+    /// Pointillés ambrés (qui pulsent sur la cible), contour plein une fois appairé ; un clic sur l'étiquette désigne
+    /// ce fader comme cible, bouger le fader (à la main ou à l'écran) envoie son CC à LightKey.
+    @ViewBuilder
+    private func faderPairingOverlay(_ column: Column) -> some View {
+        if controller.isPairingLights, !controller.isLocked, column.kind == .light {
+            let paired = column.isFaderPaired
+            let isTarget = controller.pairingFader == index
+            ZStack(alignment: .top) {
+                if paired {
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(Surface.lightAccent.opacity(0.55), lineWidth: 1.5)
+                } else if isTarget {
+                    TimelineView(.animation(paused: reduceMotion)) { context in
+                        let phase = reduceMotion ? 1 : 0.55 + 0.45 * sin(context.date.timeIntervalSinceReferenceDate * 4)
+                        RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                            .strokeBorder(Surface.lightAccent.opacity(phase), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(Surface.lightAccent.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                }
+                Button {
+                    controller.selectPairingFader(column: index)
+                } label: {
+                    Text(paired ? "Appairé ✓" : isTarget ? "En attente…" : "Appairer")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(paired ? Surface.loopAccent : Surface.lightAccent, in: .capsule)
+                        .foregroundStyle(Surface.window)
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 5)
+                .interactiveCursor(.link)
+                .help("Désigner ce fader comme cible, puis le bouger : son CC part vers LightKey")
+                .accessibilityLabel(paired ? "Fader appairé" : "Appairer ce fader")
+            }
+        }
+    }
 
     var body: some View {
         let column = controller.currentGrid.columns[index]
@@ -159,6 +202,7 @@ struct ColumnView: View {
                 RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                     .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
             )
+            .overlay { faderPairingOverlay(column) }
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)

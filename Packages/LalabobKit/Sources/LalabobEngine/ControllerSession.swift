@@ -202,6 +202,7 @@ public final class ControllerSession {
                     attachedController?.moveHardwareFader(column: column, value: value)
                     // Sur une colonne lumière, LightKey reçoit la valeur physique (et la retient comme dernier envoi).
                     relayFader(column: column, value: value, driver: active.driver)
+                    if isLightColumn(column) { attachedController?.pairingFaderMoved(column: column) }
                 default:
                     break  // relâchement, messages inconnus
                 }
@@ -248,6 +249,12 @@ public final class ControllerSession {
             let driver = active?.driver ?? (attachedController?.lastControllerModel ?? .apcMiniMK2).driver
             var changed = false
             for event in events {
+                // Un CC de retour sur le numéro d'un fader lumière : LightKey a reconnu ce fader (mode d'appairage).
+                if case .controlChange = event,
+                    case .columnFader(let column, _)? = driver.interpret(event) ?? ControllerModel.apcMiniMK2.driver.interpret(event)
+                {
+                    attachedController?.faderFeedbackArrived(column: column)
+                }
                 guard let (position, state) = driver.lightFeedback(for: event) else { continue }
                 attachedController?.lightFeedbackArrived(at: position)  // mode d'appairage : la case cible répond
                 guard lightStates[position] != state else { continue }

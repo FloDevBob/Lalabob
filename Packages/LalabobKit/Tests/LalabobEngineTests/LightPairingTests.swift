@@ -180,3 +180,122 @@ struct LightPairingTests {
         #expect(again.isPaired)
     }
 }
+
+/// Appairage des deux faders lumière : bouger un fader (à la main ou à l'écran) l'envoie à LightKey et le désigne comme cible.
+@MainActor
+@Suite("Appairage des faders lumière", .serialized)
+struct FaderPairingTests {
+    struct Rig {
+        let controller: ShowController
+        let transport: FakeMIDITransport
+        let undo: UndoManager
+        let runner: Task<Void, Never>
+    }
+
+    private func makeRig() async -> Rig {
+        let controller = ShowController(
+            show: Show(name: "S", grids: [PadGrid.empty(name: "G")]),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        controller.undoManager = undo
+        controller.isLocked = false
+        let transport = FakeMIDITransport()
+        let session = ControllerSession(controller: controller, transport: transport)
+        let runner = Task { await session.run() }
+        await transport.setPorts(sources: [ControllerSessionTests.apcSource], destinations: [ControllerSessionTests.apcDestination])
+        _ = await waitUntil { await controller.connectedController == .apcMiniMK2 }
+        return Rig(controller: controller, transport: transport, undo: undo, runner: runner)
+    }
+
+    @Test("Un fader bougé à l'écran devient la cible et part vers LightKey")
+    func screenFaderBecomesTheTarget() async {
+        let rig = await makeRig()
+        defer { rig.runner.cancel() }
+        rig.controller.setPairingLights(true)
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        #expect(rig.controller.pairingFader == 6)
+        #expect(rig.controller.selection == nil)
+        #expect(await waitUntil { await rig.transport.lighting.count == 1 })
+    }
+
+    @Test("Un fader physique devient la cible ; hors du mode, rien ne change")
+    func physicalFaderBecomesTheTarget() async {
+        let rig = await makeRig()
+        defer { rig.runner.cancel() }
+        await rig.transport.receive([.controlChange(channel: 0, controller: 55, value: 100)], from: ControllerSessionTests.apcSource.id)
+        #expect(await waitUntil { await rig.transport.lighting.count == 1 })  // relayé, comme toujours
+        #expect(rig.controller.pairingFader == nil)
+
+        rig.controller.setPairingLights(true)
+        await rig.transport.receive([.controlChange(channel: 0, controller: 55, value: 90)], from: ControllerSessionTests.apcSource.id)
+        #expect(await waitUntil { await rig.controller.pairingFader == 7 })
+    }
+
+    @Test("Le CC de retour de LightKey appaire le fader cible, en une annulation")
+    func feedbackPairsTheFader() async {
+        let rig = await makeRig()
+        defer { rig.runner.cancel() }
+        rig.controller.setPairingLights(true)
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        await rig.transport.receiveLightingFeedback([.controlChange(channel: 0, controller: 54, value: 64)])
+        #expect(await waitUntil { await rig.controller.isFaderPaired(column: 6) })
+        #expect(rig.controller.pairingFader == 7)  // le fader libre suivant devient la cible
+        rig.undo.undo()
+        #expect(!rig.controller.isFaderPaired(column: 6))
+    }
+
+    @Test("Un retour pour un fader qui n'est pas la cible n'appaire rien")
+    func feedbackForAnotherFader() async {
+        let rig = await makeRig()
+        defer { rig.runner.cancel() }
+        rig.controller.setPairingLights(true)
+        rig.controller.setLightFader(column: 6, level: 0.5)
+        await rig.transport.receiveLightingFeedback([.controlChange(channel: 0, controller: 55, value: 64)])
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(!rig.controller.isFaderPaired(column: 7))
+        #expect(!rig.controller.isFaderPaired(column: 6))
+    }
+
+    @Test("Confirmation à la main, puis retrait ; choisir un pad abandonne la cible fader")
+    func manualConfirmationAndUnpair() async {
+        let rig = await makeRig()
+        defer { rig.runner.cancel() }
+        rig.controller.setPairingLights(true)
+        rig.controller.selectPairingFader(column: 7)
+        #expect(rig.controller.confirmPairing())
+        #expect(rig.controller.isFaderPaired(column: 7))
+        #expect(!rig.controller.confirmPairing())
+        #expect(rig.controller.unpairFader(column: 7))
+        #expect(!rig.controller.isFaderPaired(column: 7))
+
+        rig.controller.selectPairingFader(column: 6)
+        rig.controller.pairingPress(at: GridPosition(column: 6, row: 2))
+        #expect(rig.controller.pairingFader == nil)
+        #expect(rig.controller.selection == GridPosition(column: 6, row: 2))
+    }
+
+    @Test("Les faders des sons ne s'appairent pas ; verrouillé, tout est refusé")
+    func soundFadersAndLock() async {
+        let rig = await makeRig()
+        defer { rig.runner.cancel() }
+        rig.controller.setPairingLights(true)
+        rig.controller.selectPairingFader(column: 2)
+        #expect(rig.controller.pairingFader == nil)
+        rig.controller.selectPairingFader(column: 6)
+        rig.controller.isLocked = true
+        #expect(rig.controller.pairingFader == nil)
+        #expect(!rig.controller.isPairingLights)
+        #expect(!rig.controller.unpairFader(column: 6))
+    }
+
+    @Test("Un ancien spectacle sans isFaderPaired s'ouvre non appairé")
+    func oldColumnsDecode() throws {
+        let current = Column.empty(name: "C", kind: .light)
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(current)) as? [String: Any])
+        #expect(object.removeValue(forKey: "isFaderPaired") != nil)
+        let column = try JSONDecoder().decode(Column.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(!column.isFaderPaired)
+        #expect(column.name == "C")
+    }
+}

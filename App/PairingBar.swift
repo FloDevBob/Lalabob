@@ -10,6 +10,7 @@ struct PairingBar: View {
 
     var body: some View {
         let target = controller.selection.flatMap { controller.isLightCell($0) ? $0 : nil }
+        let fader = controller.pairingFader
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Icon.spotlight.view(size: 17).foregroundStyle(Surface.lightAccent)
@@ -25,10 +26,11 @@ struct PairingBar: View {
                 VStack(alignment: .leading, spacing: 7) {
                     step("1", "Dans LightKey : clic droit sur une cue › External Control › Add Trigger…")
                     step("2", "Appuyez sur un pad des deux colonnes de droite, ou cliquez son ampoule : la note part vers LightKey.")
-                    step("3", "Quand LightKey répond, la case est appairée : donnez-lui un nom, la case libre suivante s'arme.")
+                    step("3", "Pour un fader : « Add Trigger… » sur le réglage, puis bougez le fader (à la main ou à l'écran).")
+                    step("4", "Quand LightKey répond (ou sur « C'est appairé »), c'est appairé : nommez la cue, la suivante s'arme.")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                targetBox(target)
+                targetBox(target, fader: fader)
                     .frame(width: 300, alignment: .leading)
             }
             Spacer(minLength: 0)
@@ -55,9 +57,31 @@ struct PairingBar: View {
     }
 
     @ViewBuilder
-    private func targetBox(_ target: GridPosition?) -> some View {
+    private func targetBox(_ target: GridPosition?, fader: Int?) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let target {
+            if let fader {
+                let paired = controller.isFaderPaired(column: fader)
+                let cc = controller.lightFaderCC(forColumn: fader).map { " · CC \($0)" } ?? ""
+                Text("Fader de la colonne \(fader + 1)\(cc)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Surface.textTertiary)
+                if paired {
+                    Text("Appairé ✓")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Surface.loopAccent)
+                    Button("Retirer l'appairage") { controller.unpairFader(column: fader) }
+                        .controlSize(.small)
+                        .help("Le réglage reste dans LightKey ; seul Lalabob l'oublie")
+                } else {
+                    Text("Bougez le fader…")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Surface.lightAccent)
+                    Button("C'est appairé") { controller.confirmPairing() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .help("LightKey ne répond pas toujours pour un fader : confirmez à la main")
+                }
+            } else if let target {
                 let paired = controller.isPaired(at: target)
                 Text("Colonne \(target.column + 1), ligne \(target.row + 1)")
                     .font(.system(size: 11, weight: .semibold))
