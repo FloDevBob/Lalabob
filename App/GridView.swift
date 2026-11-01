@@ -110,8 +110,8 @@ struct ColumnView: View {
         Button {
             controller.stopColumn(index)
         } label: {
-            Icon.stop.view(size: 9)
-                .frame(width: 22, height: 22)
+            Icon.stopFill.view(size: 12)
+                .frame(width: 28, height: 28)
                 .background(Color.red.opacity(0.85), in: .circle)
                 .foregroundStyle(.white)
                 .contentShape(.circle)
@@ -621,7 +621,7 @@ struct PadView: View {
                     Icon.lightbulb.view(size: 13)
                         .foregroundStyle(lightState == .on ? vivid : pad.tint.labelColor.opacity(0.4))
                 }
-                if case .paused = event?.state { Icon.pause.view(size: 12) }
+                if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
                 if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
                 if case .audio = pad.content { playStopButton(pad, event: event) }
             }
@@ -663,6 +663,12 @@ struct PadView: View {
             radius: 8)
     }
 
+    /// Diamètre du bouton lecture / stop d'un pad : le plus grand que la hauteur du pad permet (titre + sous-titre
+    /// restent visibles), de 22 pt dans une petite fenêtre à 30 pt.
+    private static func buttonSize(for density: GridDensity) -> CGFloat {
+        density.padHeight >= 52 ? 30 : density.padHeight >= 44 ? 26 : 22
+    }
+
     /// Bouton à deux états à côté de l'égaliseur : triangle (lecture) tant que le son est à l'arrêt ou en pause,
     /// carré (stop) quand il joue. Un vrai `Button` : seule sa petite zone capte la souris, le reste du pad garde
     /// son clic / double-clic / glisser.
@@ -671,8 +677,8 @@ struct PadView: View {
         return Button {
             controller.togglePlayStop(at: position)
         } label: {
-            (isPlaying ? Icon.stop : Icon.play).view(size: 10)
-                .frame(width: 20, height: 20)
+            (isPlaying ? Icon.stopFill : Icon.playFill).view(size: Self.buttonSize(for: density) * 0.5)
+                .frame(width: Self.buttonSize(for: density), height: Self.buttonSize(for: density))
                 .background(isPlaying ? pad.tint.vividColor : pad.tint.labelColor.opacity(0.18), in: .circle)
                 .foregroundStyle(isPlaying ? pad.tint.surfaceColor : pad.tint.labelColor)
                 .contentShape(.circle)

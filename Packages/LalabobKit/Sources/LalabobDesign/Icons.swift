@@ -7,6 +7,8 @@ import SwiftUI
 /// Voir ADR 0005.
 public enum Icon: String, CaseIterable, Sendable {
     case play, pause, stop, restart, loop
+    /// Versions pleines (triangle, barres, carré) : plus lisibles dans un bouton rond. Même trait arrondi que les autres.
+    case playFill, pauseFill, stopFill
     case cut, copy, duplicate, paste, trash
     case plus, close, folder, search, sidebar
     case sun, music, note, lock, lockOpen, volume, warning, wave, stopAll, spotlight, more, lightbulb
@@ -18,6 +20,8 @@ public enum Icon: String, CaseIterable, Sendable {
     /// L'icône à une taille donnée (les images d'actifs ne suivent pas la taille de la police).
     public func view(size: CGFloat = 16) -> some View {
         image.resizable().renderingMode(.template).aspectRatio(contentMode: .fit).frame(width: size, height: size)
+            // Un triangle plein paraît décentré dans un rond : on le pousse un peu vers la droite (correction optique).
+            .offset(x: self == .playFill ? size * 0.07 : 0)
     }
 }
 

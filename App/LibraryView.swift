@@ -73,8 +73,8 @@ struct LibraryView: View {
             Button {
                 if let item { togglePreview(item) }
             } label: {
-                (isPlaying ? Icon.stop : Icon.play).view(size: 16)
-                    .frame(width: 34, height: 34)
+                (isPlaying ? Icon.stopFill : Icon.playFill).view(size: 20)
+                    .frame(width: 42, height: 42)
                     .background(item == nil ? Surface.well : Surface.lightAccent, in: .circle)
                     .foregroundStyle(item == nil ? Surface.textTertiary : Surface.window)
             }

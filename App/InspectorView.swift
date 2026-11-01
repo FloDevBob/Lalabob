@@ -260,8 +260,8 @@ private struct TransportControls: View {
                 Button {
                     controller.playPad(at: position)
                 } label: {
-                    (isPlaying ? Icon.restart : Icon.play).view(size: 13)
-                        .frame(width: 32, height: 32)
+                    (isPlaying ? Icon.restart : Icon.playFill).view(size: 18)
+                        .frame(width: 40, height: 40)
                         .background(pad.tint.vividColor, in: .circle)
                         .foregroundStyle(Surface.window)
                 }
@@ -271,13 +271,13 @@ private struct TransportControls: View {
                 .accessibilityLabel(isPlaying ? "Relancer" : "Lecture")
 
                 groupButton(
-                    .pause, label: HelpText.pause(isPaused: isPaused), help: HelpText.pause(isPaused: isPaused) + " (Espace)",
+                    .pauseFill, label: HelpText.pause(isPaused: isPaused), help: HelpText.pause(isPaused: isPaused) + " (Espace)",
                     active: isPaused, tint: pad.tint.vividColor
                 ) {
                     controller.togglePause(at: position)
                 }
                 .disabled(event == nil)
-                groupButton(.stop, label: "Stop", help: "Arrêter le son (fondu de 40 ms)", active: false, tint: Surface.textSecondary) {
+                groupButton(.stopFill, label: "Stop", help: "Arrêter le son (fondu de 40 ms)", active: false, tint: Surface.textSecondary) {
                     controller.stop(at: position)
                 }
                 .disabled(event == nil)
@@ -296,7 +296,7 @@ private struct TransportControls: View {
                 .accessibilityValue(clip.loops ? "activée" : "désactivée")
             }
             .padding(.horizontal, 4)
-            .frame(height: 38)
+            .frame(height: 46)
             .background(Surface.well, in: .capsule)
 
             timeLabel(event)
@@ -308,14 +308,14 @@ private struct TransportControls: View {
         _ icon: Icon, label: String, help: String, active: Bool, tint: Color, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            icon.view(size: 12)
-                .frame(width: 30, height: 30)
+            icon.view(size: icon == .loop ? 16 : 15)
+                .frame(width: 36, height: 36)
                 .background(active ? tint.opacity(0.22) : Color.clear, in: .circle)
                 .foregroundStyle(active ? tint : Surface.textSecondary)
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
-        .hoverHighlight(cornerRadius: 15)
+        .hoverHighlight(cornerRadius: 18)
         .interactiveCursor(.link)
         .help(help)
         .accessibilityLabel(label)
