@@ -1,7 +1,7 @@
 # Retour de LightKey vers Lalabob — relevé (J7, étape 0)
 
 **À remplir sur le vrai Mac de régie.** Lalabob crée la destination MIDI virtuelle **« Lalabob Retour Lumière »**
-(en plus de la source « Lalabob Lumière »). Tout ce que LightKey y envoie est journalisé, tel quel, sans rien déclencher.
+(en plus de la source « Lalabob Lumière »). Une **seconde destination du même nom que la source**, « Lalabob Lumière », reçoit le même retour : LightKey voit ainsi un seul appareil avec entrée et sortie (hypothèse à vérifier : il associe peut-être entrée et sortie par le nom). Les deux destinations sont équivalentes ; le journal indique laquelle a reçu le message. Tout ce que LightKey y envoie est journalisé, tel quel, sans rien déclencher.
 
 ## Mise en place
 

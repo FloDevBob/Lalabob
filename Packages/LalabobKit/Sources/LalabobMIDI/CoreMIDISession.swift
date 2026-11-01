@@ -19,6 +19,8 @@ public actor CoreMIDISession: MIDITransport {
     private var lightingSource = MIDIEndpointRef()
     /// Destination virtuelle « Lalabob Retour Lumière » : LightKey y envoie son retour (entrée seule).
     private var lightingFeedbackDestination = MIDIEndpointRef()
+    /// Destination virtuelle du même nom que la source (« Lalabob Lumière ») : pour LightKey, un seul appareil avec entrée et sortie.
+    private var lightingPairedDestination = MIDIEndpointRef()
     private var listening: Set<MIDIPortID> = []
 
     /// Décodeurs UMP, un par source (un SysEx peut arriver en plusieurs envois).
@@ -42,6 +44,7 @@ public actor CoreMIDISession: MIDITransport {
     public static let lightingFeedbackPortName = "Lalabob Retour Lumière"
     private static let lightingIDKey = "lightingPortUniqueID"
     private static let lightingFeedbackIDKey = "lightingFeedbackPortUniqueID"
+    private static let lightingPairedIDKey = "lightingPairedPortUniqueID"
     /// Clé du décodeur du retour de LightKey (ce n'est pas un identifiant de source).
     private static let feedbackDecoderKey = Int32.min
 
@@ -88,30 +91,36 @@ public actor CoreMIDISession: MIDITransport {
         guard status == noErr else { throw MIDITransportError.sendFailed(status) }
         Self.restoreUniqueID(of: lighting, key: Self.lightingIDKey, defaults: defaults)
 
-        // Le retour de LightKey : journalisé tel quel (relevé du vrai protocole), puis décodé vers le flux.
+        // Le retour de LightKey, journalisé tel quel (relevé du vrai protocole) puis décodé vers le flux.
+        // Deux destinations reçoivent le même retour : « Lalabob Retour Lumière » et, du même nom que la source,
+        // « Lalabob Lumière » (LightKey associe peut-être l'entrée et la sortie d'un appareil par leur nom).
         let feedbackLog = Logger(subsystem: "fr.lalabob.app", category: "lighting")
-        var feedbackDestination = MIDIEndpointRef()
-        status = MIDIDestinationCreateWithProtocol(
-            client, Self.lightingFeedbackPortName as CFString, ._1_0, &feedbackDestination
-        ) { eventList, _ in
-            var words: [UInt32] = []
-            for packet in eventList.unsafeSequence() {
-                words.append(contentsOf: Self.words(of: packet))
+        func makeFeedbackDestination(name: String, idKey: String) throws -> MIDIEndpointRef {
+            var destination = MIDIEndpointRef()
+            let status = MIDIDestinationCreateWithProtocol(client, name as CFString, ._1_0, &destination) { eventList, _ in
+                var words: [UInt32] = []
+                for packet in eventList.unsafeSequence() {
+                    words.append(contentsOf: Self.words(of: packet))
+                }
+                for line in UMPDescription.lines(for: words) {
+                    feedbackLog.notice("Retour LightKey (\(name, privacy: .public)) : \(line, privacy: .public)")
+                }
+                let events = decoders.decode(words, from: Self.feedbackDecoderKey)
+                if !events.isEmpty { feedbackContinuation.yield(events) }
             }
-            for line in UMPDescription.lines(for: words) {
-                feedbackLog.info("Retour LightKey : \(line, privacy: .public)")
-            }
-            let events = decoders.decode(words, from: Self.feedbackDecoderKey)
-            if !events.isEmpty { feedbackContinuation.yield(events) }
+            guard status == noErr else { throw MIDITransportError.sendFailed(status) }
+            Self.restoreUniqueID(of: destination, key: idKey, defaults: defaults)
+            return destination
         }
-        guard status == noErr else { throw MIDITransportError.sendFailed(status) }
-        Self.restoreUniqueID(of: feedbackDestination, key: Self.lightingFeedbackIDKey, defaults: defaults)
+        let feedbackDestination = try makeFeedbackDestination(name: Self.lightingFeedbackPortName, idKey: Self.lightingFeedbackIDKey)
+        let pairedDestination = try makeFeedbackDestination(name: Self.lightingPortName, idKey: Self.lightingPairedIDKey)
 
         self.client = client
         self.inputPort = input
         self.outputPort = output
         self.lightingSource = lighting
         self.lightingFeedbackDestination = feedbackDestination
+        self.lightingPairedDestination = pairedDestination
     }
 
     /// Redonne au port l'identifiant unique du lancement précédent (LightKey le retrouve sans nouveau réglage),
