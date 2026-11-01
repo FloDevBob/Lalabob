@@ -560,6 +560,9 @@ struct PadContextMenu: View {
             case .light:
                 if !locked {
                     Button("Tester", icon: .spotlight) { controller.audition(at: position) }
+                    if controller.isPaired(at: position) {
+                        Button("Retirer l'appairage") { controller.unpairCue(at: position) }
+                    }
                     Divider()
                     colorMenu(pad: pad)
                 }

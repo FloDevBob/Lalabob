@@ -73,7 +73,9 @@ struct ContentView: View {
                     // La barre est toujours là : sans rien à régler, c'est l'écran de repos (`IdleBar`).
                     VStack(spacing: 0) {
                         Divider().overlay(Color.white.opacity(0.06))
-                        if controller.selectedPositions.count > 1, !controller.isLocked {
+                        if controller.isPairingLights, !controller.isLocked {
+                            PairingBar()
+                        } else if controller.selectedPositions.count > 1, !controller.isLocked {
                             MultiSelectionBar()
                         } else if let selection = controller.selection, showsInspector(for: selection) {
                             InspectorView(position: selection)

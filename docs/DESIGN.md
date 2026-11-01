@@ -103,3 +103,9 @@ animation) au survol des onglets, du cadenas, du transport et des lignes de la b
 vumètres**. Toute icône seule a une infobulle (verbe d'action, raccourci entre parenthèses) ; les actions cachées (double-clic,
 glisser) sont annoncées ; un contrôle refusé parce que verrouillé dit pourquoi. Code : `LalabobDesign/Interaction.swift`
 (`interactiveCursor`, `hoverHighlight`, `HelpText`).
+
+**Appairage lumière** (01/11/2026, ADR 0006) : bouton « Appairage » dans l'en-tête (déverrouillé). Barre du bas dédiée (196 px) : trois étapes (LightKey › External Control › Add Trigger…, appui sur un pad
+ou clic sur son ampoule, nom de la cue), case cible, état « En attente de LightKey… » / « Appairée ✓ », boutons « C'est appairé », « Retirer l'appairage », « Terminer ». Cases lumière : pointillés ambrés ; cible : pointillés qui pulsent ;
+appairée : contour plein ; ampoule ambrée en bas à droite de chaque case lumière. Cue allumée dans LightKey : contour, halo et ampoule à la couleur du pad ; éteinte : ampoule atténuée.
+
+**Clavier dans la grille** (01/11/2026) : ← → ↑ ↓ changent de pad, Maj + flèche étend la sélection en rectangle, Espace / Retour jouent, ⌘C / ⌘X / ⌘V / ⌘D / ⌫ agissent sur la sélection.

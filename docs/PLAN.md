@@ -187,6 +187,16 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
   est **supprimé** (un seul appareil « Lalabob Lumière », source + destination du même nom). Le canal 16 est abandonné. Le relais ne dépend plus du banc d'essai (option retirée ; le banc garde un canal pour ses propres clics).
   **Prérequis côté LightKey** : n'écouter que « Lalabob Lumière » (contrôleur physique désactivé), sinon chaque cue bascule deux fois. 217 tests Engine verts.
   **À essayer** : APC débranché de LightKey ; un appui sur un pad lumière lance la cue **une seule fois** ; fader 7 / 8 ; aucun son ne s'arrête ; débrancher l'APC : les clics à l'écran marchent encore.
+- **Étape 4 — mode « Appairage lumière » (01/11/2026, branche `j7/mode-appairage`)** : bouton **Appairage** dans l'en-tête (déverrouillé seulement ; verrouiller quitte le mode ; aucun appairage en scène).
+  Barre du bas `PairingBar` (même hauteur que l'inspecteur) : déroulé en 3 temps, case cible, « En attente de LightKey… » / « Appairée ✓ », **C'est appairé** (confirmation à la main : une cue éteinte peut ne rien
+  répondre), **Retirer l'appairage** (ne touche pas à LightKey), Terminer. Sur la grille : cases lumière en pointillés ambrés, la **cible** pulse (fixe avec « Réduire les animations »), une cue appairée a un contour
+  plein, et chaque case lumière a une **ampoule** qui envoie sa note. Un appui sur le contrôleur désigne la case cible (le relais de l'étape 1 a déjà envoyé la note). La cible est appairée **quand LightKey répond pour sa note**
+  (`lightFeedbackArrived`) ou sur confirmation ; la cue est créée si la case était libre (`isPaired` dans `LightCue`, absent des anciens fichiers = non appairé ; une seule annulation par appairage). Puis le **nom** se saisit en place (tout
+  sélectionné) ; Entrée / clic ailleurs valide et la **case libre suivante** devient la cible. Clic droit sur une cue appairée : « Retirer l'appairage ». **Écarts avec le plan** : pas d'état `LightPairingMode` (un booléen suffit, la cible
+  est la sélection) ; **Échap reste « Tout arrêter »** (règle de sécurité, on quitte par Terminer ou le cadenas). 12 tests (`LightPairingTests`). **À essayer** : voir la check-list de l'étape 5 ci-dessous, dans l'app.
+- **Flèches du clavier dans la grille (01/11/2026)** : ← → ↑ ↓ déplacent la sélection d'un pad (arrêt aux bords, la première flèche sélectionne la case en haut à gauche), **Maj + flèche** étend / rétrécit le rectangle depuis le pad
+  principal (comme un Maj-clic), maintenir la touche répète ; verrouillé, une seule case ; ignorées pendant la saisie d'un texte et avec ⌘ / ⌥ / ⌃. `ShowController.moveSelection(dx:dy:extend:)`, 9 tests (`ArrowNavigationTests`).
+  La grille doit avoir le focus (un clic sur un pad le lui donne).
 - **Reste pour l'étape 0** : relever aussi « cue changée de couleur » et « cue supprimée » (non essayés), puis écrire les fixtures Swift d'après le journal brut (étape 2).
 
 ## Risques suivis

@@ -62,6 +62,22 @@ struct GridView: View {
             controller.playSelection()
             return .handled
         }
+        // Flèches : d'un pad à l'autre ; Maj étend la sélection en rectangle (comme un Maj-clic).
+        .onKeyPress(phases: [.down, .repeat]) { press in
+            guard !Self.isTypingInTextField,
+                press.modifiers.isDisjoint(with: [.command, .option, .control])
+            else { return .ignored }
+            let step: (dx: Int, dy: Int)
+            switch press.key {
+            case .leftArrow: step = (-1, 0)
+            case .rightArrow: step = (1, 0)
+            case .upArrow: step = (0, -1)
+            case .downArrow: step = (0, 1)
+            default: return .ignored
+            }
+            controller.moveSelection(dx: step.dx, dy: step.dy, extend: press.modifiers.contains(.shift))
+            return .handled
+        }
     }
 
     /// Un champ de texte a le focus (son éditeur de texte est le premier répondeur de la fenêtre).
@@ -335,6 +351,7 @@ enum DropHighlight: Equatable {
 
 struct PadView: View {
     @Environment(\.gridDensity) private var density
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let kind: ColumnKind
@@ -382,6 +399,7 @@ struct PadView: View {
                 RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(.white, lineWidth: 2)
             }
         }
+        .overlay { pairingOverlay }
         .overlay { dropOverlay }
         .overlay { groupDropOverlay }
         .contentShape(.rect(cornerRadius: Metrics.padCornerRadius))
@@ -412,7 +430,49 @@ struct PadView: View {
         .help(padHelp(pad))
     }
 
+    /// Appairage lumière : contour pointillé ambré pulsant sur la case cible en attente, contour plein sur une case appairée,
+    /// ampoule cliquable (envoie la note à LightKey) sur toutes les cases lumière.
+    @ViewBuilder
+    private var pairingOverlay: some View {
+        if controller.isPairingLights, !controller.isLocked, kind == .light {
+            let paired = controller.isPaired(at: position)
+            let isTarget = controller.selection == position
+            ZStack(alignment: .bottomTrailing) {
+                if paired {
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(Surface.lightAccent.opacity(0.55), lineWidth: 1.5)
+                } else if isTarget {
+                    TimelineView(.animation(paused: reduceMotion)) { context in
+                        let phase = reduceMotion ? 1 : 0.55 + 0.45 * sin(context.date.timeIntervalSinceReferenceDate * 4)
+                        RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                            .strokeBorder(Surface.lightAccent.opacity(phase), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                    }
+                } else {
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(Surface.lightAccent.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                }
+                Button {
+                    controller.pairingSend(at: position)
+                } label: {
+                    Icon.lightbulb.view(size: 13)
+                        .frame(width: 22, height: 22)
+                        .background(Surface.lightAccent, in: .circle)
+                        .foregroundStyle(Surface.window)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .padding(5)
+                .interactiveCursor(.link)
+                .help("Envoyer la note de cette case à LightKey")
+                .accessibilityLabel("Envoyer la note à LightKey")
+            }
+        }
+    }
+
     private func lightAccessibilityValue(_ pad: Pad?) -> String {
+        if controller.isPairingLights, !controller.isLocked, kind == .light {
+            return controller.isPaired(at: position) ? "Appairée" : "À appairer"
+        }
         guard pad?.kind == .light else { return "" }
         switch controller.lightState(at: position) {
         case .on: return "Allumée"
@@ -639,6 +699,14 @@ struct InlinePadText: View {
                     .onTapGesture(count: 2) { start() }
             }
         }
+        // Appairage lumière : la cue qui vient d'être appairée demande son nom ; la saisie finie, la case suivante s'arme.
+        .onAppear { startForPairingIfNeeded() }
+        .onChange(of: controller.pairingNaming) { startForPairingIfNeeded() }
+        .onChange(of: editing) { old, new in
+            if field == .title, old == .title, new == nil, controller.pairingNaming == position {
+                controller.finishPairingNaming()
+            }
+        }
         // Verrouiller, changer de case ou de grille pendant la saisie l'abandonne.
         .onChange(of: controller.isLocked) { cancel() }
         .onChange(of: position) { cancel() }
@@ -653,7 +721,13 @@ struct InlinePadText: View {
             .frame(minWidth: 24, minHeight: 14, alignment: .leading)
     }
 
-    private func start() {
+    private func startForPairingIfNeeded() {
+        guard field == .title, controller.pairingNaming == position, !isEditing else { return }
+        start(selectingAll: true)
+    }
+
+    /// `selectingAll` : tout le texte est sélectionné (le nom proposé se remplace d'une frappe).
+    private func start(selectingAll: Bool = false) {
         guard !controller.isLocked else { return }
         draft = text
         selection = nil
@@ -662,7 +736,10 @@ struct InlinePadText: View {
             focused = true
             // macOS sélectionne tout le texte quand le champ prend le focus : le curseur passe à la fin juste après.
             try? await Task.sleep(for: .milliseconds(40))
-            if editing == field { selection = TextSelection(insertionPoint: draft.endIndex) }
+            guard editing == field else { return }
+            selection =
+                selectingAll
+                ? TextSelection(range: draft.startIndex..<draft.endIndex) : TextSelection(insertionPoint: draft.endIndex)
         }
     }
 

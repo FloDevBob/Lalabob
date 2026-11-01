@@ -45,6 +45,7 @@ struct HeaderView: View {
             // À droite : contrôleur, sortie audio, cadenas, Tout arrêter.
             controllerStatus
             outputPicker
+            PairingButton()
             LockButton()
             Button("Tout arrêter", icon: .stop) {
                 controller.stopAll()
@@ -100,6 +101,33 @@ struct HeaderView: View {
         .labelsHidden()
         .frame(width: 180)
         .help("Sortie audio du spectacle et de la pré-écoute")
+    }
+}
+
+/// Bouton « Appairage » : entre dans le mode qui rattache les cases lumière aux cues de LightKey (déverrouillé seulement).
+struct PairingButton: View {
+    @Environment(ShowController.self) private var controller
+
+    var body: some View {
+        let active = controller.isPairingLights
+        let locked = controller.isLocked
+        Button {
+            controller.setPairingLights(!active)
+        } label: {
+            IconLabel("Appairage", icon: .spotlight, size: 15)
+                .font(.system(size: 12.5, weight: .semibold))
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .background(active ? Surface.lightAccent : Surface.panel, in: .rect(cornerRadius: 8))
+                .foregroundStyle(active ? Surface.window : Surface.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(locked)
+        .opacity(locked ? 0.45 : 1)
+        .hoverHighlight()
+        .interactiveCursor(.link, enabled: !locked)
+        .help(locked ? "Déverrouillez pour appairer les cues lumière" : "Appairer les cases lumière aux cues de LightKey")
+        .accessibilityLabel(active ? "Quitter l'appairage lumière" : "Appairage lumière")
     }
 }
 
