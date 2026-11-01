@@ -51,3 +51,19 @@ extension String {
         String(repeating: "0", count: max(0, length - count)) + self
     }
 }
+
+extension MIDIEvent {
+    /// Texte court d'un message déjà décodé, pour le banc d'essai lumière.
+    public var summary: String {
+        switch self {
+        case let .noteOn(channel, note, velocity):
+            "Note On · canal \(channel + 1) · note \(note) · vélocité \(velocity)"
+        case let .noteOff(channel, note, velocity):
+            "Note Off · canal \(channel + 1) · note \(note) · vélocité \(velocity)"
+        case let .controlChange(channel, controller, value):
+            "Control Change · canal \(channel + 1) · contrôleur \(controller) · valeur \(value)"
+        case .systemExclusive(let bytes):
+            "SysEx · \(bytes.count) octets"
+        }
+    }
+}

@@ -7,10 +7,11 @@
 
 1. Lancer Lalabob (les deux ports apparaissent dans LightKey, Réglages MIDI).
 2. Dans LightKey : entrée = « Lalabob Lumière », *Send Feedback To* = « Lalabob Retour Lumière ».
-3. Lire le journal, dans Terminal :
-   `log stream --level info --predicate 'subsystem == "fr.lalabob.app" AND category == "lighting"'`
-   (ou la Console, filtre « lighting »). Chaque ligne : `Retour LightKey : Note On · canal 1 · note 36 · vélocité 5 [20902405]`.
-4. Le journal montre les **mots UMP bruts** : un Note On de vélocité 0 reste un Note On, les messages que Lalabob
+3. Dans Lalabob : menu **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L). La fenêtre montre l'état des ports, une grille 8×8 du
+   contrôleur (avec les numéros de note) et le **journal en direct** : « Contrôleur → », « → LightKey », « LightKey → ».
+   Le bouton **Copier** met le journal dans le presse-papiers (pour me le coller).
+   (Le même journal existe dans OSLog : `log stream --level info --predicate 'subsystem == "fr.lalabob.app" AND category == "lighting"'`.)
+4. Le journal OSLog montre les **mots UMP bruts** : un Note On de vélocité 0 reste un Note On, les messages que Lalabob
    ignore (changement de programme, pitch bend…) apparaissent aussi.
 5. Regarder aussi la fenêtre *External Control* de LightKey : les messages de retour y sont personnalisables.
 

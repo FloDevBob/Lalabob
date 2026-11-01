@@ -166,6 +166,11 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
 - **Fait (01/11/2026)** : destination virtuelle **« Lalabob Retour Lumière »** (`CoreMIDISession`, identifiant unique conservé), flux
   `MIDITransport.lightingFeedback` (séparé de `incoming`), journal `OSLog` (sous-système `fr.lalabob.app`, catégorie `lighting`) des **mots UMP bruts**
   (`UMPDescription`) : on voit ce que `UMPDecoder` écarte. Rien n'est encore branché sur l'interface ni sur les sons. 5 tests (`UMPDescriptionTests`) ; 204 tests Engine verts.
+- **Banc d'essai lumière (01/11/2026, demande de l'utilisateur)** : fenêtre **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L) pour essayer l'appairage sans Terminal : état du contrôleur et des
+  deux ports, grille 8×8 (clic = Note On tant que le bouton est enfoncé, numéros de note, retour de LightKey affiché sur la case), journal en direct (contrôleur / vers LightKey /
+  de LightKey, **Copier**), canal d'envoi réglable (1–16, répond à la question ouverte 1), option **relais d'essai** des appuis physiques sur les colonnes lumière (jamais les colonnes sons).
+  `LightingTestBench` (Engine, inactif fenêtre fermée : aucun coût en scène) ; tout l'envoi vers LightKey passe par une seule file (`sendToLightKey`). 7 tests (`LightingTestBenchTests`).
+  **À essayer** : ouvrir la fenêtre, cliquer une case, voir la note partir ; appuyer sur un pad ; déclencher une cue dans LightKey et lire le retour.
 - **Reste pour l'étape 0** : relever dans LightKey (cue lancée, arrêtée, changée de couleur, supprimée, démarrage, ouverture du spectacle), choisir cas A / B.
 
 ## Risques suivis

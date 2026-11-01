@@ -28,6 +28,8 @@ public final class ControllerSession {
         var events: [MIDIEvent]
     }
 
+    /// Banc d'essai de l'appairage lumière (inactif tant que sa fenêtre est fermée).
+    public let bench = LightingTestBench()
     /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
@@ -71,6 +73,7 @@ public final class ControllerSession {
                 }
             }
         }
+        bench.send = { [weak self] events in self?.sendToLightKey(events) }
     }
 
     @ObservationIgnored private var runner: Task<Void, Never>?
@@ -87,6 +90,7 @@ public final class ControllerSession {
             group.addTask { await self.watchTopology() }
             group.addTask { await self.watchInput() }
             group.addTask { await self.watchLEDs() }
+            group.addTask { await self.watchLightingFeedback() }
         }
     }
 
@@ -133,6 +137,7 @@ public final class ControllerSession {
             lastHardwareFaders = [:]  // au rebranchement, on ne sait plus où sont les faders
             attachedController?.seedHardwareFaders([:])
             attachedController?.setConnectedController(nil)
+            bench.setController(nil)
             log.info("Contrôleur débranché : \(old.model.displayName)")
         }
         guard let found else { return }
@@ -144,6 +149,7 @@ public final class ControllerSession {
         send(driver.connectionMessages)
         pushLEDs()
         attachedController?.setConnectedController(found.model)
+        bench.setController(found.model)
         log.info("Contrôleur connecté : \(found.model.displayName)")
     }
 
@@ -172,10 +178,16 @@ public final class ControllerSession {
     private func watchInput() async {
         for await message in transport.incoming {
             guard let active, message.source == active.source else { continue }
+            bench.record(.fromController, message.events)
             for event in message.events {
                 switch active.driver.interpret(event) {
                 case .padPressed(let position, let velocity) where velocity > 0:
+                    bench.setControllerPad(position, pressed: true)
+                    relayToLightKey(position, pressed: true, driver: active.driver)
                     attachedController?.pressFromController(at: position)
+                case .padReleased(let position):
+                    bench.setControllerPad(position, pressed: false)
+                    relayToLightKey(position, pressed: false, driver: active.driver)
                 case .columnFader(let column, let value):
                     lastHardwareFaders[column] = value
                     // Un fader pas encore accroché (autre onglet) est ignoré : le volume ne saute pas.
@@ -192,6 +204,34 @@ public final class ControllerSession {
 
     // MARK: - Lumière
 
+    /// Tout ce qui part vers LightKey passe ici : une seule file (l'ordre est garanti) et le banc d'essai le note.
+    private func sendToLightKey(_ events: [MIDIEvent]) {
+        bench.record(.toLightKey, events)
+        for event in events { lightingOutbox.yield(event) }
+    }
+
+    /// Essai du relais : un appui physique sur une colonne lumière est répété vers LightKey (jamais sur une colonne son).
+    private func relayToLightKey(_ position: GridPosition, pressed: Bool, driver: any ControllerDriver) {
+        guard bench.relaysControllerPresses, position.isValid, isLightColumn(position.column) else { return }
+        let note = driver.note(for: position)
+        sendToLightKey([
+            pressed
+                ? .noteOn(channel: bench.channelByte, note: note, velocity: 127)
+                : .noteOff(channel: bench.channelByte, note: note, velocity: 0)
+        ])
+    }
+
+    private func isLightColumn(_ column: Int) -> Bool {
+        if let grid = attachedController?.currentGrid, grid.columns.indices.contains(column) {
+            return grid.columns[column].kind == .light
+        }
+        return PadGrid.defaultLightColumns.contains(column)
+    }
+
+    private func watchLightingFeedback() async {
+        for await events in transport.lightingFeedback { bench.recordFeedback(events) }
+    }
+
     /// Clic à l'écran sur un pad lumière : la note que le contrôleur aurait envoyée part sur
     /// « Lalabob Lumière », où LightKey a le même mapping que sur le contrôleur.
     private func sendLightPress(at position: GridPosition) {
@@ -200,16 +240,10 @@ public final class ControllerSession {
             return
         }
         let note = model.driver.note(for: position)
-        let transport = self.transport
-        let log = self.log
-        Task.detached {
-            do {
-                try await transport.sendLighting([.noteOn(channel: 0, note: note, velocity: 127)])
-                try await Task.sleep(for: .milliseconds(100))  // durée d'un appui bref
-                try await transport.sendLighting([.noteOff(channel: 0, note: note, velocity: 0)])
-            } catch {
-                log.error("Envoi vers LightKey échoué : \(error.localizedDescription)")
-            }
+        sendToLightKey([.noteOn(channel: 0, note: note, velocity: 127)])
+        Task {
+            try? await Task.sleep(for: .milliseconds(100))  // durée d'un appui bref
+            sendToLightKey([.noteOff(channel: 0, note: note, velocity: 0)])
         }
     }
 
@@ -226,7 +260,7 @@ public final class ControllerSession {
             lastLightFaderEvents[column] != event
         else { return }
         lastLightFaderEvents[column] = event
-        lightingOutbox.yield(event)
+        sendToLightKey([event])
     }
 
     // MARK: - LED

@@ -9,13 +9,20 @@ extension FocusedValues {
 /// Menus : ⌘L (cadenas), ⌘D (dupliquer le pad), onglets ⌘1…⌘9, nouvelle grille ⌘T.
 /// ⌘X, ⌘C, ⌘V et ⌫ passent par la grille (`onCopyCommand`…), pour ne pas gêner les champs de texte.
 struct LalabobCommands: Commands {
+    static let benchWindowID = "lighting-bench"
+
     @FocusedValue(\.showController) private var controller
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
             Button("Dupliquer le pad") { controller?.duplicateSelection() }
                 .keyboardShortcut("d")
                 .disabled(controller?.selection == nil || controller?.isLocked == true)
+        }
+        CommandGroup(after: .windowArrangement) {
+            Button("Banc d'essai lumière") { openWindow(id: Self.benchWindowID) }
+                .keyboardShortcut("l", modifiers: [.command, .option])
         }
         CommandMenu("Spectacle") {
             Button(controller?.isLocked == true ? "Déverrouiller" : "Verrouiller") { controller?.isLocked.toggle() }

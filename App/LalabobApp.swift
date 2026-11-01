@@ -25,5 +25,9 @@ struct LalabobApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .commands { LalabobCommands() }
+
+        Window("Banc d'essai lumière", id: LalabobCommands.benchWindowID) {
+            LightingBenchView(session: midiSession)
+        }
     }
 }

@@ -35,3 +35,11 @@ struct UMPDescriptionTests {
         #expect(UMPDescription.lines(for: []).isEmpty)
     }
 }
+
+struct MIDIEventSummaryTests {
+    @Test func summariesShowOneBasedChannels() {
+        #expect(MIDIEvent.noteOn(channel: 15, note: 36, velocity: 127).summary == "Note On · canal 16 · note 36 · vélocité 127")
+        #expect(MIDIEvent.controlChange(channel: 0, controller: 54, value: 3).summary == "Control Change · canal 1 · contrôleur 54 · valeur 3")
+        #expect(MIDIEvent.systemExclusive([0xF0, 0x01, 0xF7]).summary == "SysEx · 3 octets")
+    }
+}
