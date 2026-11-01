@@ -42,6 +42,8 @@ public final class ControllerSession {
     @ObservationIgnored private let log = Logger(subsystem: "fr.lalabob.app", category: "midi")
     @ObservationIgnored private var active: Active?
     @ObservationIgnored private var lastLEDs: [GridPosition: LEDState] = [:]
+    /// Dernier état connu de chaque cue lumière (retour de LightKey), partagé par tous les spectacles ouverts.
+    @ObservationIgnored private var lightStates: [GridPosition: LightState] = [:]
 
     /// Session rattachée à un seul spectacle (tests, aperçus).
     public convenience init(controller: ShowController, transport: any MIDITransport) {
@@ -106,6 +108,7 @@ public final class ControllerSession {
         controller.lightFaderHandler = { [weak self] column, level in self?.sendLightFader(column: column, level: level) }
         controller.setConnectedController(active?.model)
         controller.seedHardwareFaders(lastHardwareFaders)
+        controller.setLightStates(lightStates)
         lastLEDs = [:]
         pushLEDs()
     }
@@ -229,7 +232,18 @@ public final class ControllerSession {
     }
 
     private func watchLightingFeedback() async {
-        for await events in transport.lightingFeedback { bench.recordFeedback(events) }
+        for await events in transport.lightingFeedback {
+            bench.recordFeedback(events)
+            // Les notes du retour sont celles du contrôleur : même disposition que pour les appuis.
+            let driver = active?.driver ?? (attachedController?.lastControllerModel ?? .apcMiniMK2).driver
+            var changed = false
+            for event in events {
+                guard let (position, state) = driver.lightFeedback(for: event), lightStates[position] != state else { continue }
+                lightStates[position] = state  // le dernier message gagne : une rafale identique ne change rien
+                changed = true
+            }
+            if changed { attachedController?.setLightStates(lightStates) }
+        }
     }
 
     /// Clic à l'écran sur un pad lumière : la note que le contrôleur aurait envoyée part sur

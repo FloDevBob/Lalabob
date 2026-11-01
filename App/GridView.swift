@@ -405,10 +405,20 @@ struct PadView: View {
         .interactiveCursor(.grabIdle, enabled: pad != nil && !controller.isLocked && !isEditingText)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind == .audio ? "Case vide" : "Case lumière vide"))
+        .accessibilityValue(lightAccessibilityValue(pad))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { controller.audition(at: position) }
         .accessibilityAction(named: "Sélectionner") { activate() }
         .help(padHelp(pad))
+    }
+
+    private func lightAccessibilityValue(_ pad: Pad?) -> String {
+        guard pad?.kind == .light else { return "" }
+        switch controller.lightState(at: position) {
+        case .on: return "Allumée"
+        case .off: return "Éteinte"
+        case .unknown: return ""
+        }
     }
 
     private func padHelp(_ pad: Pad?) -> String {
@@ -478,10 +488,15 @@ struct PadView: View {
 
     private func filled(_ pad: Pad, event: PlaybackEvent?) -> some View {
         let vivid = pad.tint.vividColor
+        let lightState: LightState = pad.kind == .light ? controller.lightState(at: position) : .unknown
         return VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 4) {
                 InlinePadText(position: position, field: .title, text: pad.title, font: Typography.padTitle, editing: $editingField)
                 Spacer(minLength: 0)
+                if lightState != .unknown {
+                    Icon.lightbulb.view(size: 13)
+                        .foregroundStyle(lightState == .on ? vivid : pad.tint.labelColor.opacity(0.4))
+                }
                 if case .paused = event?.state { Icon.pause.view(size: 12) }
                 if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
                 if case .audio = pad.content { playStopButton(pad, event: event) }
@@ -515,9 +530,13 @@ struct PadView: View {
             if let event {
                 RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                     .stroke(vivid.opacity(event.state.isPaused ? 0.45 : 1), lineWidth: 2)
+            } else if lightState == .on {
+                RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(vivid, lineWidth: 2)
             }
         }
-        .shadow(color: event.map { $0.state.isPaused ? .clear : vivid.opacity(0.45) } ?? .clear, radius: 8)
+        .shadow(
+            color: event.map { $0.state.isPaused ? .clear : vivid.opacity(0.45) } ?? (lightState == .on ? vivid.opacity(0.45) : .clear),
+            radius: 8)
     }
 
     /// Bouton à deux états à côté de l'égaliseur : triangle (lecture) tant que le son est à l'arrêt ou en pause,

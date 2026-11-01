@@ -130,3 +130,44 @@ struct ControllerModelTests {
         #expect(model.driver.model == model)
     }
 }
+
+/// Retour de LightKey : Note On = cue allumée, Note Off = éteinte (relevé du 01/11/2026, APC mini mk2).
+@Suite("Retour de LightKey")
+struct LightFeedbackTests {
+    private let apc = APCMiniMK2Driver()
+
+    @Test("Note On = allumée, Note Off = éteinte, sur la case de la note")
+    func onAndOff() throws {
+        // Note 63 = rangée du bas + 7 → colonne 7, en haut ; note 23 = colonne 7, 3e rangée en partant du bas.
+        let on = try #require(apc.lightFeedback(for: .noteOn(channel: 0, note: 63, velocity: 127)))
+        #expect(on.position == GridPosition(column: 7, row: 0))
+        #expect(on.state == .on)
+        let off = try #require(apc.lightFeedback(for: .noteOff(channel: 0, note: 23, velocity: 0)))
+        #expect(off.position == GridPosition(column: 7, row: 5))
+        #expect(off.state == .off)
+    }
+
+    @Test("Un Note On de vélocité 0 est éteint, le canal est sans importance")
+    func zeroVelocityAndChannel() throws {
+        let zero = try #require(apc.lightFeedback(for: .noteOn(channel: 0, note: 14, velocity: 0)))
+        #expect(zero.state == .off)
+        let channel = try #require(apc.lightFeedback(for: .noteOn(channel: 15, note: 14, velocity: 127)))
+        #expect(channel.state == .on)
+        #expect(channel.position == zero.position)
+    }
+
+    @Test("Hors grille ou autre type de message : ignoré")
+    func ignored() {
+        #expect(apc.lightFeedback(for: .noteOn(channel: 0, note: 64, velocity: 127)) == nil)
+        #expect(apc.lightFeedback(for: .controlChange(channel: 0, controller: 54, value: 100)) == nil)
+        #expect(apc.lightFeedback(for: .systemExclusive([0xF0, 0x01, 0xF7])) == nil)
+    }
+
+    @Test("Le Launchpad utilise ses propres notes")
+    func launchpad() throws {
+        let launchpad = LaunchpadDriver(model: .launchpadX)
+        let result = try #require(launchpad.lightFeedback(for: .noteOn(channel: 0, note: 81, velocity: 127)))
+        #expect(result.position == GridPosition(column: 0, row: 0))
+        #expect(result.state == .on)
+    }
+}

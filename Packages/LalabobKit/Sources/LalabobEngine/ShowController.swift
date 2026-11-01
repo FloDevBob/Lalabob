@@ -49,6 +49,8 @@ public final class ShowController {
 
     /// État de lecture des pads qui jouent ou sont en pause (les autres sont absents).
     public private(set) var playback: [Pad.ID: PlaybackEvent] = [:]
+    /// État de chaque cue lumière d'après le retour de LightKey, par case (la même sur toutes les grilles : c'est la note du contrôleur).
+    public private(set) var lightStates: [GridPosition: LightState] = [:]
     public private(set) var outputDevices: [AudioOutputDevice] = []
     /// `nil` = sortie par défaut du système.
     public private(set) var selectedOutputUID: String?
@@ -293,6 +295,14 @@ public final class ShowController {
         if isLocked { selection = position }
     }
 
+    /// État d'une case lumière d'après LightKey (`.unknown` tant qu'il n'a rien dit).
+    public func lightState(at position: GridPosition) -> LightState { lightStates[position] ?? .unknown }
+
+    func setLightStates(_ states: [GridPosition: LightState]) {
+        guard states != lightStates else { return }
+        lightStates = states
+    }
+
     func setConnectedController(_ model: ControllerModel?) {
         connectedController = model
         if let model {
@@ -303,7 +313,7 @@ public final class ShowController {
 
     /// Ce que les LED du contrôleur doivent montrer : le reflet de la grille affichée.
     var ledStates: [GridPosition: LEDState] {
-        LEDPlanner.states(for: currentGrid, playback: playback)
+        LEDPlanner.states(for: currentGrid, playback: playback, lightStates: lightStates)
     }
 
     public func togglePause(at position: GridPosition) {

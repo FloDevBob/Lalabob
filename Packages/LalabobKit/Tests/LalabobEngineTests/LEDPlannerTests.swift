@@ -56,4 +56,22 @@ struct LEDPlannerTests {
         let states = LEDPlanner.states(for: grid, playback: [:])
         #expect(LEDPlanner.changes(from: [:], to: states).count == 64)
     }
+
+    @Test("Cue lumière : allumée dans LightKey pulse, éteinte est atténuée, inconnue garde sa teinte")
+    func lightStates() {
+        let (grid, sound, _) = grid()
+        let position = GridPosition(column: 6, row: 1)
+        #expect(LEDPlanner.states(for: grid, playback: [:], lightStates: [position: .on])[position] == .pulsing(.ambre))
+        #expect(LEDPlanner.states(for: grid, playback: [:], lightStates: [position: .off])[position] == .lit(.ambre, .quarter))
+        #expect(LEDPlanner.states(for: grid, playback: [:], lightStates: [position: .unknown])[position] == .lit(.ambre, .full))
+        #expect(LEDPlanner.states(for: grid, playback: [:])[position] == .lit(.ambre, .full))
+        // Une case vide reste éteinte, un pad son ignore l'état lumière.
+        let empty = GridPosition(column: 7, row: 0)
+        let soundPosition = GridPosition(column: 0, row: 0)
+        let all: [GridPosition: LightState] = [empty: .on, soundPosition: .on]
+        let states = LEDPlanner.states(for: grid, playback: [:], lightStates: all)
+        #expect(states[empty] == .off)
+        #expect(states[soundPosition] == .lit(.vert, .half))
+        _ = sound
+    }
 }

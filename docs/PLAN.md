@@ -175,6 +175,13 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
   retour = Note On vélocité 127 (cue allumée) / Note Off vélocité 0 (éteinte), canal 1, notes de la disposition APC ; une **rafale d'état complet** à l'ouverture du spectacle ; une cue en éteint d'autres → un Note Off
   par cue éteinte ; chaque Note On **bascule** la cue. Pas de couleur dans le retour. **Conséquences** : la destination « Lalabob Retour Lumière » est inutile (à retirer à l'étape 1) ; un double envoi
   (LightKey qui écoute aussi l'APC) bascule deux fois = aucun effet visible, piège à éviter ; le canal 16 dédié est à reconsidérer (le retour revient sur le canal appris, ici 1).
+- **Étapes 2 et 3 — état des cues sur les pads (01/11/2026, branche `j7/etat-lumiere`)** : le retour de LightKey (cas A) alimente `ShowController.lightStates`
+  (`LightState` : inconnu / éteint / allumé, jamais enregistré, **par case** : c'est la note du contrôleur, la même sur toutes les grilles). Le **dernier message gagne** (une rafale de couleur ne change rien).
+  `ControllerDriver.lightFeedback(for:)` (pilote pur : Note On > 0 = allumée, Note Off = éteinte, canal ignoré), `ControllerSession` tient l'état pour tous les spectacles et le donne à chaque fenêtre rattachée.
+  **LED** (`LEDPlanner`) : cue allumée = pulsation, éteinte = teinte atténuée (25 %), inconnue = comme avant. **Pad** (`GridView`) : cue allumée = contour et halo à la couleur vive, ampoule vive ; éteinte = ampoule
+  atténuée ; inconnue = rien ; VoiceOver lit « Allumée / Éteinte ». Pas de `isPaired` (pas encore utile : l'appairage automatique viendra à l'étape 4). **Non fait** : état remis à « inconnu » à la fermeture de
+  LightKey (impossible à détecter par MIDI) ; ne jamais en déduire « allumé » d'un envoi (LightKey n'a pas toujours répondu, voir relevé). 6 tests Engine, 4 tests pilotes ; 217 Engine et 43 pilotes verts.
+  **À essayer** : lancer une cue dans LightKey (pad allumé à l'écran, LED qui pulse), l'éteindre, ouvrir le spectacle LightKey (rafale d'état), deux fenêtres.
 - **Reste pour l'étape 0** : relever aussi « cue changée de couleur » et « cue supprimée » (non essayés), puis écrire les fixtures Swift d'après le journal brut (étape 2).
 
 ## Risques suivis
