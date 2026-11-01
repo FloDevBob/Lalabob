@@ -8,6 +8,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(ShowController.self) private var controller
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsLibrary = true
 
     /// En-tête de la fenêtre (56) et son filet.
@@ -29,6 +30,7 @@ struct ContentView: View {
         .ignoresSafeArea(.container, edges: .top)
         .background(Surface.window)
         .overlay(alignment: .top) { lockBanner }
+        .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: controller.lockNotice)
         .focusedSceneValue(\.showController, controller)
         .alert(
             "Import impossible",
@@ -52,32 +54,87 @@ struct ContentView: View {
             HeaderView(showsLibrary: $showsLibrary)
             Divider().overlay(Color.white.opacity(0.06))
             HStack(spacing: 0) {
-                if showsLibrary && !controller.isLocked {
-                    LibraryView()
-                        .frame(width: 272)
-                    Divider().overlay(Color.white.opacity(0.06))
+                if libraryIsVisible {
+                    // Un seul bloc (bibliothèque + filet) : il glisse depuis la gauche en entrant et en sortant.
+                    HStack(spacing: 0) {
+                        LibraryView()
+                            .frame(width: 272)
+                        Divider().overlay(Color.white.opacity(0.06))
+                    }
+                    .transition(.move(edge: .leading).combined(with: .opacity))
                 }
                 VStack(spacing: 0) {
                     ScrollView {
                         GridView()
+                            .modifier(GridChangeMotion(trigger: controller.currentGrid.id, enabled: !reduceMotion))
                             .padding(.horizontal, 20)
                             .padding(.vertical, 12)
                     }
                     // Déverrouillé : le pad sélectionné. Verrouillé : le son lancé (version en lecture seule).
-                    if controller.selectedPositions.count > 1, !controller.isLocked {
-                        Divider().overlay(Color.white.opacity(0.06))
-                        MultiSelectionBar()
-                    } else if let selection = controller.selection, showsInspector(for: selection) {
-                        Divider().overlay(Color.white.opacity(0.06))
-                        InspectorView(position: selection)
+                    // La barre glisse depuis le bas quand elle apparaît ou disparaît ; passer d'un pad à l'autre ne l'anime pas.
+                    if bottomBarIsVisible {
+                        VStack(spacing: 0) {
+                            Divider().overlay(Color.white.opacity(0.06))
+                            if controller.selectedPositions.count > 1, !controller.isLocked {
+                                MultiSelectionBar()
+                            } else if let selection = controller.selection {
+                                InspectorView(position: selection)
+                            }
+                        }
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
             }
+            .animation(reduceMotion ? nil : Motion.panel, value: libraryIsVisible)
+            .animation(reduceMotion ? nil : Motion.panel, value: bottomBarIsVisible)
+        }
+    }
+}
+
+/// À chaque changement de grille (onglet), le contenu monte légèrement en se fondant : le regard suit le changement.
+/// Entrée seule (les données sont déjà celles de la nouvelle grille) ; pas de recréation de la vue, donc le focus
+/// clavier de la grille (⌘C, ⌘V…) est conservé. Inactif si « Réduire les animations » est coché.
+private struct GridChangeMotion: ViewModifier {
+    let trigger: PadGrid.ID
+    let enabled: Bool
+
+    private struct Rise {
+        var offset: CGFloat = 0
+        var opacity = 1.0
+    }
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.keyframeAnimator(initialValue: Rise(), trigger: trigger) { view, value in
+                view.offset(y: value.offset).opacity(value.opacity)
+            } keyframes: { _ in
+                KeyframeTrack(\.offset) {
+                    LinearKeyframe(Motion.gridRiseDistance, duration: 0.001)
+                    CubicKeyframe(0, duration: Motion.gridChange)
+                }
+                KeyframeTrack(\.opacity) {
+                    LinearKeyframe(0, duration: 0.001)
+                    CubicKeyframe(1, duration: Motion.gridChange * 0.8)
+                }
+            }
+        } else {
+            content
         }
     }
 }
 
 extension ContentView {
+    /// La bibliothèque est ouverte (et le spectacle déverrouillé : verrouillé, il n'y a pas de bibliothèque).
+    fileprivate var libraryIsVisible: Bool { showsLibrary && !controller.isLocked }
+
+    /// La barre du bas est affichée : plusieurs pads sélectionnés, ou un pad dont le panneau a quelque chose à montrer.
+    fileprivate var bottomBarIsVisible: Bool {
+        if controller.selectedPositions.count > 1, !controller.isLocked { return true }
+        guard let selection = controller.selection else { return false }
+        return showsInspector(for: selection)
+    }
+
     /// Verrouillé, le panneau ne s'affiche que pour un son (les cases vides et les cues n'ont rien à y piloter).
     fileprivate func showsInspector(for position: GridPosition) -> Bool {
         guard controller.isLocked else { return true }

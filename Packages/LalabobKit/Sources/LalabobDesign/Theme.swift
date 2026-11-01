@@ -99,3 +99,14 @@ extension EnvironmentValues {
     /// Hauteurs de la grille adaptées à la fenêtre (posées par la fenêtre principale).
     @Entry public var gridDensity = GridDensity.regular
 }
+
+/// Mouvements de l'interface : courts, utiles (ils expliquent un changement), jamais décoratifs. Les vumètres, les
+/// faders et tout ce qui doit réagir tout de suite à la main ne sont pas animés. « Réduire les animations » les coupe.
+public enum Motion {
+    /// Ouverture et fermeture d'un panneau (bibliothèque à gauche, barre du bas).
+    public static let panel = Animation.smooth(duration: 0.28)
+    /// Durée de l'entrée d'une grille après un changement d'onglet.
+    public static let gridChange: Double = 0.3
+    /// De combien de points le contenu de la nouvelle grille monte en arrivant.
+    public static let gridRiseDistance: CGFloat = 18
+}
