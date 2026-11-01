@@ -26,6 +26,11 @@ struct LalabobApp: App {
         .windowStyle(.hiddenTitleBar)
         .commands { LalabobCommands() }
 
+        Window("Aide de Lalabob", id: LalabobCommands.helpWindowID) {
+            HelpView()
+        }
+        .defaultSize(width: 900, height: 640)
+
         Window("Banc d'essai lumière", id: LalabobCommands.benchWindowID) {
             LightingBenchView(session: midiSession)
         }

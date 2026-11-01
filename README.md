@@ -7,7 +7,8 @@ Application macOS native (SwiftUI, CoreMIDI, AVAudioEngine).
 - Plusieurs grilles par spectacle, faciles à basculer ; un spectacle = un fichier `.lalabob` (sons inclus).
 - Un cadenas verrouille le spectacle : on joue, on ne modifie plus.
 - Les deux colonnes de droite pilotent LightKey : Lalabob relaie les appuis et les faders, lit l'état des cues (allumée / éteinte) et l'affiche sur les pads et les LED. Un mode « Appairage » rattache chaque case à une cue.
-- Contrôleurs pris en charge : Novation Launchpad X, Mini MK3, Pro MK3 et Akai APC mini mk2.
+- Contrôleurs pris en charge : Novation Launchpad X, Mini MK3, Pro MK3 et Akai APC mini mk2. **Matériel de la troupe : AKAI APC mini et Novation Launchpad Mini MK3.**
+- Aide intégrée : menu **Aide ▸ Aide de Lalabob** (⌘?).
 
 ## Prérequis
 

@@ -38,3 +38,8 @@ ne sont pas utilisés par Lalabob pour l'instant.
 
 - Noms réels des ports vus par CoreMIDI (`kMIDIPropertyDisplayName`) : _à noter_. La détection (`ControllerModel.detect(portName:)`) cherche « launchpad x », « mini mk3 », « pro mk3 » et écarte les ports contenant « DAW ».
 - Réponse à la requête d'identité (octets famille/produit) : _à noter_ ; Lalabob vérifie seulement le fabricant Novation `00 20 29`.
+
+## Matériel de la troupe
+
+Le **Launchpad Mini MK3** est un des deux contrôleurs de la troupe (avec l'AKAI APC mini). Le numéro de modèle `0D` de l'en-tête SysEx reste à confirmer sur le matériel ⚠︎.
+

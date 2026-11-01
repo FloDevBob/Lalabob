@@ -39,3 +39,6 @@ Apple Music lisent l'APC en même temps sans se gêner.
 - Le retour de LightKey utilise ces mêmes notes (voir `lightkey-feedback.md`).
 - Non encore confirmés : les CC des faders (48 à 55 ⚠︎) et le comportement des LED à pulsation.
 
+## Matériel de la troupe
+
+Contrôleurs confirmés (01/11/2026) : **AKAI APC mini** (reconnu comme « APC mini mk2 ») et **Novation Launchpad Mini MK3** (voir `launchpad-mk3.md`).

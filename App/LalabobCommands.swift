@@ -10,6 +10,7 @@ extension FocusedValues {
 /// ⌘X, ⌘C, ⌘V et ⌫ passent par la grille (`onCopyCommand`…), pour ne pas gêner les champs de texte.
 struct LalabobCommands: Commands {
     static let benchWindowID = "lighting-bench"
+    static let helpWindowID = "help"
 
     @FocusedValue(\.showController) private var controller
     @Environment(\.openWindow) private var openWindow
@@ -19,6 +20,11 @@ struct LalabobCommands: Commands {
             Button("Dupliquer le pad") { controller?.duplicateSelection() }
                 .keyboardShortcut("d")
                 .disabled(controller?.selection == nil || controller?.isLocked == true)
+        }
+        // Menu Aide : l'aide de l'app remplace l'entrée par défaut (qui ne trouve aucun Help Book).
+        CommandGroup(replacing: .help) {
+            Button("Aide de Lalabob") { openWindow(id: Self.helpWindowID) }
+                .keyboardShortcut("?", modifiers: .command)
         }
         CommandGroup(after: .windowArrangement) {
             Button("Banc d'essai lumière") { openWindow(id: Self.benchWindowID) }
