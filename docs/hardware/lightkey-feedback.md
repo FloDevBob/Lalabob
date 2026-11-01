@@ -1,12 +1,13 @@
 # Retour de LightKey vers Lalabob — relevé (J7, étape 0)
 
-**À remplir sur le vrai Mac de régie.** Lalabob crée la destination MIDI virtuelle **« Lalabob Retour Lumière »**
-(en plus de la source « Lalabob Lumière »). **Depuis l'étape 1 du J7, il n'y a plus qu'un appareil « Lalabob Lumière »** : une source et une destination du même nom (LightKey n'envoie son retour qu'à la destination du même nom que son entrée). Le port « Lalabob Retour Lumière » n'existe plus. Tout ce que LightKey y envoie est journalisé, tel quel, sans rien déclencher.
+Lalabob crée un appareil MIDI virtuel **« Lalabob Lumière »** : une source (Lalabob → LightKey) et une destination du même nom
+(LightKey → Lalabob). LightKey n'envoie son retour qu'à la destination du même nom que son entrée. Tout ce qu'il y envoie est journalisé,
+tel quel (banc d'essai et OSLog), et alimente l'état des cues (ADR 0006). L'ancien port « Lalabob Retour Lumière » n'existe plus.
 
 ## Mise en place
 
 1. Lancer Lalabob (les deux ports apparaissent dans LightKey, Réglages MIDI).
-2. Dans LightKey : entrée = « Lalabob Lumière », *Send Feedback To* = « Lalabob Retour Lumière ».
+2. Dans LightKey, réglages MIDI : activer l'**entrée et la sortie** de « Lalabob Lumière » ; désactiver le contrôleur physique.
 3. Dans Lalabob : menu **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L). La fenêtre montre l'état des ports, une grille 8×8 du
    contrôleur (avec les numéros de note) et le **journal en direct** : « Contrôleur → », « → LightKey », « LightKey → ».
    Le bouton **Copier** met le journal dans le presse-papiers (pour me le coller).
