@@ -202,6 +202,7 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` (remplacera l'ADR 0004 par l'
 - **Flèches du clavier dans la grille (01/11/2026)** : ← → ↑ ↓ déplacent la sélection d'un pad (arrêt aux bords, la première flèche sélectionne la case en haut à gauche), **Maj + flèche** étend / rétrécit le rectangle depuis le pad
   principal (comme un Maj-clic), maintenir la touche répète ; verrouillé, une seule case ; ignorées pendant la saisie d'un texte et avec ⌘ / ⌥ / ⌃. `ShowController.moveSelection(dx:dy:extend:)`, 9 tests (`ArrowNavigationTests`).
   La grille doit avoir le focus (un clic sur un pad le lui donne).
+- **Icône de l'app (01/11/2026)** : `AppIcon.appiconset` complet (10 tailles, de 16 à 1024 px, `idiom: mac`) ; compilée dans l'app (`AppIcon.icns`, `CFBundleIconName`). À vérifier à l'œil dans le Dock et le Finder (macOS garde l'ancienne icône en cache : relancer l'app ou `killall Dock`).
 - **Reste pour l'étape 0** : relever aussi « cue changée de couleur » et « cue supprimée » (non essayés), puis écrire les fixtures Swift d'après le journal brut (étape 2).
 
 ## Risques suivis
