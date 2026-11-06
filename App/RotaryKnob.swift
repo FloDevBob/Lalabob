@@ -49,7 +49,8 @@ struct RotaryKnob: View {
                         }
                         .onEnded { _ in dragStart = nil }
                 )
-                .onTapGesture(count: 2) { onReset() }
+                // Simultané : le glisser (distance minimale 0) recevrait sinon tous les appuis et le double-clic n'arriverait jamais.
+                .simultaneousGesture(TapGesture(count: 2).onEnded { onReset() })
                 .interactiveCursor(dragStart == nil ? .grabIdle : .grabActive)
                 .help("Filtre de \(name) : glisser vers le haut (coupe les basses) ou vers le bas (coupe les aigus) · double-clic : neutre")
             caption
