@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "LalabobMIDI", targets: ["LalabobMIDI"]),
         .library(name: "ControllerDrivers", targets: ["ControllerDrivers"]),
         .library(name: "LalabobAudio", targets: ["LalabobAudio"]),
+        .library(name: "LalabobImport", targets: ["LalabobImport"]),
         .library(name: "LalabobEngine", targets: ["LalabobEngine"]),
     ],
     targets: [
@@ -27,18 +28,24 @@ let package = Package(
         .target(name: "ControllerDrivers", dependencies: ["LalabobModel", "LalabobMIDI"]),
         // Lecture audio (AVAudioEngine) — jalon 1.
         .target(name: "LalabobAudio", dependencies: ["LalabobModel"]),
+        // Import de Live Sets Ableton (.als) : lecture du XML et construction de grilles. Pur, sans accès aux sons (ADR 0007).
+        .target(name: "LalabobImport", dependencies: ["LalabobModel"]),
         // Orchestration : état du spectacle ouvert, commandes, routage.
         .target(
             name: "LalabobEngine",
-            dependencies: ["LalabobModel", "LalabobAudio", "LalabobMIDI", "ControllerDrivers"]
+            dependencies: ["LalabobModel", "LalabobAudio", "LalabobMIDI", "ControllerDrivers", "LalabobImport"]
         ),
 
         .testTarget(name: "LalabobModelTests", dependencies: ["LalabobModel"]),
         .testTarget(name: "LalabobDesignTests", dependencies: ["LalabobDesign"]),
         .testTarget(name: "LalabobMIDITests", dependencies: ["LalabobMIDI"]),
         .testTarget(
+            name: "LalabobImportTests", dependencies: ["LalabobImport", "LalabobModel"],
+            resources: [.copy("Fixtures")]  // BobEte.als : un vrai Live Set (Live 11.3.25) de la troupe
+        ),
+        .testTarget(
             name: "LalabobEngineTests",
-            dependencies: ["LalabobEngine", "LalabobAudio", "LalabobModel", "LalabobMIDI", "ControllerDrivers"]
+            dependencies: ["LalabobEngine", "LalabobAudio", "LalabobModel", "LalabobMIDI", "ControllerDrivers", "LalabobImport"]
         ),
         .testTarget(name: "LalabobAudioTests", dependencies: ["LalabobAudio", "LalabobModel"]),
         .testTarget(name: "ControllerDriversTests", dependencies: ["ControllerDrivers", "LalabobModel", "LalabobMIDI"]),

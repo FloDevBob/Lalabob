@@ -18,6 +18,7 @@ Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation L
 | **Échap** | **Tout arrêter** (fondu de 40 ms) |
 | Bouton ■ de la colonne / bouton rouge sous la colonne (APC) | Arrête tous les sons de cette colonne |
 | Faders | Volume des sons ; intensité côté LightKey pour les 2 colonnes de droite |
+| Potard à côté du fader (colonnes sons) | **Filtre** : centre = son intact ; vers la gauche, il reste les basses ; vers la droite, il reste les aigus. Double-clic = neutre |
 | ⌘1 … ⌘9 | Changer de grille |
 
 Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien : les clics à l'écran continuent de marcher.
@@ -43,3 +44,11 @@ Sur la grille : une cue **allumée** dans LightKey a un contour, un halo et une 
 - **Aucun état sur les pads** : sortie de « Lalabob Lumière » activée dans LightKey ? Ouvrir le **Banc d'essai lumière** (⌥⌘L) : une ligne « LightKey → » doit apparaître quand on lance une cue.
 - **Contrôleur absent** : le rebrancher, les LED reviennent seules ; en attendant, tout se joue à l'écran.
 - **Sons manquants à l'ouverture** : un message les liste ; leurs pads restent muets.
+
+## Importer un Live Set Ableton (brouillon, à essayer)
+
+1. Déverrouiller le spectacle (⌘L), puis Fichier › **Importer un Live Set Ableton…**
+2. Choisir **un dossier qui contient le projet Live et ses sons** (par exemple `Bob play`), pas seulement le fichier `.als` : sans cela, l'app ne peut pas lire les sons.
+3. Si le set a plus de 6 pistes audio ou 8 scènes, choisir : découper en plusieurs grilles, ou garder le premier bloc 6 × 8.
+4. Les grilles sont ajoutées à la suite ; un seul ⌘Z les retire. Le compte rendu liste les sons introuvables (leurs pads restent muets).
+Seuls les clips **audio** de la vue Session sont importés (nom, boucle, début/fin et volume sont repris ; fondus et couleurs sont à refaire dans l'inspecteur).

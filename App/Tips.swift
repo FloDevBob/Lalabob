@@ -78,6 +78,10 @@ enum Tips {
             id: "volume-pad", title: "Un volume propre à chaque pad",
             text: "Il est séparé du curseur de la colonne. Double-cliquez dessus pour revenir à la valeur d'origine. Le changement s'entend tout de suite, même pendant la lecture.",
             keys: [], mode: .always),
+        Tip(
+            id: "filtre", title: "Le filtre d'une colonne de sons",
+            text: "Le potard à côté du fader : au centre, le son est intact. Tournez à gauche pour ne garder que les graves, à droite pour ne garder que les aigus. Double-cliquez pour revenir au centre. Le réglage se fait même pendant la lecture.",
+            keys: [], mode: .always),
     ]
 
     /// Les astuces qui ont du sens dans le mode courant.
