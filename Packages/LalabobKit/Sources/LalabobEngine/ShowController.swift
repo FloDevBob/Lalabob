@@ -125,6 +125,7 @@ public final class ShowController {
         case stop(Pad.ID)
         case stopAll
         case level(column: Int, level: Double)
+        case filter(column: Int, value: Double)
         case output(String?)
         case padGain(Pad.ID, Double)
         case seek(Pad.ID, TimeInterval)
@@ -160,6 +161,7 @@ public final class ShowController {
                     case .stop(let id): await audio.stop(id)
                     case .stopAll: await audio.stopAll()
                     case .level(let column, let level): await audio.setColumnLevel(column, level: level)
+                    case .filter(let column, let value): await audio.setColumnFilter(column, value: value)
                     case .output(let uid): try await audio.setOutputDevice(uid: uid)
                     case .padGain(let id, let db): await audio.setPadGain(id, gainDB: db)
                     case .seek(let id, let elapsed): await audio.seek(id, to: elapsed)
@@ -443,6 +445,23 @@ public final class ShowController {
         }
     }
 
+    /// Filtre DJ d'une colonne son de la grille affichée (potard de la carte de volume) : −1 passe-bas, 0 neutre, +1
+    /// passe-haut (`FilterCurve`). Borné, et aimanté au neutre tout près du centre. Comme le volume, il se règle en jouant
+    /// (actif cadenas fermé) et ne passe pas par ⌘Z ; il est enregistré avec le spectacle. Sans effet sur une colonne lumière.
+    public func setColumnFilter(_ column: Int, value: Double) {
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .audio else { return }
+        let value = FilterCurve.snapped(value)
+        guard show.grids[selectedGridIndex].columns[column].filter != value else { return }
+        show.grids[selectedGridIndex].columns[column].filter = value
+        onShowChange?(show)
+        commands.yield(.filter(column: column, value: value))
+    }
+
+    /// « Tout remettre au neutre » d'un filtre (double-clic sur le potard).
+    public func resetColumnFilter(_ column: Int) {
+        setColumnFilter(column, value: 0)
+    }
+
     /// Les niveaux affichés ont pu changer : un fader physique n'est accroché que s'il y est encore.
     private func syncHardwareFaders() {
         faderPickup.sync(screenLevels: currentGrid.columns.map(\.level))
@@ -563,9 +582,11 @@ public final class ShowController {
         syncColumnLevels()
     }
 
+    /// Niveaux et filtres de la grille affichée vers le moteur (ouverture, changement d'onglet, annulation).
     private func syncColumnLevels() {
         for (index, column) in currentGrid.columns.enumerated() where column.kind == .audio {
             commands.yield(.level(column: index, level: column.level))
+            commands.yield(.filter(column: index, value: column.filter))
         }
     }
 

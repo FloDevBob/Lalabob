@@ -32,6 +32,7 @@ struct ContentView: View {
         .overlay(alignment: .top) { lockBanner }
         .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: controller.lockNotice)
         .focusedSceneValue(\.showController, controller)
+        .modifier(LiveSetImportSupport())
         .alert(
             "Import impossible",
             isPresented: Binding(get: { controller.importError != nil }, set: { if !$0 { controller.dismissImportError() } })

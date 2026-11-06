@@ -14,7 +14,7 @@ public enum AudioEngineError: Error, Equatable, Sendable {
 /// Moteur audio de Lalabob, fondé sur AVAudioEngine.
 ///
 /// Graphe : un `AVAudioPlayerNode` par pad joué → un mélangeur par colonne (le fader)
-/// → le mélangeur principal → la sortie choisie.
+/// → le filtre de la colonne (`FilterCurve`) → le mélangeur principal → la sortie choisie.
 ///
 /// Tout l'état vit dans l'acteur ; le thread de rendu audio n'exécute que le code d'Apple.
 /// Élagage et fondus des sons courts sont « cuits » dans les échantillons au chargement.
@@ -36,6 +36,11 @@ public actor AVAudioEngineController: AudioEngineControlling {
     private let log = Logger(subsystem: "fr.lalabob.app", category: "audio")
     private let engine = AVAudioEngine()
     private let columnMixers: [AVAudioMixerNode]
+    /// Filtre DJ de chaque colonne, juste après son fader : bande 0 = passe-bas, bande 1 = passe-haut.
+    /// Au neutre, les deux bandes sont en bypass : le son passe sans traitement.
+    private let columnFilters: [AVAudioUnitEQ]
+    /// Dernière position demandée pour chaque filtre (réappliquée après un redémarrage du moteur).
+    private var filterPositions: [Double]
     private let preloadLimit: TimeInterval
 
     private struct OfflineRendering {
@@ -97,6 +102,8 @@ public actor AVAudioEngineController: AudioEngineControlling {
         (events, continuation) = AsyncStream.makeStream(of: PlaybackEvent.self, bufferingPolicy: .unbounded)
         self.preloadLimit = preloadLimit
         self.columnMixers = (0..<PadGrid.size).map { _ in AVAudioMixerNode() }
+        self.columnFilters = (0..<PadGrid.size).map { _ in Self.makeColumnFilter() }
+        self.filterPositions = Array(repeating: 0, count: PadGrid.size)
 
         let graphFormat: AVAudioFormat
         if case .offline(let rate, let maxFrames) = output {
@@ -112,20 +119,56 @@ public actor AVAudioEngineController: AudioEngineControlling {
         } else {
             graphFormat = engine.outputNode.inputFormat(forBus: 0)
         }
-        for mixer in columnMixers {
+        for (mixer, filter) in zip(columnMixers, columnFilters) {
             engine.attach(mixer)
-            engine.connect(mixer, to: engine.mainMixerNode, format: graphFormat)
+            engine.attach(filter)
+            engine.connect(mixer, to: filter, format: graphFormat)
+            engine.connect(filter, to: engine.mainMixerNode, format: graphFormat)
         }
-        Self.installMeters(on: columnMixers, meters: meters)
+        Self.installMeters(on: columnFilters, meters: meters)
     }
 
-    /// Une prise de mesure sur la sortie de chaque mélangeur de colonne (donc après son fader) : la crête de chaque bloc
-    /// va dans `meters`. La prise n'est pas le thread de rendu, mais elle reste légère : un `vDSP_maxmgv` par canal,
-    /// une écriture atomique, ni allocation ni verrou.
-    private static func installMeters(on columnMixers: [AVAudioMixerNode], meters: ColumnMeters) {
-        for (column, mixer) in columnMixers.enumerated() {
-            mixer.removeTap(onBus: 0)
-            mixer.installTap(onBus: 0, bufferSize: 1024, format: nil) { buffer, _ in
+    /// Filtre d'une colonne, neutre : deux bandes en bypass, réglées sur leur coupure « ouverte ».
+    private static func makeColumnFilter() -> AVAudioUnitEQ {
+        let node = AVAudioUnitEQ(numberOfBands: 2)
+        let lowPass = node.bands[0]
+        lowPass.filterType = .lowPass
+        lowPass.frequency = Float(FilterCurve.lowPassMaximum)
+        lowPass.bypass = true
+        let highPass = node.bands[1]
+        highPass.filterType = .highPass
+        highPass.frequency = Float(FilterCurve.highPassMinimum)
+        highPass.bypass = true
+        return node
+    }
+
+    /// Règle un filtre de colonne. Ne fait que changer des paramètres de l'unité audio : pas de rebranchement, le son
+    /// ne s'arrête pas. La coupure est réglée avant que la bande ne sorte du bypass. Les extrémités de la courbe sont
+    /// quasi transparentes (passe-bas à 20 kHz, passe-haut à 20 Hz) : passer du neutre au filtre ne fait pas de saut.
+    private static func apply(_ mode: FilterCurve.Mode, to node: AVAudioUnitEQ) {
+        let lowPass = node.bands[0], highPass = node.bands[1]
+        switch mode {
+        case .neutral:
+            lowPass.bypass = true
+            highPass.bypass = true
+        case .lowPass(let cutoff):
+            highPass.bypass = true
+            lowPass.frequency = Float(cutoff)
+            lowPass.bypass = false
+        case .highPass(let cutoff):
+            lowPass.bypass = true
+            highPass.frequency = Float(cutoff)
+            highPass.bypass = false
+        }
+    }
+
+    /// Une prise de mesure sur la sortie de chaque colonne, après son fader **et son filtre** (ce qu'on entend) : la crête
+    /// de chaque bloc va dans `meters`. La prise n'est pas le thread de rendu, mais elle reste légère : un `vDSP_maxmgv`
+    /// par canal, une écriture atomique, ni allocation ni verrou.
+    private static func installMeters(on columnOutputs: [AVAudioNode], meters: ColumnMeters) {
+        for (column, node) in columnOutputs.enumerated() {
+            node.removeTap(onBus: 0)
+            node.installTap(onBus: 0, bufferSize: 1024, format: nil) { buffer, _ in
                 guard let data = buffer.floatChannelData else { return }
                 let frames = vDSP_Length(buffer.frameLength)
                 let channels = Int(buffer.format.channelCount)
@@ -229,6 +272,15 @@ public actor AVAudioEngineController: AudioEngineControlling {
     public func setColumnLevel(_ column: Int, level: Double) {
         guard columnMixers.indices.contains(column) else { return }
         columnMixers[column].outputVolume = Float(Gain.faderLevel(level))
+    }
+
+    /// Règle le filtre DJ d'une colonne (−1 passe-bas … 0 neutre … +1 passe-haut), en direct, son en cours compris.
+    /// Valeur hors bornes : bornée ; non numérique : neutre.
+    public func setColumnFilter(_ column: Int, value: Double) {
+        guard columnFilters.indices.contains(column) else { return }
+        let position = FilterCurve.clamped(value)
+        filterPositions[column] = position
+        Self.apply(FilterCurve.mode(for: position), to: columnFilters[column])
     }
 
     /// Règle en direct le volume d'un pad (dB), son en cours de lecture compris ; sans effet sur un pad inconnu.
@@ -578,11 +630,14 @@ public actor AVAudioEngineController: AudioEngineControlling {
         engine.stop()
         meters.reset()
         let format = offline?.format ?? engine.outputNode.inputFormat(forBus: 0)
-        for mixer in columnMixers {
+        for (column, (mixer, filter)) in zip(columnMixers, columnFilters).enumerated() {
             engine.disconnectNodeOutput(mixer)
-            engine.connect(mixer, to: engine.mainMixerNode, format: format)
+            engine.disconnectNodeOutput(filter)
+            engine.connect(mixer, to: filter, format: format)
+            engine.connect(filter, to: engine.mainMixerNode, format: format)
+            Self.apply(FilterCurve.mode(for: filterPositions[column]), to: filter)  // réglage gardé d'une sortie à l'autre
         }
-        Self.installMeters(on: columnMixers, meters: meters)  // le format a pu changer avec la sortie : la prise de mesure est reposée
+        Self.installMeters(on: columnFilters, meters: meters)  // le format a pu changer avec la sortie : la prise de mesure est reposée
         do { try startEngineIfNeeded() } catch {
             log.error("Redémarrage du moteur impossible : \(error.localizedDescription)")
             for item in snapshot { continuation.yield(PlaybackEvent(pad: item.pad, state: .idle, duration: 0)) }

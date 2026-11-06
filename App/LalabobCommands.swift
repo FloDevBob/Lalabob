@@ -13,9 +13,14 @@ struct LalabobCommands: Commands {
     static let helpWindowID = "help"
 
     @FocusedValue(\.showController) private var controller
+    @FocusedValue(\.liveSetPicker) private var liveSetPicker
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(after: .newItem) {
+            Button("Importer un Live Set Ableton…") { liveSetPicker?.wrappedValue = true }
+                .disabled(liveSetPicker == nil || controller?.isLocked != false)
+        }
         CommandGroup(after: .pasteboard) {
             Button("Dupliquer le pad") { controller?.duplicateSelection() }
                 .keyboardShortcut("d")

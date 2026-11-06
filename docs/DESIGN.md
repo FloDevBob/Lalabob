@@ -36,6 +36,10 @@ Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dos
   - Sélectionné : contour blanc 2 px. Cible de dépôt : contour pointillé blanc ; badge « Copie » si ⌥.
 - Sous chaque colonne : **fader vertical** (poignée blanche arrondie), vumètre (vert, ambre au-delà de 82 %),
   valeur en dB (sons) ou en % + CC (lumière, icône soleil dont l'opacité suit le niveau).
+- Colonne son : à droite du fader, le **potard de filtre** (36 pt, 28 pt quand la piste des faders rétrécit). Repère au sommet = neutre ; un arc à la couleur de la colonne part du sommet
+  vers la gauche (passe-bas : il reste les basses) ou vers la droite (passe-haut : il reste les aigus). Étiquette dessous, sur deux lignes : « Neutre », ou « Bas » / « Haut » et la coupure
+  (« Bas 800 Hz », « Haut 2 kHz »). Glisser vers le haut ou la droite = passe-haut, vers le bas ou la gauche = passe-bas ; double-clic = neutre ; flèches du clavier ; VoiceOver réglable.
+  Actif même verrouillé (on règle en jouant). Curseur : main ouverte / fermée, comme le fader. Le vumètre mesure après le filtre.
 
 ### Inspecteur (panneau du bas, s'ouvre quand on clique un pad) — solution B, décision du 31/10/2026
 
