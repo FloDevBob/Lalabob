@@ -372,12 +372,7 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   Verrouillé : rien ne change (le double-clic joue). Passe par `updatePad` : une annulation (⌘Z). Sans test automatique (vue SwiftUI).
   **À essayer** : double-clic sur le titre, sur le sous-titre (même vide), Échap, changer d'onglet pendant la saisie, ⌘Z.
 
-### J8 — Import d'un Live Set Ableton 🟠 brouillon écrit sans Mac, non compilé, structure vérifiée sur un vrai Live Set (ADR 0007)
-**Décisions du 02/11/2026** : clips audio de la vue Session uniquement ; dépassement d'une grille = choix à chaque import (découper ou tronquer) ;
-sons cherchés d'abord au chemin relatif du `.als`, puis au chemin absolu, puis par nom sous le dossier du projet.
-- **Écrit** : module `LalabobImport` (gzip, lecture XML en flux, `AbletonShowBuilder` pur), `AbletonImporter` + `ShowController.importLiveSet` (Engine),
-  menu Fichier › « Importer un Live Set Ableton… » (`App/LiveSetImport.swift`), `docs/FORMAT.md` (spécification du `.lalabob`), ADR 0007.
-  Tests : `LalabobImportTests` (lecture, gzip, construction des grilles), `LiveSetImportTests` (Engine : recherche des sons, import, ⌘Z, verrou).
-- **Fait le 02/11/2026** : lecture vérifiée sur `BobEte.als` (Live 11.3.25, fixture `Tests/LalabobImportTests/Fixtures/`) ; élagage (secondes ou battements via les marqueurs de warp) et volume repris ; chemins relatifs sortants acceptés ; recherche du `.als` dans les sous-dossiers.
-- **Reste** : ☐ `make test` et `make build` sur Mac (rien n'a été compilé) ☐ essai dans l'app avec le dossier `Bob play` ☐ écouter un clip au volume réglé (« Nuit », −10,5 dB) ☐ essai avec un `.als` de Live 12 ☐ v2 : fondus, couleurs, pistes MIDI « Lumières » → cues.
-- **Limite connue** : l'app étant sandboxée, choisir un **dossier qui contient le projet Live et ses sons** (ici `Bob play`), pas seulement le `.als`, pour que les sons soient lus.
+### J8 — Import d'un Live Set Ableton ⏸ mis de côté (25/11/2026)
+Le brouillon (module `LalabobImport`, `AbletonImporter`, menu Fichier › « Importer un Live Set Ableton… », ADR 0007) n'a jamais été
+compilé ni essayé : il est **retiré de `main`** et conservé tel quel sur la branche **`j8/import-ableton`** (issue de `j7/filtre-colonne`
+1.1.1). À reprendre plus tard : rebaser cette branche sur `main`, compiler, `make test`, essai avec le dossier `Bob play`.
