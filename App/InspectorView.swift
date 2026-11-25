@@ -76,26 +76,35 @@ private struct AudioHeader: View {
     let clip: AudioClip
     let waveform: Waveform?
 
+    /// Pad son et lumière : la bande du haut est plus dense (groupe Lumière, type du pad) ; le nom du fichier est abrégé d'abord.
+    private var isMixed: Bool { pad.light != nil }
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: isMixed ? 8 : 12) {
             TransportControls(position: position, pad: pad, clip: clip, waveform: waveform)
             HeaderDivider()
             TitleFields(position: position, pad: pad)
+            if isMixed { LightGroup(position: position, pad: pad) }
             Spacer(minLength: 8)
             Text(clip.fileName)
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(Surface.textTertiary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .frame(maxWidth: 150, alignment: .trailing)
-                .layoutPriority(-1)
+                .frame(maxWidth: isMixed ? 100 : 150, alignment: .trailing)
+                .layoutPriority(-2)
                 .help("Fichier d'origine : \(clip.fileName)")
             if controller.isLocked {
                 HeaderDivider()
                 TintSwatch(tint: pad.tint)
             } else {
                 HeaderDivider()
-                RetriggerControl(position: position, clip: clip)
+                if isMixed {
+                    MixedRetriggerMenu(position: position, pad: pad, clip: clip)
+                } else {
+                    RetriggerControl(position: position, clip: clip)
+                }
+                PadKindControl(position: position, pad: pad)
                 HeaderDivider()
                 ColorPopoverButton(position: position, pad: pad)
                 PadActionsMenu(position: position, hasPad: true)
@@ -128,7 +137,7 @@ private struct LightHeader: View {
         HStack(spacing: 12) {
             TitleFields(position: position, pad: pad)
             Spacer(minLength: 8)
-            Button("Tester", icon: .spotlight, size: 12) { controller.audition(at: position) }
+            Button("Tester", icon: .spotlight, size: 12) { controller.testCue(at: position) }
                 .buttonStyle(.borderedProminent)
                 .tint(Surface.lightAccent)
                 .foregroundStyle(Surface.window)
@@ -139,7 +148,15 @@ private struct LightHeader: View {
                 .foregroundStyle(Surface.textSecondary)
                 .lineLimit(1)
                 .layoutPriority(-1)
+            if pad.awaitsSound {
+                Text("En attente de son : déposez un fichier sur le pad")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Surface.lightAccent)
+                    .lineLimit(1)
+                    .layoutPriority(-1)
+            }
             HeaderDivider()
+            PadKindControl(position: position, pad: pad)
             ColorPopoverButton(position: position, pad: pad)
             PadActionsMenu(position: position, hasPad: true)
         }
@@ -153,6 +170,125 @@ private struct LightHeader: View {
         }
         let model = controller.connectedControllerName ?? controller.lastControllerModel?.displayName ?? "contrôleur"
         return "LightKey reçoit la note \(note) (\(model))."
+    }
+}
+
+/// Pad son et lumière : le groupe « Lumière » de la bande du haut — ampoule (à la couleur du pad quand la cue est allumée dans
+/// LightKey), note envoyée, appairage, et « Tester » (la cue seule, sans le son).
+private struct LightGroup: View {
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
+    let pad: Pad
+
+    var body: some View {
+        let state = controller.lightState(at: position)
+        let paired = pad.light?.isPaired == true
+        HStack(spacing: 8) {
+            Icon.lightbulbFill.view(size: 14)
+                .foregroundStyle(state == .on ? pad.tint.vividColor : Surface.lightAccent.opacity(state == .off ? 0.5 : 1))
+                .accessibilityHidden(true)
+            Text(noteText + (paired ? " ✓" : ""))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(paired ? Surface.textPrimary : Surface.textSecondary)
+                .lineLimit(1)
+            Button("Tester") { controller.testCue(at: position) }
+                .controlSize(.small)
+                .help("Envoie la cue à LightKey, sans lancer le son")
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 34)
+        .background(Surface.lightAccent.opacity(0.07), in: .rect(cornerRadius: 10))
+        .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Surface.lightAccent.opacity(0.25)) }
+        .fixedSize()
+        .help(helpText(paired: paired, state: state))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Lumière du pad")
+    }
+
+    private var noteText: String {
+        let label = controller.positionLabel(for: position)
+        guard label.contains(" · note "), let note = label.components(separatedBy: " · note ").last else { return "Note ?" }
+        return "Note \(note)"
+    }
+
+    private func helpText(paired: Bool, state: LightState) -> String {
+        var parts = [noteText]
+        if let channel = controller.lightChannel(forColumn: position.column) { parts.append("canal LightKey \(channel)") }
+        parts.append(paired ? "appairée" : "non appairée")
+        switch state {
+        case .on: parts.append("allumée dans LightKey")
+        case .off: parts.append("éteinte dans LightKey")
+        case .unknown: break
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// « Nouvel appui » d'un pad son et lumière : un seul menu pour le son (relancer ou arrêter) et pour la cue (n'allumer que si elle
+/// est éteinte, ou basculer à chaque appui).
+private struct MixedRetriggerMenu: View {
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
+    let pad: Pad
+    let clip: AudioClip
+
+    var body: some View {
+        Menu {
+            Picker(
+                "Son",
+                selection: Binding(get: { clip.retrigger }, set: { controller.setRetrigger(at: position, $0) })
+            ) {
+                Text("Son : relancer").tag(RetriggerBehavior.restart)
+                Text("Son : arrêter").tag(RetriggerBehavior.stop)
+            }
+            .pickerStyle(.inline)
+            Picker(
+                "Lumière",
+                selection: Binding(
+                    get: { pad.lightRetrigger }, set: { controller.setLightRetrigger(at: position, to: $0) })
+            ) {
+                Text("Lumière : allumer seulement").tag(LightRetrigger.turnOnOnly)
+                Text("Lumière : basculer à chaque appui").tag(LightRetrigger.toggle)
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Text("Nouvel appui")
+                .font(.system(size: 11))
+                .foregroundStyle(Surface.textSecondary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Si on rejoue ce pad : le son repart ou s'arrête ; la cue ne s'envoie que si LightKey la dit éteinte, ou à chaque appui")
+        .accessibilityLabel("Nouvel appui")
+    }
+}
+
+/// Type du pad (Son · Lumière · Les deux), dans une colonne **son et lumière** seulement ; une conversion qui retire quelque chose
+/// demande confirmation (même feuille que pour une colonne).
+private struct PadKindControl: View {
+    @Environment(ShowController.self) private var controller
+    @Environment(ConversionPrompter.self) private var prompter
+    let position: GridPosition
+    let pad: Pad
+
+    var body: some View {
+        if controller.currentGrid.columns[position.column].kind == .mixed, !controller.isLocked {
+            Picker(
+                "Type du pad",
+                selection: Binding(
+                    get: { pad.kind }, set: { prompter.requestPadKind(at: position, to: $0, controller: controller) })
+            ) {
+                Text("Son").tag(PadKind.audio)
+                Text("Lumière").tag(PadKind.light)
+                Text("Les deux").tag(PadKind.mixed)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.small)
+            .frame(width: 170)
+            .help("Type du pad : son seul, lumière seule, ou les deux à la fois")
+            .accessibilityLabel("Type du pad")
+        }
     }
 }
 
@@ -548,6 +684,7 @@ struct MultiSelectionBar: View {
 /// Verrouillé, seules les commandes de lecture restent (le reste serait refusé).
 struct PadContextMenu: View {
     @Environment(ShowController.self) private var controller
+    @Environment(ConversionPrompter.self) private var prompter
     let position: GridPosition
 
     var body: some View {
@@ -556,9 +693,13 @@ struct PadContextMenu: View {
         if let pad {
             if let clip = pad.audio {
                 audioItems(pad: pad, clip: clip, locked: locked)
+                if pad.light != nil {
+                    Divider()
+                    Button("Tester la cue", icon: .spotlight) { controller.testCue(at: position) }
+                }
             } else {
                 if !locked {
-                    Button("Tester", icon: .spotlight) { controller.audition(at: position) }
+                    Button("Tester", icon: .spotlight) { controller.testCue(at: position) }
                     if controller.isPaired(at: position) {
                         Button("Retirer l'appairage") { controller.unpairCue(at: position) }
                     }
@@ -568,10 +709,36 @@ struct PadContextMenu: View {
             }
             if !locked {
                 Divider()
+                typeMenu(pad: pad)
+                Divider()
                 PadEditActions(position: position, hasPad: true)
             }
         } else if !locked {
             PadEditActions(position: position, hasPad: false)
+        }
+    }
+
+    /// Type du pad : possible dans une colonne son et lumière ; ailleurs la colonne n'accepte qu'un type (grisé, avec la raison).
+    @ViewBuilder
+    private func typeMenu(pad: Pad) -> some View {
+        let columnKind = controller.currentGrid.columns[position.column].kind
+        if columnKind == .mixed {
+            Menu("Type du pad") {
+                ForEach([PadKind.audio, .light, .mixed], id: \.self) { kind in
+                    let isCurrent = pad.kind == kind
+                    let lossy = !isCurrent && !controller.conversionPlan(padAt: position, to: kind).isLossless
+                    Button {
+                        prompter.requestPadKind(at: position, to: kind, controller: controller)
+                    } label: {
+                        let name = kind == .audio ? "Son uniquement" : kind == .light ? "Lumière uniquement" : "Son et lumière"
+                        Text((isCurrent ? "✓ " : "") + name + (lossy ? "…" : ""))
+                    }
+                    .disabled(isCurrent)
+                }
+            }
+        } else {
+            Button(columnKind == .audio ? "Type du pad — la colonne n'accepte que le son" : "Type du pad — la colonne n'accepte que la lumière") {}
+                .disabled(true)
         }
     }
 
@@ -762,6 +929,41 @@ private struct TrackGainGauge: View {
     controller.selection = position
     return InspectorView(position: position)
         .environment(controller)
+        .environment(ConversionPrompter())
         .frame(width: 1100, height: Metrics.inspectorHeight)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Inspecteur — pad son et lumière (largeur minimale, 1047)") {
+    Fonts.register()
+    var grid = PadGrid.empty(name: "Essai")
+    grid.columns[1] = Column.empty(name: "Scènes", kind: .mixed)
+    let position = GridPosition(column: 1, row: 2)
+    grid[position] = Pad(
+        title: "Orage lointain", subtitle: "Tonnerre + éclairs", tint: .azur,
+        audio: AudioClip(fileName: "essai.wav", trimStart: 0.4, trimEnd: 5.2, fadeIn: 0.8, fadeOut: 1.4, loops: true),
+        light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0), isPaired: true))
+    let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
+    controller.selection = position
+    return InspectorView(position: position)
+        .environment(controller)
+        .environment(ConversionPrompter())
+        .frame(width: 1047, height: Metrics.inspectorHeight)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Inspecteur — pad lumière dans une colonne son et lumière") {
+    Fonts.register()
+    var grid = PadGrid.empty(name: "Essai")
+    grid.columns[1] = Column.empty(name: "Scènes", kind: .mixed)
+    let position = GridPosition(column: 1, row: 2)
+    grid[position] = Pad(
+        title: "Noir", subtitle: "Cue", tint: .graphite, light: .blank, awaitsSound: true)
+    let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
+    controller.selection = position
+    return InspectorView(position: position)
+        .environment(controller)
+        .environment(ConversionPrompter())
+        .frame(width: 1047, height: Metrics.inspectorHeight)
         .preferredColorScheme(.dark)
 }
