@@ -234,23 +234,6 @@ struct GridTabsView: View {
         }
     }
 
-    /// Pastille du canal LightKey de la grille : « Can. 2 », ou « Sans canal » en pointillés rouges.
-    private func channelBadge(_ channel: Int?) -> some View {
-        Text(channel.map { "Can. \($0)" } ?? "Sans canal")
-            .font(.system(size: 10, design: .monospaced))
-            .foregroundStyle(channel == nil ? Color.red.opacity(0.9) : Surface.lightAccent)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(
-                        channel == nil ? Color.red.opacity(0.5) : Surface.lightAccent.opacity(0.35),
-                        style: StrokeStyle(lineWidth: 1, dash: channel == nil ? [3, 2] : []))
-            }
-            .help(channel.map { "Canal LightKey \($0) : les cues et faders lumière de cette grille partent sur ce canal" }
-                ?? "Sans canal : la lumière de cette grille n'envoie rien à LightKey")
-    }
-
     private func tab(index: Int, grid: PadGrid) -> some View {
         let isSelected = index == controller.selectedGridIndex
         return HStack(spacing: 6) {
@@ -275,7 +258,6 @@ struct GridTabsView: View {
             Text("\(controller.padCount(inGrid: index))")
                 .font(Typography.mono)
                 .foregroundStyle(Surface.textTertiary)
-            channelBadge(grid.lightChannel)
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
@@ -288,7 +270,10 @@ struct GridTabsView: View {
         .contentShape(.rect(cornerRadius: 10))
         .hoverHighlight(cornerRadius: 10, enabled: !isSelected && renaming != grid.id)
         .interactiveCursor(.link, enabled: renaming != grid.id)
-        .help(controller.isLocked ? "Grille \(index + 1) : \(grid.name)" : "Grille \(index + 1) : \(grid.name) · Double-cliquer pour renommer, glisser pour réordonner (⌘\(index + 1))")
+        .help(
+            (controller.isLocked ? "Grille \(index + 1) : \(grid.name)" : "Grille \(index + 1) : \(grid.name) · Double-cliquer pour renommer, glisser pour réordonner (⌘\(index + 1))")
+                + " · " + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey")
+                + (controller.isLocked ? "" : " (clic droit pour le changer)"))
         .onTapGesture(count: 2) {
             if controller.isLocked { controller.notifyLocked() } else { startRenaming(grid) }
         }

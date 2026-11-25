@@ -240,9 +240,9 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   supprimer libère. Migration à la lecture (`ShowPackage.decodeMigrating`) : grille N → canal N, appairages des grilles 2+ remis à faux,
   alerte unique à l'ouverture. `ControllerSession` : clics, appuis relayés (Note Off sur le canal du Note On), faders lumière et retour par
   canal ; `ControllerDriver.lightFeedback` renvoie le canal ; état des cues par canal (`ShowController.lightStatesByChannel`, `lightStates` =
-  canal de la grille affichée). Interface : pastille « Can. N » sur l'onglet, clic droit › « Canal LightKey » (confirmation).
+  canal de la grille affichée). Interface : clic droit sur l'onglet › « Canal LightKey » (confirmation) ; **pas de pastille permanente** (retirée le 25/11/2026 : trop de place), le canal est dans l'infobulle de l'onglet.
   Format inchangé en version 1 (clé facultative). 21 tests (`LightChannelTests` modèle et moteur, pilotes) ; tous les tests du package verts.
-  **Limite** : l'interface (pastille, menu, alerte) n'a pas été regardée à l'œil, seulement compilée.
+  **Limite** : l'interface (menu, alerte) n'a pas été regardée à l'œil, seulement compilée.
   **À essayer** : ☐ banc d'essai sur le canal 2 : LightKey distingue-t-il la même note sur les canaux 1 et 2 ? ☐ deux grilles, même pad, deux
   cues ☐ retour : la cue allumée ne s'affiche que sur sa grille ☐ ancien spectacle : alerte, grille 1 toujours appairée ☐ aucun son ne s'arrête.
 - **Colonnes lumière communes (25/11/2026, branche `j9/lumiere-commune`, fiche 01b)** ✅ code, essai réel à faire.
