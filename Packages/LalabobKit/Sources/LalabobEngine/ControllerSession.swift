@@ -48,6 +48,9 @@ public final class ControllerSession {
     @ObservationIgnored private var lastLEDs: [GridPosition: LEDState] = [:]
     /// Boutons « stop » déjà envoyés au contrôleur (`nil` : rien d'envoyé depuis la connexion).
     @ObservationIgnored private var lastStopColumns: Set<Int>?
+    /// Shift tenu (APC) : les boutons de scène visent les grilles 9 à 16.
+    @ObservationIgnored private var shiftHeld = false
+    @ObservationIgnored private var lastGridButtons: [MIDIEvent]?
     /// La tâche qui vide la file d'envoi vers le contrôleur (on l'attend à la fermeture, voir `shutdown`).
     @ObservationIgnored private var outboxTask: Task<Void, Never>?
     @ObservationIgnored private var isShutDown = false
@@ -111,6 +114,7 @@ public final class ControllerSession {
             group.addTask { await self.watchInput() }
             group.addTask { await self.watchLEDs() }
             group.addTask { await self.watchStopButtons() }
+            group.addTask { await self.watchGridButtons() }
             group.addTask { await self.watchLightingFeedback() }
         }
     }
@@ -172,8 +176,10 @@ public final class ControllerSession {
         controller.setLightStates(lightStates)
         lastLEDs = [:]
         lastStopColumns = nil
+        lastGridButtons = nil
         pushLEDs()
         pushStopButtons()
+        pushGridButtons()
     }
 
     /// Détache le spectacle d'une fenêtre qui se ferme (sans effet si ce n'est pas le spectacle rattaché).
@@ -213,9 +219,11 @@ public final class ControllerSession {
         active = Active(model: found.model, driver: driver, source: found.source, destination: found.destination)
         lastLEDs = [:]
         lastStopColumns = nil
+        lastGridButtons = nil
         send(driver.connectionMessages)
         pushLEDs()
         pushStopButtons()
+        pushGridButtons()
         attachedController?.setConnectedController(found.model)
         bench.setController(found.model)
         log.info("Contrôleur connecté : \(found.model.displayName)")
@@ -266,6 +274,13 @@ public final class ControllerSession {
                     relayPad(position, pressed: false, driver: active.driver)
                 case .columnStop(let column):
                     attachedController?.stopColumn(column)
+                case .gridSelect(let index):
+                    attachedController?.selectGrid(at: index + (shiftHeld ? 8 : 0))
+                case .gridStep(let delta):
+                    if let controller = attachedController { controller.selectGrid(at: controller.selectedGridIndex + delta) }
+                case .shift(let pressed):
+                    shiftHeld = pressed
+                    pushGridButtons()
                 case .columnFader(let column, let value):
                     lastHardwareFaders[column] = value
                     // Un fader pas encore accroché (autre onglet) est ignoré : le volume ne saute pas.
@@ -427,6 +442,22 @@ public final class ControllerSession {
         guard columns != lastStopColumns else { return }
         lastStopColumns = columns
         send(active.driver.stopButtonMessages(litColumns: columns))
+    }
+
+    private func watchGridButtons() async {
+        for await _ in Observations({ [weak self] in (self?.attachedController?.selectedGridIndex, self?.attachedController?.show.grids.count) }) {
+            pushGridButtons()
+        }
+    }
+
+    /// Allume le bouton de la grille affichée (APC) ou les flèches possibles (Launchpad) ; ne renvoie que si ça change.
+    private func pushGridButtons() {
+        guard let active, !isShutDown, let controller = attachedController else { return }
+        let messages = active.driver.gridButtonMessages(
+            current: controller.selectedGridIndex, count: controller.show.grids.count, shiftHeld: shiftHeld)
+        guard messages != lastGridButtons else { return }
+        lastGridButtons = messages
+        send(messages)
     }
 
     private func watchLEDs() async {

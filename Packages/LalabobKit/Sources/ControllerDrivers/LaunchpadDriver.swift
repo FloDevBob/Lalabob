@@ -57,12 +57,34 @@ public struct LaunchpadDriver: ControllerDriver {
     public func interpret(_ event: MIDIEvent) -> ControllerInput? {
         switch event {
         case let .noteOn(_, note, velocity):
-            position(forNote: note).map { .padPressed($0, velocity: velocity) }
+            return position(forNote: note).map { .padPressed($0, velocity: velocity) }
         case let .noteOff(_, note, _):
-            position(forNote: note).map { .padReleased($0) }
+            return position(forNote: note).map { .padReleased($0) }
+        case let .controlChange(_, controller, value):
+            guard value > 0 else { return nil }
+            switch controller {
+            case Self.previousGridCC: return .gridStep(delta: -1)
+            case Self.nextGridCC: return .gridStep(delta: 1)
+            default: return nil
+            }
         default:
-            nil
+            return nil
         }
+    }
+
+    /// Les deux boutons en haut à gauche : CC 91 = grille précédente, CC 92 = suivante (mode Programmeur). ⚠︎ à confirmer sur le matériel.
+    static let previousGridCC: UInt8 = 91
+    static let nextGridCC: UInt8 = 92
+    /// Vert de la palette Novation (21) ; ⚠︎ à regarder à l'œil.
+    static let gridButtonGreen: UInt8 = 21
+
+    public func gridButtonMessages(current: Int?, count: Int, shiftHeld: Bool) -> [MIDIEvent] {
+        let hasPrevious = (current ?? 0) > 0
+        let hasNext = current.map { $0 < count - 1 } ?? false
+        return [
+            .controlChange(channel: 0, controller: Self.previousGridCC, value: hasPrevious ? Self.gridButtonGreen : 0),
+            .controlChange(channel: 0, controller: Self.nextGridCC, value: hasNext ? Self.gridButtonGreen : 0),
+        ]
     }
 
     /// Nombre maximal de LED par message SysEx (manuel : 81).

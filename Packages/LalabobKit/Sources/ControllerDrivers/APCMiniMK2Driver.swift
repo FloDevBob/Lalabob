@@ -40,6 +40,18 @@ public struct APCMiniMK2Driver: ControllerDriver {
         }
     }
 
+    /// Boutons de scène (à droite de la grille) : notes 112 à 119 = grilles 1 à 8 ; Shift = note 122. ⚠︎ à confirmer sur le matériel.
+    static let firstSceneNote: UInt8 = 112
+    static let shiftNote: UInt8 = 122
+
+    /// Un bouton de scène par grille : allumé (vélocité 1) pour la grille affichée, éteint sinon. Avec Shift, on montre les grilles 9 à 16.
+    public func gridButtonMessages(current: Int?, count: Int, shiftHeld: Bool) -> [MIDIEvent] {
+        (0..<8).map { slot in
+            let grid = slot + (shiftHeld ? 8 : 0)
+            return .noteOn(channel: 0, note: Self.firstSceneNote + UInt8(slot), velocity: grid == current ? 1 : 0)
+        }
+    }
+
     public func note(for position: GridPosition) -> UInt8 {
         precondition(position.isValid)
         let rowFromBottom = PadGrid.size - 1 - position.row
@@ -55,12 +67,17 @@ public struct APCMiniMK2Driver: ControllerDriver {
     public func interpret(_ event: MIDIEvent) -> ControllerInput? {
         switch event {
         case let .noteOn(_, note, velocity):
+            if (Self.firstSceneNote..<Self.firstSceneNote + 8).contains(note) {
+                return velocity > 0 ? .gridSelect(index: Int(note - Self.firstSceneNote)) : nil
+            }
+            if note == Self.shiftNote { return .shift(pressed: velocity > 0) }
             if (Self.firstStopNote..<Self.firstStopNote + UInt8(PadGrid.size)).contains(note) {
                 // Seul l'appui compte : le relâchement d'un bouton stop (vélocité 0) ne fait rien.
                 return velocity > 0 ? .columnStop(column: Int(note - Self.firstStopNote)) : nil
             }
             return position(forNote: note).map { .padPressed($0, velocity: velocity) }
         case let .noteOff(_, note, _):
+            if note == Self.shiftNote { return .shift(pressed: false) }
             return position(forNote: note).map { .padReleased($0) }
         case let .controlChange(_, controller, value):
             guard controller >= Self.firstFaderCC, controller < Self.masterFaderCC else { return nil }

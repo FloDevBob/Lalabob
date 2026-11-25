@@ -56,6 +56,12 @@ public enum ControllerInput: Equatable, Sendable {
     case columnFader(column: Int, value: Double)
     /// Bouton « stop » sous une colonne enfoncé (APC mini mk2).
     case columnStop(column: Int)
+    /// Bouton de scène : la grille `index` (0 à 7) ; avec Shift tenu, les grilles 8 à 15 (APC mini mk2).
+    case gridSelect(index: Int)
+    /// Flèche précédente (−1) / suivante (+1) (Launchpad).
+    case gridStep(delta: Int)
+    /// Touche Shift enfoncée ou relâchée (APC mini mk2).
+    case shift(pressed: Bool)
 }
 
 /// Un pilote traduit entre le langage d'un contrôleur et la grille 8×8 de Lalabob.
@@ -90,6 +96,10 @@ public protocol ControllerDriver: Sendable {
     /// Les boutons « stop » sous les colonnes (APC mini mk2) : `litColumns` allumés, les autres éteints. Vide sinon.
     /// Une exigence du protocole (et non une simple extension) pour que chaque pilote fournisse la sienne.
     func stopButtonMessages(litColumns: Set<Int>) -> [MIDIEvent]
+
+    /// Les boutons de changement de grille : `current` = grille affichée, `count` = nombre de grilles, `shiftHeld` = Shift tenu.
+    /// Vide si le contrôleur n'en a pas. Exigence du protocole, comme `stopButtonMessages`.
+    func gridButtonMessages(current: Int?, count: Int, shiftHeld: Bool) -> [MIDIEvent]
 }
 
 extension ControllerDriver {
@@ -98,10 +108,14 @@ extension ControllerDriver {
     /// Aucun bouton « stop » par défaut (Launchpad).
     public func stopButtonMessages(litColumns: Set<Int>) -> [MIDIEvent] { [] }
 
+    /// Aucun bouton de grille par défaut.
+    public func gridButtonMessages(current: Int?, count: Int, shiftHeld: Bool) -> [MIDIEvent] { [] }
+
     /// Ce qu'on envoie en quittant l'app : toutes les LED éteintes, puis le retour au mode d'origine du contrôleur.
     public var shutdownMessages: [MIDIEvent] {
         ledMessages(Dictionary(uniqueKeysWithValues: GridPosition.all.map { ($0, LEDState.off) }))
-            + stopButtonMessages(litColumns: []) + disconnectionMessages
+            + stopButtonMessages(litColumns: []) + gridButtonMessages(current: nil, count: 0, shiftHeld: false)
+            + disconnectionMessages
     }
 }
 

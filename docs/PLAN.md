@@ -277,6 +277,13 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
 
 
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
+- **Changer de grille depuis le contrôleur (25/11/2026, branche `j9/changement-grille-controleur`, fiche 02)** ✅ code, essai sur le matériel à faire.
+  **APC mini mk2** : boutons de scène (notes 112–119) = grilles 1 à 8, **Shift** (note 122) tenu = grilles 9 à 16 ; LED du bouton de la grille affichée.
+  **Launchpad** : CC 91 = grille précédente, CC 92 = suivante (vert si une grille existe de ce côté, bornés, pas de boucle). Marche verrouillé, ne coupe aucun son,
+  seule la fenêtre attachée change. `ControllerInput.gridSelect / gridStep / shift`, `ControllerDriver.gridButtonMessages` (exigence du protocole), éteints à la fermeture.
+  11 tests pilotes + 6 tests session ; tout le package vert (643).
+  ⚠︎ **Constantes à confirmer au banc d'essai** : notes 112–119 et 122 (APC), CC 91 / 92 et vert 21 (Launchpad) ; ce que donnent les vélocités 1, 2, 3 de l'APC.
+  **À essayer** : ☐ relever ces valeurs et les reporter dans `docs/hardware/` ☐ changement de grille pendant un son : il continue ☐ Shift + bouton ☐ flèches du Launchpad et leurs LED ☐ ⌘Q éteint ces boutons.
 - **Canal LightKey par grille (25/11/2026, branche `j9/canal-par-grille`, fiche 01)** ✅ code, essai réel à faire.
   `PadGrid.lightChannel` (1…16, `null` = « Sans canal », toujours écrit) ; nouvelle grille = premier canal libre, réordonner ne change rien,
   supprimer libère. Migration à la lecture (`ShowPackage.decodeMigrating`) : grille N → canal N, appairages des grilles 2+ remis à faux,
