@@ -48,6 +48,9 @@ public protocol AudioEngineControlling: Sendable {
     func stopAll() async
     func setColumnLevel(_ column: Int, level: Double) async
 
+    /// Règle en direct le filtre DJ d'une colonne : −1 passe-bas, 0 neutre (son intact), +1 passe-haut (`FilterCurve`).
+    func setColumnFilter(_ column: Int, value: Double) async
+
     /// Déplace la tête de lecture d'un pad : `elapsed` secondes depuis le début de la partie jouée.
     /// Joue : continue de là ; en pause : reste en pause à cette position ; arrêté : démarre de là.
     func seek(_ pad: Pad.ID, to elapsed: TimeInterval) async

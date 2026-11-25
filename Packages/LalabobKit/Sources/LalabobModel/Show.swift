@@ -91,9 +91,12 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     public var slots: [Pad?]
     /// Colonne lumière : son fader a été appairé à un réglage de LightKey (mode « Appairage lumière »).
     public var isFaderPaired: Bool
+    /// Filtre DJ de la colonne son (`FilterCurve`), de −1 (passe-bas) à +1 (passe-haut) ; 0 = neutre, son intact.
+    public var filter: Double
 
     public init(
-        id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?], isFaderPaired: Bool = false
+        id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?], isFaderPaired: Bool = false,
+        filter: Double = 0
     ) {
         self.id = id
         self.name = name
@@ -101,11 +104,13 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
         self.level = level
         self.slots = slots
         self.isFaderPaired = isFaderPaired
+        self.filter = filter
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired }
+    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired, filter }
 
     /// Les spectacles d'avant l'appairage des faders n'ont pas `isFaderPaired` : ils s'ouvrent non appairés.
+    /// Ceux d'avant le filtre de colonne n'ont pas `filter` : ils s'ouvrent au neutre.
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -114,6 +119,7 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
         level = try container.decode(Double.self, forKey: .level)
         slots = try container.decode([Pad?].self, forKey: .slots)
         isFaderPaired = try container.decodeIfPresent(Bool.self, forKey: .isFaderPaired) ?? false
+        filter = try container.decodeIfPresent(Double.self, forKey: .filter) ?? 0
     }
 
     public static func empty(name: String, kind: ColumnKind) -> Column {

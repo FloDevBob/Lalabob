@@ -123,6 +123,11 @@ struct ColumnView: View {
         .accessibilityLabel("Arrêter la colonne \(index + 1)")
     }
 
+    /// Couleur d'une colonne son : la teinte vive de son premier pad (gris neutre si elle est vide).
+    private func accentColor(of column: Column) -> Color {
+        column.slots.lazy.compactMap { $0 }.first?.tint.vividColor ?? Surface.textSecondary
+    }
+
     /// Appairage lumière : le fader d'une colonne lumière est lui aussi à rattacher à un réglage de LightKey.
     /// Pointillés ambrés (qui pulsent sur la cible), contour plein une fois appairé ; un clic sur l'étiquette désigne
     /// ce fader comme cible, bouger le fader (à la main ou à l'écran) envoie son CC à LightKey.
@@ -192,12 +197,21 @@ struct ColumnView: View {
             // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
             Group {
                 if column.kind == .audio {
-                    VerticalFader(
-                        name: column.name,
-                        level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
-                        hardwareMarker: controller.waitingFaders[index]
-                    ) {
-                        LevelMeter(column: index).frame(width: 14)
+                    HStack(alignment: .top, spacing: 8) {
+                        VerticalFader(
+                            name: column.name,
+                            level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
+                            hardwareMarker: controller.waitingFaders[index]
+                        ) {
+                            LevelMeter(column: index).frame(width: 14)
+                        }
+                        // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
+                        RotaryKnob(
+                            name: column.name,
+                            accent: accentColor(of: column),
+                            value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
+                            onReset: { controller.resetColumnFilter(index) }
+                        )
                     }
                 } else {
                     VerticalFader(
@@ -618,21 +632,22 @@ struct PadView: View {
         let lightState: LightState = pad.kind == .light ? controller.lightState(at: position) : .unknown
         let outline: Double = event.map { $0.state.isPaused ? 0.45 : 1 } ?? (lightState == .on ? 1 : 0)
         let halo: Double = event.map { $0.state.isPaused ? 0 : 0.45 } ?? (lightState == .on ? 0.45 : 0)
-        return VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 4) {
+        // Texte (titre + sous-titre serrés) à gauche, état et bouton à droite : tout est centré sur le même axe horizontal.
+        return HStack(spacing: Self.contentSpacing) {
+            VStack(alignment: .leading, spacing: 1) {
                 InlinePadText(position: position, field: .title, text: pad.title, font: Typography.padTitle, editing: $editingField)
-                Spacer(minLength: 0)
-                if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
-                if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
-                if case .audio = pad.content { playStopButton(pad, event: event) }
-                if case .light = pad.content { cueButton(pad, state: lightState) }
+                InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
+                    .opacity(0.88)
             }
-            InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
-                .opacity(0.88)
+            Spacer(minLength: 0)
+            if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
+            if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
+            if case .audio = pad.content { playStopButton(pad, event: event) }
+            if case .light = pad.content { cueButton(pad, state: lightState) }
         }
         .foregroundStyle(pad.tint.labelColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(.horizontal, 11)
+        .padding(.horizontal, Self.horizontalInset)
         .background(pad.tint.surfaceColor, in: .rect(cornerRadius: Metrics.padCornerRadius))
         // Relief : liseré clair en haut du pad, qui s'estompe avant le milieu (simple décor, sous les contours d'état).
         .overlay {
@@ -690,6 +705,10 @@ struct PadView: View {
 
     /// Diamètre du bouton lecture / stop d'un pad : le plus grand que la hauteur du pad permet (titre + sous-titre
     /// restent visibles), de 22 pt dans une petite fenêtre à 30 pt.
+    /// Marge gauche = droite du contenu d'un pad ; espace entre le bloc de texte et les éléments de droite.
+    private static let horizontalInset: CGFloat = 11
+    private static let contentSpacing: CGFloat = 6
+
     private static func buttonSize(for density: GridDensity) -> CGFloat {
         density.padHeight >= 52 ? 30 : density.padHeight >= 44 ? 26 : 22
     }

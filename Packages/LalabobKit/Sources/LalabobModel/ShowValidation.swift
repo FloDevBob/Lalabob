@@ -34,6 +34,7 @@ extension Show {
                     throw .wrongSlotCount(grid: g, column: c, count: column.slots.count)
                 }
                 guard (0...1).contains(column.level) else { throw .valueOutOfRange("niveau de colonne") }
+                guard (-1...1).contains(column.filter) else { throw .valueOutOfRange("filtre de colonne") }
                 for (r, pad) in column.slots.enumerated() {
                     guard let pad else { continue }
                     guard pad.kind == column.kind else {

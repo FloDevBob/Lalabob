@@ -94,10 +94,11 @@ enum HelpContent {
                 "**Échap** arrête tout, avec un fondu de 40 ms pour éviter le clac.",
                 "Le bouton rond sur un pad lance ou arrête ce son (carré = arrêter).",
                 "Le petit bouton rouge ■ à côté du volume d'une colonne arrête **tous ses sons** (joués ou en pause). Sur l'**APC mini mk2**, c'est le bouton rond rouge sous la colonne ; les colonnes lumière n'en ont pas.",
-                "Les **vumètres** sous chaque colonne montrent le signal réel, après le fader.",
+                "Les **vumètres** sous chaque colonne montrent le signal réel, après le fader et le filtre.",
+                "Le **potard de filtre**, à droite du fader de chaque colonne son : au centre (« Neutre »), le son est intact ; en le tournant vers la **gauche**, les aigus disparaissent et il reste les basses (« Bas 800 Hz ») ; vers la **droite**, les basses disparaissent et il reste les aigus (« Haut 2 kHz »). Glissez vers le haut ou le bas, ou utilisez les flèches ; un **double-clic** le remet au neutre. Il se règle aussi cadenas fermé.",
                 "Changer de grille (onglets ou ⌘1 à ⌘9) ne coupe aucun son.",
             ]),
-            .paragraph("Cadenas **fermé** : on peut jouer, régler les faders, le volume d'un pad et ses fondus, changer de grille et tout arrêter. Rien d'autre ne se modifie."),
+            .paragraph("Cadenas **fermé** : on peut jouer, régler les faders et les filtres, le volume d'un pad et ses fondus, changer de grille et tout arrêter. Rien d'autre ne se modifie."),
         ])
 
     static let prepare = HelpTopic(
