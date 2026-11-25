@@ -234,6 +234,14 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   **Non fait** : égaliseur 3 bandes ; APC (ses 8 faders servent déjà au volume, on n'y touche pas).
 - **Reste pour l'étape 0** : « cue supprimée » n'a pas été relevé ; les fixtures Swift d'après le journal brut ne sont pas écrites.
 
+### J10 — Types de colonnes et de pads 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
+- **Colonnes de même largeur (25/11/2026, branche `j10/colonnes-egales`, fiche 04)** ✅ code, à regarder à l'œil. `GridView` : une seule rangée
+  de 8 colonnes égales dans leur ordre réel (fin de la zone lumière fixe de 264 pt et de la ligne ambrée) ; liseré de type de 2 pt dans le bas
+  de l'en-tête de chaque colonne (blanc 6 % son, ambre plein lumière), sans changer la hauteur : les pads ne bougent pas. Aperçu Xcode
+  « Colonnes égales : une colonne lumière en position 3 ». Pas de test automatique (vues). **Non vérifié à l'œil** (capture refusée dans cette
+  session). **À essayer** : ☐ fenêtre à 1320 pt, bibliothèque ouverte, rien de coupé (potard, bouton ■) ☐ plein écran portable ☐ glisser-déposer
+  et sélection multiple inchangés ☐ colonne lumière en position 3 (aperçu) bien à sa place.
+
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
 - **Canal LightKey par grille (25/11/2026, branche `j9/canal-par-grille`, fiche 01)** ✅ code, essai réel à faire.
   `PadGrid.lightChannel` (1…16, `null` = « Sans canal », toujours écrit) ; nouvelle grille = premier canal libre, réordonner ne change rien,

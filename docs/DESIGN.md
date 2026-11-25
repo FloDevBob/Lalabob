@@ -29,8 +29,10 @@ Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dos
 « Glissez un son sur un pad » · zone de **pré-écoute** en bas (bouton lecture, titre, mini forme d'onde).
 
 ### Grille (centre)
-- 6 colonnes **sons** puis, dans une zone légèrement ambrée (bordure `#FFC93D` à 12 %), 2 colonnes **lumière**.
-- En-tête de colonne : pastille icône (note de musique, ou projecteur ambre pour la lumière), nom, numéro.
+- **8 colonnes de même largeur**, dans leur ordre réel (plus de zone lumière à droite : une colonne lumière peut être n'importe où).
+  Par défaut, les 6 premières sont des colonnes sons et les 2 dernières des colonnes lumière.
+- En-tête de colonne : pastille icône (note de musique, ou projecteur ambre pour la lumière), nom, numéro, et un **liseré** de 2 pt
+  dans le bas de l'en-tête : blanc à 6 % pour un son, ambre plein pour la lumière.
 - 8 pads par colonne, 56 px de haut : titre (13 px, demi-gras), sous-titre (11,5 px) + durée en mono.
   - Case vide : bordure pointillée blanche à 11 %, « + Déposer un son » (ou « + Nouvelle cue »).
   - En lecture : contour et halo dans la couleur vive, mini-égaliseur animé, barre de progression de 3 px en bas.

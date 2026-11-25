@@ -50,7 +50,7 @@ struct LalabobApp: App {
                 .environment(preview)
                 .environment(\.midiSession, midiSession)
                 .preferredColorScheme(.dark)
-                .frame(minWidth: 1320, minHeight: 720)  // bibliothèque (273) + 6 colonnes sons + zone lumière tiennent sans être coupées
+                .frame(minWidth: 1320, minHeight: 720)  // bibliothèque (273) + 8 colonnes de même largeur tiennent sans être coupées
                 .onAppear {
                     AppLifecycle.session = midiSession
                     midiSession?.start()
