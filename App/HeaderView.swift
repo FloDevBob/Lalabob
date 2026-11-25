@@ -336,14 +336,16 @@ struct GridTabsView: View {
         Menu("Canal LightKey : \(grid.lightChannel.map(String.init) ?? "aucun")") {
             ForEach(Array(Show.lightChannels), id: \.self) { channel in
                 let owner = controller.gridIndex(usingLightChannel: channel)
-                let title = owner.flatMap { $0 == index ? nil : "Canal \(channel) — \(controller.show.grids[$0].name)" }
+                let isShared = controller.show.sharedLight?.channel == channel
+                let title = isShared ? "Canal \(channel) — colonnes communes"
+                    : owner.flatMap { $0 == index ? nil : "Canal \(channel) — \(controller.show.grids[$0].name)" }
                     ?? "Canal \(channel)"
                 Button {
                     pendingChannel = PendingChannel(grid: index, channel: channel)
                 } label: {
                     Text(grid.lightChannel == channel ? "✓ " + title : title)
                 }
-                .disabled(owner != nil)
+                .disabled(owner != nil || isShared)
             }
             Divider()
             Button {

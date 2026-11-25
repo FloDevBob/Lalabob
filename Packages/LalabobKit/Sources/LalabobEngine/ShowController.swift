@@ -65,9 +65,17 @@ public final class ShowController {
     public private(set) var playback: [Pad.ID: PlaybackEvent] = [:]
     /// État des cues lumière d'après le retour de LightKey, par canal (1 à 16) puis par case. Chaque grille a son canal.
     private(set) var lightStatesByChannel: [Int: [GridPosition: LightState]] = [:]
-    /// État des cues de la grille affichée (celles de son canal LightKey).
+    /// État des cues de la grille affichée : celles de son canal LightKey, et celles du canal commun pour les colonnes
+    /// lumière communes.
     public var lightStates: [GridPosition: LightState] {
-        currentLightChannel.flatMap { lightStatesByChannel[$0] } ?? [:]
+        let own = currentLightChannel.flatMap { lightStatesByChannel[$0] } ?? [:]
+        guard let sharedLight = show.sharedLight else { return own }
+        let shared = Set(sharedLight.columnIndices)
+        var states = own.filter { !shared.contains($0.key.column) }
+        for (position, state) in lightStatesByChannel[sharedLight.channel] ?? [:] where shared.contains(position.column) {
+            states[position] = state
+        }
+        return states
     }
     public private(set) var outputDevices: [AudioOutputDevice] = []
     /// `nil` = sortie par défaut du système.
@@ -184,6 +192,12 @@ public final class ShowController {
 
     /// Canal LightKey (1 à 16) de la grille affichée ; `nil` = « Sans canal » : rien ne part vers LightKey.
     public var currentLightChannel: Int? { currentGrid.lightChannel }
+
+    /// Canal LightKey (1 à 16) d'une colonne de la grille affichée : le canal commun pour une colonne lumière commune, sinon
+    /// celui de la grille ; `nil` = rien ne part.
+    public func lightChannel(forColumn column: Int) -> Int? {
+        show.lightChannel(grid: selectedGridIndex, column: column)
+    }
 
     /// La grille qui utilise ce canal LightKey (pour le menu de l'onglet), `nil` s'il est libre.
     public func gridIndex(usingLightChannel channel: Int) -> Int? {
@@ -451,6 +465,7 @@ public final class ShowController {
         guard (0..<PadGrid.size).contains(column) else { return }
         let level = Gain.faderLevel(level)
         show.grids[selectedGridIndex].columns[column].level = level
+        if show.isSharedLightColumn(column) { show.propagateSharedLight(from: selectedGridIndex) }
         onShowChange?(show)
         if show.grids[selectedGridIndex].columns[column].kind == .audio {
             commands.yield(.level(column: column, level: level))
@@ -560,7 +575,10 @@ public final class ShowController {
     func commit(_ actionName: String, allowedWhenLocked: Bool = false, _ change: (inout Show, Int) -> Bool) -> Bool {
         guard allowedWhenLocked || !refuseWhileLocked() else { return false }
         var updated = show
-        guard change(&updated, selectedGridIndex), updated != show else { return false }
+        guard change(&updated, selectedGridIndex) else { return false }
+        // Colonnes lumière communes : la modification faite dans la grille affichée vaut pour toutes les grilles.
+        if !updated.grids.isEmpty { updated.propagateSharedLight(from: min(selectedGridIndex, updated.grids.count - 1)) }
+        guard updated != show else { return false }
         apply(updated, actionName: actionName)
         return true
     }

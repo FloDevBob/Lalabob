@@ -51,6 +51,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 | `formatVersion` | entier | 1 ≤ valeur ≤ `Show.currentFormatVersion` (1). Plus grand : refusé (`unsupportedFormatVersion`) |
 | `name` | texte | nom du spectacle |
 | `grids` | tableau de grilles | 1 à **64** grilles (onglets), dans l'ordre d'affichage |
+| `sharedLight` | objet, **facultatif** | option « Colonnes lumière communes à toutes les grilles » ; absent = désactivée. `channel` (1…16, canal LightKey commun, qu'aucune grille n'utilise), `originGridID` (UUID de la grille qui reprend les colonnes en désactivant), `columnIndices` (positions 0…7 des colonnes communes, triées, non vides). **Chaque grille porte une copie identique** de chaque colonne commune, de type `light` |
 
 ### 2.2 Grille (`PadGrid`)
 
@@ -59,6 +60,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 | `id` | UUID | identifiant stable de l'onglet |
 | `name` | texte | nom de l'onglet |
 | `columns` | tableau de colonnes | **exactement 8**, de gauche à droite |
+| `parkedColumns` | tableau, **facultatif** | colonnes mises de côté pendant que l'option `sharedLight` est active : `{ "index": 0…7, "column": Colonne }`. Absent = aucune. Leurs sons restent dans `Audio/` |
 | `lightChannel` | entier ou `null` | canal MIDI LightKey de la grille, **1 à 16**, unique entre les grilles ; `null` = « Sans canal » (la lumière de la grille n'envoie rien). **Toujours écrit**, `null` compris. **Absent à la lecture** = fichier d'avant le canal par grille : migration (voir § 3) |
 
 ### 2.3 Colonne (`Column`)
@@ -186,7 +188,7 @@ Premier échec = ouverture refusée, avec l'erreur correspondante :
 | `invalid(padKindMismatch)` | un pad son dans une colonne lumière, ou l'inverse |
 | `invalid(unsafeFileName)` | `fileName` vide, > 255 caractères, `.`/`..`, commençant par un point, ou contenant `/ \ :`, NUL, un caractère de contrôle |
 | `invalid(duplicateLightChannel)` | deux grilles sur le même canal LightKey |
-| `invalid(valueOutOfRange)` | canal LightKey hors 1…16, niveau de colonne hors 0…1, filtre hors −1…1, `trimStart` < 0, `trimEnd` ≤ `trimStart`, fondu < 0 ou > 600 s, gain hors −60…24 dB, MIDI hors plage |
+| `invalid(valueOutOfRange)` | canal LightKey hors 1…16, colonnes communes incohérentes (vides, hors 0…7, ou pas de type `light` dans une grille), colonne mise de côté hors 0…7, niveau de colonne hors 0…1, filtre hors −1…1, `trimStart` < 0, `trimEnd` ≤ `trimStart`, fondu < 0 ou > 600 s, gain hors −60…24 dB, MIDI hors plage |
 
 Erreurs de paquet (avant `show.json`) : `notAPackage` (pas un dossier), `missingShowFile` (pas de `show.json` régulier).
 

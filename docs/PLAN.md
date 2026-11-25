@@ -245,6 +245,20 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   **Limite** : l'interface (pastille, menu, alerte) n'a pas été regardée à l'œil, seulement compilée.
   **À essayer** : ☐ banc d'essai sur le canal 2 : LightKey distingue-t-il la même note sur les canaux 1 et 2 ? ☐ deux grilles, même pad, deux
   cues ☐ retour : la cue allumée ne s'affiche que sur sa grille ☐ ancien spectacle : alerte, grille 1 toujours appairée ☐ aucun son ne s'arrête.
+- **Colonnes lumière communes (25/11/2026, branche `j9/lumiere-commune`, fiche 01b)** ✅ code, essai réel à faire.
+  `Show.sharedLight` (canal commun, grille d'origine, positions) et `PadGrid.parkedColumns` (`LalabobModel/SharedLight.swift`). Choix
+  d'implémentation : **chaque grille porte une copie identique** des colonnes communes, recopiée après chaque modification
+  (`ShowController.commit` et le fader, `propagateSharedLight`) ; tout le code qui lit une grille (écran, LED, relais, moteur) reste inchangé.
+  Activer depuis la grille affichée (son canal devient le canal commun, elle en prend un autre) ; les autres grilles mettent de côté ce qui
+  occupe ces positions et leurs propres colonnes lumière (remplacées par des colonnes son vides) ; désactiver rend tout (aller-retour testé
+  identique) et la grille d'origine reprend le canal commun. Les sons des colonnes mises de côté restent dans le paquet. Envoi et retour par
+  colonne (`ShowController.lightChannel(forColumn:)`). Interface : Spectacle › **Réglages du spectacle…** (⌥⌘,), confirmation qui liste ce
+  qui est mis de côté, badge « Commune » sur l'en-tête. 20 tests (`SharedLightTests` modèle et moteur) ; tout le package est vert.
+  **Limites** : la copie des colonnes communes répète les identifiants de pads d'une grille à l'autre (sans effet connu : un pad lumière n'a
+  pas de lecture) ; interface compilée mais pas regardée à l'œil ; la règle 5 (changer le type d'une colonne vaut pour toutes les grilles)
+  attend la fiche 06.
+  **À essayer** : ☐ activer, appairer une cue une fois, la lancer depuis chaque grille ☐ LED des colonnes lumière inchangées en changeant de
+  grille ☐ désactiver : les anciennes colonnes reviennent ☐ ⌘S puis rouvrir avec l'option active ☐ aucun son ne s'arrête.
 
 ## Risques suivis
 

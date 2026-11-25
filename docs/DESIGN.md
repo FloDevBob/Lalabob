@@ -18,6 +18,8 @@ Les valeurs de couleur et de dimension sont déjà dans `LalabobModel/Tint.swift
 De gauche à droite : bouton masquer la bibliothèque · logo « Lalabob » + nom du spectacle ·
 **onglets de grilles** au centre (pastille numérotée 1…n, nom, nombre de sons, **pastille de canal LightKey** « Can. 2 » en mono 10 pt,
 contour ambré à 35 % — « Sans canal » en pointillés rouges ; clic droit › « Canal LightKey » pour le changer, avec confirmation ; bouton +) ·
+(**Réglages du spectacle**, menu Spectacle, ⌥⌘, , déverrouillé : interrupteur « Colonnes lumière communes à toutes les grilles », canal commun,
+confirmation qui liste ce qui est mis de côté grille par grille ; une colonne commune porte un petit badge ambré « Commune » dans son en-tête) ·
 **sélecteur de contrôleur** (nom du modèle + pastille verte « Connecté ») · **sélecteur de sortie audio** (à ajouter) ·
 **cadenas** Verrouillé / Déverrouillé (⌘L, remplace la bascule Édition / Live de la maquette) · bouton rouge **Tout arrêter** (raccourci Échap).
 

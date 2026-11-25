@@ -301,7 +301,7 @@ extension ShowController {
         let name = "Grille \(show.grids.count + 1)"
         let added = commit("Ajouter une grille") { show, _ in
             guard show.grids.count < Show.maximumGridCount else { return false }
-            var grid = PadGrid.empty(name: name)
+            var grid = show.adaptingNewGrid(.empty(name: name))  // colonnes lumière communes, si l'option est active
             grid.lightChannel = show.firstFreeLightChannel()  // nil au-delà de 16 : « Sans canal »
             show.grids.append(grid)
             return true
@@ -324,13 +324,32 @@ extension ShowController {
         commit("Canal LightKey") { show, _ in
             guard show.grids.indices.contains(index) else { return false }
             if let channel {
-                guard Show.lightChannels.contains(channel),
+                guard Show.lightChannels.contains(channel), show.sharedLight?.channel != channel,
                     !show.grids.indices.contains(where: { $0 != index && show.grids[$0].lightChannel == channel })
                 else { return false }
             }
             show.grids[index].lightChannel = channel
             return true
         }
+    }
+
+    // MARK: - Colonnes lumière communes (fiche 01b)
+
+    /// Active ou désactive l'option « Colonnes lumière communes à toutes les grilles ». Activer part de la grille affichée
+    /// (ses colonnes lumière deviennent communes, le reste est mis de côté) ; désactiver rend à chaque grille ses colonnes.
+    /// Une seule annulation ; refusé verrouillé ; aucun son n'est arrêté.
+    public func setSharedLight(_ enabled: Bool) {
+        commit(enabled ? "Colonnes lumière communes" : "Colonnes lumière propres à chaque grille") { show, grid in
+            if enabled { return show.enableSharedLight(fromGrid: grid) }
+            guard show.sharedLight != nil else { return false }
+            show.disableSharedLight()
+            return true
+        }
+    }
+
+    /// Change le canal LightKey des colonnes communes (refusé s'il est pris par une grille, ou verrouillé).
+    public func setSharedLightChannel(_ channel: Int) {
+        commit("Canal des colonnes communes") { show, _ in show.setSharedLightChannel(channel) }
     }
 
     /// Renomme une colonne de la grille affichée (nom vide refusé, 80 caractères au plus ; une seule annulation).

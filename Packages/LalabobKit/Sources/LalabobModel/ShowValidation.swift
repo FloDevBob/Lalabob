@@ -28,6 +28,17 @@ extension Show {
         guard grids.count <= Show.maximumGridCount else { throw .tooManyGrids(grids.count) }
 
         var lightChannels: Set<Int> = []
+        if let sharedLight {
+            guard Show.lightChannels.contains(sharedLight.channel) else { throw .valueOutOfRange("canal LightKey") }
+            lightChannels.insert(sharedLight.channel)
+            let indices = sharedLight.columnIndices
+            guard !indices.isEmpty, Set(indices).count == indices.count, indices.allSatisfy({ (0..<PadGrid.size).contains($0) })
+            else { throw .valueOutOfRange("colonnes lumière communes") }
+            // Chaque grille porte une copie de chaque colonne commune, de type Lumière.
+            guard grids.allSatisfy({ grid in
+                indices.allSatisfy { grid.columns.indices.contains($0) && grid.columns[$0].kind == .light }
+            }) else { throw .valueOutOfRange("colonnes lumière communes") }
+        }
         for grid in grids {
             guard let channel = grid.lightChannel else { continue }
             guard Show.lightChannels.contains(channel) else { throw .valueOutOfRange("canal LightKey") }
@@ -37,6 +48,14 @@ extension Show {
         for (g, grid) in grids.enumerated() {
             guard grid.columns.count == PadGrid.size else {
                 throw .wrongColumnCount(grid: g, count: grid.columns.count)
+            }
+            // Colonnes mises de côté (lumière commune) : lues d'un fichier comme le reste, donc vérifiées de même.
+            for parked in grid.parkedColumns {
+                guard (0..<PadGrid.size).contains(parked.index) else { throw .valueOutOfRange("colonne mise de côté") }
+                guard parked.column.slots.count == PadGrid.size else {
+                    throw .wrongSlotCount(grid: g, column: parked.index, count: parked.column.slots.count)
+                }
+                for pad in parked.column.slots.compactMap({ $0 }) { try pad.validate() }
             }
             for (c, column) in grid.columns.enumerated() {
                 guard column.slots.count == PadGrid.size else {

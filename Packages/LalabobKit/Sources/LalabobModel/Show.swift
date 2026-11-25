@@ -29,6 +29,8 @@ public struct Show: Codable, Sendable, Equatable {
     public var formatVersion: Int
     public var name: String
     public var grids: [PadGrid]
+    /// Option « Colonnes lumière communes à toutes les grilles » (`nil` = désactivée). Voir `SharedLight`.
+    public var sharedLight: SharedLight?
 
     /// Un spectacle construit en mémoire (nouveau, tests) : chaque grille sans canal LightKey en reçoit un, dans l'ordre.
     public init(name: String, grids: [PadGrid]) {
@@ -50,9 +52,10 @@ extension Show {
     /// Canaux MIDI possibles pour LightKey.
     public static let lightChannels = 1...16
 
-    /// Premier canal LightKey qu'aucune grille n'utilise (`nil` si les 16 sont pris).
+    /// Premier canal LightKey qu'aucune grille n'utilise, ni les colonnes communes (`nil` si les 16 sont pris).
     public func firstFreeLightChannel() -> Int? {
-        let used = Set(grids.compactMap(\.lightChannel))
+        var used = Set(grids.compactMap(\.lightChannel))
+        if let shared = sharedLight?.channel { used.insert(shared) }
         return Self.lightChannels.first { !used.contains($0) }
     }
 
@@ -60,7 +63,8 @@ extension Show {
     /// canal libre, sinon aucun (« Sans canal »).
     public mutating func assignLightChannels(toGrids indices: [Int]) {
         for index in indices where grids.indices.contains(index) {
-            let used = Set(grids.compactMap(\.lightChannel))
+            var used = Set(grids.compactMap(\.lightChannel))
+            if let shared = sharedLight?.channel { used.insert(shared) }
             let preferred = index + 1
             if Self.lightChannels.contains(preferred), !used.contains(preferred) {
                 grids[index].lightChannel = preferred
@@ -110,15 +114,18 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
     /// Canal MIDI (1 à 16) sur lequel cette grille parle à LightKey : cues, faders lumière et retour d'état.
     /// `nil` = « Sans canal » : la lumière de cette grille n'envoie rien. Gardé quand on réordonne les onglets.
     public var lightChannel: Int?
+    /// Colonnes mises de côté pendant que les colonnes lumière sont communes (voir `SharedLight`) ; vide sinon.
+    public var parkedColumns: [ParkedColumn]
 
-    public init(id: UUID = UUID(), name: String, columns: [Column], lightChannel: Int? = nil) {
+    public init(id: UUID = UUID(), name: String, columns: [Column], lightChannel: Int? = nil, parkedColumns: [ParkedColumn] = []) {
         self.id = id
         self.name = name
         self.columns = columns
         self.lightChannel = lightChannel
+        self.parkedColumns = parkedColumns
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, columns, lightChannel }
+    private enum CodingKeys: String, CodingKey { case id, name, columns, lightChannel, parkedColumns }
 
     /// Les fichiers d'avant le canal par grille n'ont pas `lightChannel` : la grille se lit « sans canal » et
     /// `ShowPackage` lui en attribue un (migration). Un canal absent se distingue d'un « Sans canal » écrit (`null`).
@@ -128,6 +135,7 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
         name = try container.decode(String.self, forKey: .name)
         columns = try container.decode([Column].self, forKey: .columns)
         lightChannel = try container.decodeIfPresent(Int.self, forKey: .lightChannel)
+        parkedColumns = try container.decodeIfPresent([ParkedColumn].self, forKey: .parkedColumns) ?? []
     }
 
     /// `lightChannel` est toujours écrit, `null` compris : un « Sans canal » choisi ne doit pas être pris pour un
@@ -138,6 +146,7 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
         try container.encode(name, forKey: .name)
         try container.encode(columns, forKey: .columns)
         try container.encode(lightChannel, forKey: .lightChannel)
+        if !parkedColumns.isEmpty { try container.encode(parkedColumns, forKey: .parkedColumns) }
     }
 
     public static func empty(name: String) -> PadGrid {
