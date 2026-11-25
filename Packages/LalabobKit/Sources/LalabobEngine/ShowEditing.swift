@@ -13,7 +13,7 @@ extension ShowController {
     @discardableResult
     public func place(_ pad: Pad, at position: GridPosition) -> Bool {
         commit("Placer un pad") { show, grid in
-            guard position.isValid, show.grids[grid].columns[position.column].kind == pad.kind else { return false }
+            guard position.isValid, show.grids[grid].columns[position.column].kind.accepts(pad.kind) else { return false }
             show.grids[grid][position] = pad
             return true
         }
@@ -29,7 +29,7 @@ extension ShowController {
     /// Une cue lumière vierge. La note envoyée à LightKey est celle du contrôleur (ADR 0006) : le message stocké ne sert pas.
     static func blankLightPad() -> Pad {
         let cue = LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))
-        return Pad(title: "Nouvelle cue", tint: .ambre, content: .light(cue: cue))
+        return Pad.cue(title: "Nouvelle cue", tint: .ambre, cue: cue)
     }
 
     @discardableResult
@@ -49,9 +49,9 @@ extension ShowController {
                 return false
             }
             let columns = show.grids[grid].columns
-            guard columns[target.column].kind == moving.kind else { return false }
+            guard columns[target.column].kind.accepts(moving.kind) else { return false }
             let displaced = show.grids[grid][target]
-            if let displaced, displaced.kind != columns[source.column].kind { return false }
+            if let displaced, !columns[source.column].kind.accepts(displaced.kind) { return false }
             show.grids[grid][target] = moving
             show.grids[grid][source] = displaced
             return true
@@ -126,7 +126,7 @@ extension ShowController {
             var placedAny = false
             for entry in clipboard {
                 let target = GridPosition(column: column + entry.columnOffset, row: row + entry.rowOffset)
-                guard target.isValid, show.grids[grid].columns[target.column].kind == entry.pad.kind else { continue }
+                guard target.isValid, show.grids[grid].columns[target.column].kind.accepts(entry.pad.kind) else { continue }
                 show.grids[grid][target] = entry.pad.duplicated()
                 placedAny = true
             }
@@ -182,7 +182,7 @@ extension ShowController {
         var plan: [(from: GridPosition, to: GridPosition, pad: Pad)] = []
         for from in moving {
             let to = GridPosition(column: from.column + columnShift, row: from.row + rowShift)
-            guard to.isValid, let pad = grid[from], grid.columns[to.column].kind == pad.kind else { return nil }
+            guard to.isValid, let pad = grid[from], grid.columns[to.column].kind.accepts(pad.kind) else { return nil }
             if grid[to] != nil, copying || !leaving.contains(to) { return nil }
             plan.append((from, to, pad))
         }
@@ -410,7 +410,7 @@ extension ShowController {
         return show.grids.contains { grid in
             grid.columns.contains { column in
                 column.slots.contains { pad in
-                    if case .audio(let clip) = pad?.content { clip.fileName == wanted } else { false }
+                    pad?.audio?.fileName == wanted
                 }
             }
         }

@@ -148,10 +148,7 @@ struct IdleContent: View {
         var lights = 0
         for column in controller.currentGrid.columns {
             for case let pad? in column.slots {
-                switch pad.content {
-                case .audio: sounds += 1
-                case .light: lights += 1
-                }
+                if pad.audio != nil { sounds += 1 } else { lights += 1 }  // fiche 07 : les pads mixtes auront leur ligne
             }
         }
         return (sounds, lights)

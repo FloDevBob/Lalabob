@@ -14,7 +14,7 @@ struct LockTests {
 
     private func makeController(locked: Bool, audio: RecordingAudioEngine = RecordingAudioEngine()) -> (ShowController, UndoManager, Pad) {
         var grid = PadGrid.empty(name: "G1")
-        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        let pad = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         grid[Self.a] = pad
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),

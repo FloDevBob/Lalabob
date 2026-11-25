@@ -30,7 +30,7 @@ struct ColumnFilterOfflineTests {
         let dir = try makeTemporaryDirectory()
         try writeNoise(in: dir)
         var grid = PadGrid.empty(name: "Test")
-        let pad = Pad(title: "Bruit", tint: .blanc, content: .audio(clip: AudioClip(fileName: "bruit.wav", loops: true)))
+        let pad = Pad(title: "Bruit", tint: .blanc, audio: AudioClip(fileName: "bruit.wav", loops: true))
         grid.columns[0].slots[0] = pad
         grid.columns[0].level = 1
         let engine = AVAudioEngineController(output: .offline(sampleRate: rate, maxFrames: 4096))

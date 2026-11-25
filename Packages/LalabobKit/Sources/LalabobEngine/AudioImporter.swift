@@ -47,10 +47,10 @@ public enum AudioImporter {
         let tints = Tint.allCases.filter { $0 != .blanc && $0 != .graphite }
         // Somme simple et déterministe (`hashValue` change à chaque lancement).
         let index = fileName.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF } % tints.count
-        return Pad(
+        return Pad.sound(
             title: String((fileName as NSString).deletingPathExtension.prefix(ShowController.maximumTextLength)),
             tint: tints[index],
-            content: .audio(clip: AudioClip(fileName: fileName))
+            clip: AudioClip(fileName: fileName)
         )
     }
 }
@@ -64,7 +64,7 @@ extension ShowController {
     @discardableResult
     public func dropAudioFile(_ url: URL, at position: GridPosition) -> Bool {
         guard !refuseWhileLocked(), let audioDirectory, position.isValid else { return false }
-        guard currentGrid.columns[position.column].kind == .audio else {
+        guard currentGrid.columns[position.column].kind.hasAudio else {
             importError = "Les sons vont dans les colonnes sons, pas dans les colonnes lumière."
             return false
         }

@@ -1,0 +1,349 @@
+{
+  "formatVersion" : 1,
+  "grids" : [
+    {
+      "columns" : [
+        {
+          "filter" : 0,
+          "id" : "0A8A3A54-7D96-4C08-9CDC-D45DDDE6262A",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 1",
+          "slots" : [
+            {
+              "content" : {
+                "audio" : {
+                  "clip" : {
+                    "fadeIn" : 0.8,
+                    "fadeOut" : 1.4,
+                    "fileName" : "orage.wav",
+                    "gainDB" : -6,
+                    "loops" : true,
+                    "retrigger" : "stop",
+                    "trimEnd" : 5.2,
+                    "trimStart" : 0.4
+                  }
+                }
+              },
+              "id" : "BF603324-ADED-43A6-99DA-433D57D93B67",
+              "ledIntensity" : "half",
+              "subtitle" : "Ambiance",
+              "tint" : "azur",
+              "title" : "Orage"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "B3D4F4F6-26F9-4567-98C6-1489C2F9E895",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 2",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "F6E45600-D67B-4167-BD1E-D157B16EFF7E",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 3",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "785D580B-B771-4D80-871A-9BE0B134FF0B",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 4",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "8E64E11B-FC5F-4B14-830C-28E5048702BB",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 5",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "B55C81CC-466D-489C-8E02-275F857528A0",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 6",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "8DFEA22C-0E55-4357-AD53-7270212F5810",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Colonne 7",
+          "slots" : [
+            null,
+            {
+              "content" : {
+                "light" : {
+                  "cue" : {
+                    "behavior" : "toggle",
+                    "isPaired" : true,
+                    "ledFeedback" : true,
+                    "output" : {
+                      "channel" : 0,
+                      "kind" : "note",
+                      "number" : 54,
+                      "value" : 127
+                    }
+                  }
+                }
+              },
+              "id" : "5BF3478E-9C94-4610-B0AA-E3542FE9AB04",
+              "ledIntensity" : "full",
+              "subtitle" : "Cue",
+              "tint" : "ambre",
+              "title" : "Plein feu"
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "601E1564-F98F-407A-BDFB-CF9AE8D70322",
+          "isFaderPaired" : true,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Colonne 8",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "id" : "7C72E3FA-4170-419A-8113-7AAB09DED194",
+      "lightChannel" : 1,
+      "name" : "Acte 1"
+    },
+    {
+      "columns" : [
+        {
+          "filter" : 0,
+          "id" : "E8D95462-C611-4299-9465-CC8711CD05D8",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 1",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "FF024F9B-B679-444D-B718-0A56B4456A78",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 2",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "F6313A3B-62A1-4C51-9E3D-169851A465C1",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 3",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "70F6E408-EA4E-409B-A49C-9F1D64EB32C0",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 4",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "487846EA-81BF-4618-8F4B-5BC2CE817407",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 5",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "65DB4084-03FB-4B6C-BB39-4AB03B1B4FB3",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 6",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "46DF25BA-44BE-4BBB-920F-03054B01370F",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Colonne 7",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "91277F0C-6306-44D5-950A-60D77CB05FFC",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Colonne 8",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "id" : "206F4C88-DF03-4403-88E3-A9F79A7959FC",
+      "lightChannel" : 2,
+      "name" : "Acte 2"
+    }
+  ],
+  "name" : "Match du 25 novembre"
+}

@@ -100,7 +100,7 @@ struct EngineSettingsChangeTests {
     @Test func changingTheSettingsOfAPlayingPadDoesNotStopIt() async throws {
         let dir = try makeTemporaryDirectory()
         try writeTestFile(named: "a.wav", in: dir, duration: 2) { _ in 0.5 }
-        var pad = Pad(title: "P", tint: .rouge, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        var pad = Pad(title: "P", tint: .rouge, audio: AudioClip(fileName: "a.wav"))
         var grid = PadGrid.empty(name: "T")
         grid.columns[0].slots[0] = pad
         let engine = AVAudioEngineController(output: .offline(sampleRate: 44100, maxFrames: 4096))
@@ -108,7 +108,7 @@ struct EngineSettingsChangeTests {
         await engine.trigger(pad.id)
         _ = try await engine.renderOffline(frames: 4410)
 
-        pad.content = .audio(clip: AudioClip(fileName: "a.wav", fadeOut: 1, loops: true))
+        pad.audio = AudioClip(fileName: "a.wav", fadeOut: 1, loops: true)
         grid.columns[0].slots[0] = pad
         try await engine.configure(show: Show(name: "T", grids: [grid]), audioDirectory: dir)
         #expect(await engine.state(of: pad.id).isActive)

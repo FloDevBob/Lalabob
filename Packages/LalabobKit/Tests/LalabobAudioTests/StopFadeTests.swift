@@ -43,7 +43,7 @@ struct StopFadeEngineTests {
         var grid = PadGrid.empty(name: "Test")
         var ids: [Pad.ID] = []
         for (column, clip) in clips.enumerated() {
-            let pad = Pad(title: "P\(column)", tint: .rouge, content: .audio(clip: clip))
+            let pad = Pad(title: "P\(column)", tint: .rouge, audio: clip)
             grid.columns[column].slots[0] = pad
             grid.columns[column].level = 1
             ids.append(pad.id)

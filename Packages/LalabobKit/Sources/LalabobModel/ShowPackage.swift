@@ -76,6 +76,9 @@ public enum ShowPackage {
         } catch { throw .corrupt }
         let withoutChannel = probe.grids.indices.filter { !probe.grids[$0].hasLightChannel }
         let reset = withoutChannel.isEmpty ? [] : show.migrateToLightChannelPerGrid(gridsWithoutChannel: withoutChannel)
+        // Un fichier de version 1 (ou 2) est maintenant au format courant : il se réécrit en version 2. Une version inconnue
+        // (0, 3…) reste telle quelle et sera refusée par `validate()`.
+        if (1...Show.currentFormatVersion).contains(show.formatVersion) { show.formatVersion = Show.currentFormatVersion }
         do { try show.validate() } catch { throw .invalid(error) }
         return Decoded(show: show, lightPairingsReset: reset)
     }
@@ -135,7 +138,7 @@ extension Show {
         Set(
             // Les colonnes mises de côté (lumière commune) comptent : leurs sons doivent rester dans le paquet.
             grids.flatMap { $0.columns + $0.parkedColumns.map(\.column) }.flatMap(\.slots).compactMap { pad -> String? in
-                if case .audio(let clip) = pad?.content { clip.fileName } else { nil }
+                pad?.audio?.fileName
             })
     }
 }

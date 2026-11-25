@@ -13,7 +13,7 @@ struct EditingTests {
     static let lightCell = GridPosition(column: 6, row: 0)
 
     private func sound(_ title: String, tint: Tint = .vert) -> Pad {
-        Pad(title: title, tint: tint, content: .audio(clip: AudioClip(fileName: "\(title).wav")))
+        Pad(title: title, tint: tint, audio: AudioClip(fileName: "\(title).wav"))
     }
 
     /// Contrôleur avec un gestionnaire d'annulation où chaque opération forme son propre groupe.
@@ -52,7 +52,7 @@ struct EditingTests {
     @Test func newLightCueOnlyInLightColumns() {
         let (controller, _) = makeController()
         #expect(controller.newLightCue(at: Self.lightCell))
-        guard case .light = controller.pad(at: Self.lightCell)?.content else {
+        guard controller.pad(at: Self.lightCell)?.light != nil else {
             Issue.record("une cue lumière était attendue")
             return
         }

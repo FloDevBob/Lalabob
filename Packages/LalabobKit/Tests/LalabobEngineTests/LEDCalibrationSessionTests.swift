@@ -15,7 +15,7 @@ struct LEDCalibrationSessionTests {
 
     private func makeController() -> ShowController {
         var grid = PadGrid.empty(name: "G")
-        grid[corner] = Pad(title: "Rire", tint: .rouge, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        grid[corner] = Pad(title: "Rire", tint: .rouge, audio: AudioClip(fileName: "a.wav"))
         return ShowController(
             show: Show(name: "S", grids: [grid]), audio: RecordingAudioEngine(),
             audioDirectory: URL(filePath: "/tmp/lalabob-audio"),

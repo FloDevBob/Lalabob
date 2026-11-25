@@ -115,8 +115,8 @@ struct AudioLibraryTests {
 struct GridLabelTests {
     @Test func soundCountPerGrid() {
         var grid = PadGrid.empty(name: "G")
-        grid.columns[0].slots[0] = Pad(title: "a", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
-        grid.columns[1].slots[2] = Pad(title: "b", tint: .vert, content: .audio(clip: AudioClip(fileName: "b.wav")))
+        grid.columns[0].slots[0] = Pad(title: "a", tint: .vert, audio: AudioClip(fileName: "a.wav"))
+        grid.columns[1].slots[2] = Pad(title: "b", tint: .vert, audio: AudioClip(fileName: "b.wav"))
         let controller = ShowController(show: Show(name: "S", grids: [grid, .empty(name: "H")]))
         #expect(controller.padCount(inGrid: 0) == 2)
         #expect(controller.padCount(inGrid: 1) == 0)
@@ -135,7 +135,7 @@ struct GridLabelTests {
 
     @Test func usesAudioFile() {
         var grid = PadGrid.empty(name: "G")
-        grid.columns[0].slots[0] = Pad(title: "a", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        grid.columns[0].slots[0] = Pad(title: "a", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         let controller = ShowController(show: Show(name: "S", grids: [.empty(name: "x"), grid]))
         #expect(controller.usesAudioFile(named: "rire.wav"))  // dans n'importe quelle grille
         #expect(!controller.usesAudioFile(named: "porte.wav"))

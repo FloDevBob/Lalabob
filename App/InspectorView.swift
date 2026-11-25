@@ -28,8 +28,8 @@ struct InspectorView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let pad = controller.pad(at: position) {
-                switch pad.content {
-                case .audio(let clip):
+                // Fiche 07 : un pad son et lumière aura sa propre disposition ; pour l'instant le son prime.
+                if let clip = pad.audio {
                     AudioHeader(position: position, pad: pad, clip: clip, waveform: waveform)
                         .frame(height: Self.headerHeight)
                     Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
@@ -50,7 +50,7 @@ struct InspectorView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 12)
                     .task(id: clip.fileName) { waveform = await controller.waveform(for: clip) }
-                case .light:
+                } else {
                     LightHeader(position: position, pad: pad)
                         .frame(height: Self.headerHeight)
                     Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
@@ -554,10 +554,9 @@ struct PadContextMenu: View {
         let pad = controller.pad(at: position)
         let locked = controller.isLocked
         if let pad {
-            switch pad.content {
-            case .audio(let clip):
+            if let clip = pad.audio {
                 audioItems(pad: pad, clip: clip, locked: locked)
-            case .light:
+            } else {
                 if !locked {
                     Button("Tester", icon: .spotlight) { controller.audition(at: position) }
                     if controller.isPaired(at: position) {
@@ -758,7 +757,7 @@ private struct TrackGainGauge: View {
     let position = GridPosition(column: 1, row: 2)
     grid[position] = Pad(
         title: "Orage lointain", subtitle: "Ambiance", tint: .azur,
-        content: .audio(clip: AudioClip(fileName: "essai.wav", trimStart: 0.4, trimEnd: 5.2, fadeIn: 0.8, fadeOut: 1.4, loops: true)))
+        audio: AudioClip(fileName: "essai.wav", trimStart: 0.4, trimEnd: 5.2, fadeIn: 0.8, fadeOut: 1.4, loops: true))
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]), audioDirectory: directory)
     controller.selection = position
     return InspectorView(position: position)

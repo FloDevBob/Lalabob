@@ -101,7 +101,7 @@ extension ContentView {
     /// Verrouillé, le panneau ne s'affiche que pour un son (les cases vides et les cues n'ont rien à y piloter).
     fileprivate func showsInspector(for position: GridPosition) -> Bool {
         guard controller.isLocked else { return true }
-        guard let pad = controller.pad(at: position), case .audio = pad.content else { return false }
+        guard let pad = controller.pad(at: position), pad.audio != nil else { return false }
         return true
     }
 
@@ -147,9 +147,9 @@ extension ContentView {
     grid.columns[6] = Column.empty(name: "Sons", kind: .audio)
     grid[GridPosition(column: 2, row: 0)] = Pad(
         title: "Plein feu", subtitle: "Cue", tint: .ambre,
-        content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+        light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     grid[GridPosition(column: 6, row: 0)] = Pad(
-        title: "Rire", subtitle: "Public", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        title: "Rire", subtitle: "Public", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
     return ContentView()
         .environment(ShowController(show: Show(name: "Essai", grids: [grid])))
         .environment(LibraryController(securityScoped: false))
@@ -164,13 +164,13 @@ extension ContentView {
     let position = GridPosition(column: 1, row: 2)
     grid[position] = Pad(
         title: "Orage lointain", subtitle: "Ambiance", tint: .azur,
-        content: .audio(clip: AudioClip(fileName: "essai.wav")))
+        audio: AudioClip(fileName: "essai.wav"))
     grid[GridPosition(column: 0, row: 0)] = Pad(
-        title: "Rire", subtitle: "Public", tint: .ambre, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        title: "Rire", subtitle: "Public", tint: .ambre, audio: AudioClip(fileName: "rire.wav"))
     for (index, title) in ["Plein feu", "Noir", "Ambiance"].enumerated() {
         grid[GridPosition(column: 6, row: index)] = Pad(
             title: title, subtitle: "Cue", tint: [.orange, .azur, .rose][index],
-            content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+            light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     }
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
     controller.selection = position

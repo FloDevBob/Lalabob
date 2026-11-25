@@ -13,7 +13,7 @@ struct ClipEditingTests {
 
     private func makeController(locked: Bool = false) -> (ShowController, UndoManager) {
         var grid = PadGrid.empty(name: "G")
-        grid[Self.a] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        grid[Self.a] = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!,
             isLocked: locked)
@@ -24,7 +24,7 @@ struct ClipEditingTests {
     }
 
     private func clip(_ controller: ShowController) -> AudioClip? {
-        if case .audio(let clip) = controller.pad(at: Self.a)?.content { clip } else { nil }
+        controller.pad(at: Self.a)?.audio
     }
 
     @Test func trimFadesLoopAndRetriggerAreEditableAndUndoable() {
@@ -112,7 +112,7 @@ struct ClipEditingTests {
     @Test func gainPreviewReachesTheEngineWithoutTouchingTheShowNorTheUndoStack() async {
         let audio = RecordingAudioEngine()
         var grid = PadGrid.empty(name: "G")
-        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        let pad = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         grid[Self.a] = pad
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
@@ -133,7 +133,7 @@ struct ClipEditingTests {
     @Test func gainPreviewWorksWhenLockedButNotOnAnEmptyCell() async {
         let audio = RecordingAudioEngine()
         var grid = PadGrid.empty(name: "G")
-        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        let pad = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         grid[Self.a] = pad
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
@@ -150,7 +150,7 @@ struct ClipEditingTests {
         let audio = RecordingAudioEngine()
         var grid = PadGrid.empty(name: "G")
         let clip = AudioClip(fileName: "rire.wav", trimStart: 2, trimEnd: 8)
-        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: clip))
+        let pad = Pad(title: "Rire", tint: .vert, audio: clip)
         grid[Self.a] = pad
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
@@ -165,7 +165,7 @@ struct ClipEditingTests {
     @Test func seekIsIgnoredOnEmptyCellsAndOnLightPads() async {
         let audio = RecordingAudioEngine()
         var grid = PadGrid.empty(name: "G")
-        grid[Self.a] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+        grid[Self.a] = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
             defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)

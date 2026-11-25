@@ -33,7 +33,10 @@ let package = Package(
             dependencies: ["LalabobModel", "LalabobAudio", "LalabobMIDI", "ControllerDrivers"]
         ),
 
-        .testTarget(name: "LalabobModelTests", dependencies: ["LalabobModel"]),
+        .testTarget(
+            name: "LalabobModelTests", dependencies: ["LalabobModel"],
+            resources: [.copy("Fixtures")]  // show-v1.json : un vrai show.json du format version 1
+        ),
         .testTarget(name: "LalabobDesignTests", dependencies: ["LalabobDesign"]),
         .testTarget(name: "LalabobMIDITests", dependencies: ["LalabobMIDI"]),
         .testTarget(

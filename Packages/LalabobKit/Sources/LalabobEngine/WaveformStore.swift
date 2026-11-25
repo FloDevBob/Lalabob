@@ -74,11 +74,11 @@ extension ShowController {
         at position: GridPosition, actionName: String, allowedWhenLocked: Bool = false, _ change: (inout AudioClip) -> Void
     ) {
         commit(actionName, allowedWhenLocked: allowedWhenLocked) { show, grid in
-            guard position.isValid, var pad = show.grids[grid][position], case .audio(var clip) = pad.content else {
+            guard position.isValid, var pad = show.grids[grid][position], var clip = pad.audio else {
                 return false
             }
             change(&clip)
-            pad.content = .audio(clip: clip)
+            pad.audio = clip
             show.grids[grid][position] = pad
             return true
         }

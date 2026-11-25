@@ -13,7 +13,7 @@ import Testing
 struct MultiDocumentTests {
     private func controller(padTitle: String, tint: Tint, audio: RecordingAudioEngine) -> (ShowController, Pad) {
         var grid = PadGrid.empty(name: "G")
-        let pad = Pad(title: padTitle, tint: tint, content: .audio(clip: AudioClip(fileName: "\(padTitle).wav")))
+        let pad = Pad(title: padTitle, tint: tint, audio: AudioClip(fileName: "\(padTitle).wav"))
         grid.columns[0].slots[0] = pad
         let controller = ShowController(
             show: Show(name: padTitle, grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
@@ -90,7 +90,7 @@ struct MultiDocumentTests {
     @Test func lightClicksOfTheAttachedShowReachLightKey() async {
         var grid = PadGrid.empty(name: "G")
         grid[GridPosition(column: 6, row: 0)] = Pad(
-            title: "Feu", tint: .ambre, content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+            title: "Feu", tint: .ambre, light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
         let a = ShowController(
             show: Show(name: "A", grids: [grid]), defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
         let b = ShowController(
