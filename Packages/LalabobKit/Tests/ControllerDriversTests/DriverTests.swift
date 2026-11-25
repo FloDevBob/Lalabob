@@ -195,7 +195,6 @@ struct StopButtonTests {
         #expect(apc.interpret(.noteOn(channel: 0, note: 100, velocity: 0)) == nil)
         #expect(apc.interpret(.noteOff(channel: 0, note: 100, velocity: 0)) == nil)
         #expect(apc.interpret(.noteOn(channel: 0, note: 108, velocity: 127)) == nil)  // hors des 8 boutons
-        #expect(apc.interpret(.noteOn(channel: 0, note: 112, velocity: 127)) == nil)  // boutons de scène : inutilisés
         #expect(apc.interpret(.noteOn(channel: 0, note: 99, velocity: 127)) == nil)
         // Un appui sur un pad reste un appui sur un pad.
         #expect(apc.interpret(.noteOn(channel: 0, note: 63, velocity: 127)) == .padPressed(GridPosition(column: 7, row: 0), velocity: 127))
@@ -219,18 +218,18 @@ struct StopButtonTests {
         #expect(launchpad.interpret(.noteOn(channel: 0, note: 100, velocity: 127)) == nil)
     }
 
-    @Test("APC : en quittant, les 64 pads et les 8 boutons sont éteints")
+    @Test("APC : en quittant, les pads, les boutons stop et les boutons de scène sont éteints")
     func apcShutdown() {
         let messages = apc.shutdownMessages
-        #expect(messages.count == 64 + 8)
+        #expect(messages.count == 64 + 8 + 8)  // pads, boutons stop, boutons de scène
         #expect(messages.allSatisfy { if case .noteOn(_, _, let velocity) = $0 { velocity == 0 } else { false } })
-        #expect(Set(messages.compactMap { if case .noteOn(_, let note, _) = $0 { note } else { nil } }).count == 72)
+        #expect(Set(messages.compactMap { if case .noteOn(_, let note, _) = $0 { note } else { nil } }).count == 80)
     }
 
     @Test("APC en RVB libre : les pads sont éteints en noir, les boutons en note")
     func apcRGBShutdown() {
         let messages = APCMiniMK2Driver(calibration: .standard, usesRGB: true).shutdownMessages
-        #expect(messages.count == 72)
+        #expect(messages.count == 80)
         #expect(messages.prefix(64).allSatisfy { if case .systemExclusive = $0 { true } else { false } })
     }
 
@@ -243,6 +242,67 @@ struct StopButtonTests {
             return
         }
         #expect(leds.count > 100)  // les 64 LED en un message
-        #expect(messages.count == 2)
+        #expect(messages.count == 4)  // + les deux flèches de grille, puis la sortie
+    }
+}
+
+/// Changer de grille depuis le contrôleur (fiche 02) : boutons de scène + Shift (APC), flèches (Launchpad).
+@Suite("Boutons de grille")
+struct GridButtonTests {
+    private let apc = APCMiniMK2Driver()
+    private let launchpad = LaunchpadDriver(model: .launchpadMiniMK3)
+
+    @Test("APC : les boutons de scène 1 et 8 choisissent les grilles 0 et 7 ; le relâchement ne fait rien")
+    func sceneButtons() {
+        #expect(apc.interpret(.noteOn(channel: 0, note: 112, velocity: 127)) == .gridSelect(index: 0))
+        #expect(apc.interpret(.noteOn(channel: 0, note: 119, velocity: 127)) == .gridSelect(index: 7))
+        #expect(apc.interpret(.noteOn(channel: 0, note: 112, velocity: 0)) == nil)
+        #expect(apc.interpret(.noteOff(channel: 0, note: 112, velocity: 0)) == nil)
+    }
+
+    @Test("APC : Shift s'enfonce et se relâche")
+    func shift() {
+        #expect(apc.interpret(.noteOn(channel: 0, note: 122, velocity: 127)) == .shift(pressed: true))
+        #expect(apc.interpret(.noteOff(channel: 0, note: 122, velocity: 0)) == .shift(pressed: false))
+        #expect(apc.interpret(.noteOn(channel: 0, note: 122, velocity: 0)) == .shift(pressed: false))
+    }
+
+    @Test("APC : un seul bouton allumé, celui de la grille affichée (grilles 9 à 16 avec Shift)")
+    func apcLEDs() {
+        let plain = apc.gridButtonMessages(current: 1, count: 3, shiftHeld: false)
+        #expect(plain.count == 8)
+        #expect(plain[1] == .noteOn(channel: 0, note: 113, velocity: 1))
+        #expect(plain.filter { $0 == .noteOn(channel: 0, note: 113, velocity: 1) }.count == 1)
+        #expect(plain[0] == .noteOn(channel: 0, note: 112, velocity: 0))
+        let shifted = apc.gridButtonMessages(current: 1, count: 3, shiftHeld: true)
+        #expect(shifted.allSatisfy { if case .noteOn(_, _, let v) = $0 { v == 0 } else { false } })
+        let ninth = apc.gridButtonMessages(current: 8, count: 10, shiftHeld: true)
+        #expect(ninth[0] == .noteOn(channel: 0, note: 112, velocity: 1))
+        #expect(apc.gridButtonMessages(current: nil, count: 0, shiftHeld: false).allSatisfy {
+            if case .noteOn(_, _, let v) = $0 { v == 0 } else { false }
+        })
+    }
+
+    @Test("Launchpad : CC 91 = précédente, CC 92 = suivante, le relâchement et les autres CC sont ignorés")
+    func arrows() {
+        #expect(launchpad.interpret(.controlChange(channel: 0, controller: 91, value: 127)) == .gridStep(delta: -1))
+        #expect(launchpad.interpret(.controlChange(channel: 0, controller: 92, value: 127)) == .gridStep(delta: 1))
+        #expect(launchpad.interpret(.controlChange(channel: 0, controller: 91, value: 0)) == nil)
+        #expect(launchpad.interpret(.controlChange(channel: 0, controller: 93, value: 127)) == nil)
+    }
+
+    @Test("Launchpad : une flèche n'est allumée que s'il y a une grille de ce côté")
+    func launchpadLEDs() {
+        func lit(_ m: [MIDIEvent]) -> [Bool] { m.map { if case .controlChange(_, _, let v) = $0 { v > 0 } else { false } } }
+        #expect(lit(launchpad.gridButtonMessages(current: 0, count: 3, shiftHeld: false)) == [false, true])
+        #expect(lit(launchpad.gridButtonMessages(current: 1, count: 3, shiftHeld: false)) == [true, true])
+        #expect(lit(launchpad.gridButtonMessages(current: 2, count: 3, shiftHeld: false)) == [true, false])
+        #expect(lit(launchpad.gridButtonMessages(current: nil, count: 0, shiftHeld: false)) == [false, false])
+    }
+
+    @Test("Extinction : les boutons de grille sont éteints à la fermeture")
+    func shutdown() {
+        #expect(apc.shutdownMessages.contains(.noteOn(channel: 0, note: 112, velocity: 0)))
+        #expect(launchpad.shutdownMessages.contains(.controlChange(channel: 0, controller: 91, value: 0)))
     }
 }

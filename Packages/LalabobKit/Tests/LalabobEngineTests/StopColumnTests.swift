@@ -192,7 +192,7 @@ struct StopColumnTests {
         let sent = await rig.transport.sentEvents(to: ControllerSessionTests.lpxDestination.id)
         let exit = MIDIEvent.systemExclusive([0xF0, 0x00, 0x20, 0x29, 0x02, 0x0C, 0x0E, 0x00, 0xF7])
         #expect(sent.last == exit)
-        #expect(sent.count == 2)  // les 64 LED en un message, puis la sortie du mode Programmeur
+        #expect(sent.count == 4)  // les 64 LED en un message, les 2 flèches de grille, puis la sortie du mode Programmeur
     }
 
     @Test("Sans contrôleur branché, la fermeture ne fait rien et ne bloque pas ; deux fermetures de suite non plus")
