@@ -51,8 +51,12 @@ public final class ControllerSession {
     /// La tâche qui vide la file d'envoi vers le contrôleur (on l'attend à la fermeture, voir `shutdown`).
     @ObservationIgnored private var outboxTask: Task<Void, Never>?
     @ObservationIgnored private var isShutDown = false
-    /// Dernier état connu de chaque cue lumière (retour de LightKey), partagé par tous les spectacles ouverts.
-    @ObservationIgnored private var lightStates: [GridPosition: LightState] = [:]
+    /// Dernier état connu de chaque cue lumière (retour de LightKey), par canal (1 à 16) puis par case ; partagé par tous
+    /// les spectacles ouverts. Chaque grille a son canal : la grille affichée ne lit que le sien.
+    @ObservationIgnored private var lightStates: [Int: [GridPosition: LightState]] = [:]
+    /// Canal (0 à 15) sur lequel chaque appui physique relayé est parti : le Note Off du relâchement part sur le même, même
+    /// si la grille a changé entre-temps.
+    @ObservationIgnored private var relayedPresses: [GridPosition: UInt8] = [:]
 
     /// Session rattachée à un seul spectacle (tests, aperçus).
     public convenience init(controller: ShowController, transport: any MIDITransport, defaults: UserDefaults = .standard) {
@@ -281,17 +285,53 @@ public final class ControllerSession {
         for event in events { lightingOutbox.yield(event) }
     }
 
+    /// Canal MIDI (0 à 15) de la lumière de la grille affichée : chaque grille a le sien (fiche 01). `nil` = « Sans canal » :
+    /// rien ne part. Sans spectacle rattaché, canal 1.
+    private var lightMIDIChannel: UInt8? {
+        guard let controller = attachedController else { return 0 }
+        return controller.currentLightChannel.map { UInt8($0 - 1) }
+    }
+
+    /// Le même message sur un autre canal (les pilotes produisent tout sur le canal 1).
+    private static func onChannel(_ channel: UInt8, _ event: MIDIEvent) -> MIDIEvent {
+        switch event {
+        case let .noteOn(_, note, velocity): .noteOn(channel: channel, note: note, velocity: velocity)
+        case let .noteOff(_, note, velocity): .noteOff(channel: channel, note: note, velocity: velocity)
+        case let .controlChange(_, controller, value): .controlChange(channel: channel, controller: controller, value: value)
+        case .systemExclusive: event
+        }
+    }
+
+    /// Canal (1 à 16) d'un message reçu de LightKey (`nil` pour un SysEx).
+    private static func channel(of event: MIDIEvent) -> Int? {
+        switch event {
+        case let .noteOn(channel, _, _), let .noteOff(channel, _, _), let .controlChange(channel, _, _): Int(channel) + 1
+        case .systemExclusive: nil
+        }
+    }
+
     /// LightKey n'écoute que Lalabob (ADR 0006) : l'appui physique sur une colonne lumière lui est relayé,
-    /// Note On à l'appui et Note Off au relâchement réel, sur le canal 1.
+    /// Note On à l'appui et Note Off au relâchement réel, sur le canal de la grille affichée.
     private func relayPad(_ position: GridPosition, pressed: Bool, driver: any ControllerDriver) {
         guard position.isValid else { return }
         let note = driver.note(for: position)
-        sendToLightKey([pressed ? .noteOn(channel: 0, note: note, velocity: 127) : .noteOff(channel: 0, note: note, velocity: 0)])
+        if pressed {
+            guard let channel = lightMIDIChannel else {
+                log.notice("Appui lumière non relayé : la grille affichée est « Sans canal »")
+                return
+            }
+            relayedPresses[position] = channel
+            sendToLightKey([.noteOn(channel: channel, note: note, velocity: 127)])
+        } else if let channel = relayedPresses.removeValue(forKey: position) {
+            sendToLightKey([.noteOff(channel: channel, note: note, velocity: 0)])
+        }
     }
 
-    /// Fader physique d'une colonne lumière : le même CC part vers LightKey (une valeur inchangée n'est pas répétée).
+    /// Fader physique d'une colonne lumière : le même CC part vers LightKey, sur le canal de la grille (une valeur
+    /// inchangée n'est pas répétée).
     private func relayFader(column: Int, value: Double, driver: any ControllerDriver) {
-        guard isLightColumn(column), let event = driver.faderEvent(column: column, value: value),
+        guard isLightColumn(column), let channel = lightMIDIChannel,
+            let event = driver.faderEvent(column: column, value: value).map({ Self.onChannel(channel, $0) }),
             lastLightFaderEvents[column] != event
         else { return }
         lastLightFaderEvents[column] = event
@@ -311,17 +351,21 @@ public final class ControllerSession {
             // Les notes du retour sont celles du contrôleur : même disposition que pour les appuis.
             let driver = active?.driver ?? (attachedController?.lastControllerModel ?? .apcMiniMK2).driver
             var changed = false
+            // Seul le canal de la grille affichée concerne l'appairage en cours.
+            let displayedChannel = attachedController?.currentLightChannel
             for event in events {
                 // Un CC de retour sur le numéro d'un fader lumière : LightKey a reconnu ce fader (mode d'appairage).
-                if case .controlChange = event,
+                if case .controlChange = event, Self.channel(of: event) == displayedChannel,
                     case .columnFader(let column, _)? = driver.interpret(event) ?? ControllerModel.apcMiniMK2.driver.interpret(event)
                 {
                     attachedController?.faderFeedbackArrived(column: column)
                 }
-                guard let (position, state) = driver.lightFeedback(for: event) else { continue }
-                attachedController?.lightFeedbackArrived(at: position)  // mode d'appairage : la case cible répond
-                guard lightStates[position] != state else { continue }
-                lightStates[position] = state  // le dernier message gagne : une rafale identique ne change rien
+                guard let (channel, position, state) = driver.lightFeedback(for: event) else { continue }
+                if channel == displayedChannel {
+                    attachedController?.lightFeedbackArrived(at: position)  // mode d'appairage : la case cible répond
+                }
+                guard lightStates[channel]?[position] != state else { continue }
+                lightStates[channel, default: [:]][position] = state  // le dernier message gagne : une rafale identique ne change rien
                 changed = true
             }
             if changed { attachedController?.setLightStates(lightStates) }
@@ -335,11 +379,15 @@ public final class ControllerSession {
             log.notice("Clic lumière ignoré : aucun contrôleur connu pour choisir la note")
             return
         }
+        guard let channel = lightMIDIChannel else {
+            log.notice("Clic lumière ignoré : la grille affichée est « Sans canal »")
+            return
+        }
         let note = model.driver.note(for: position)
-        sendToLightKey([.noteOn(channel: 0, note: note, velocity: 127)])
+        sendToLightKey([.noteOn(channel: channel, note: note, velocity: 127)])
         Task {
             try? await Task.sleep(for: .milliseconds(100))  // durée d'un appui bref
-            sendToLightKey([.noteOff(channel: 0, note: note, velocity: 0)])
+            sendToLightKey([.noteOff(channel: channel, note: note, velocity: 0)])
         }
     }
 
@@ -351,8 +399,12 @@ public final class ControllerSession {
             log.notice("Fader lumière ignoré : aucun contrôleur connu pour choisir le CC")
             return
         }
-        guard let event = model.driver.faderEvent(column: column, value: level)
-            ?? ControllerModel.apcMiniMK2.driver.faderEvent(column: column, value: level),
+        guard let channel = lightMIDIChannel else {
+            log.notice("Fader lumière ignoré : la grille affichée est « Sans canal »")
+            return
+        }
+        guard let event = (model.driver.faderEvent(column: column, value: level)
+            ?? ControllerModel.apcMiniMK2.driver.faderEvent(column: column, value: level)).map({ Self.onChannel(channel, $0) }),
             lastLightFaderEvents[column] != event
         else { return }
         lastLightFaderEvents[column] = event

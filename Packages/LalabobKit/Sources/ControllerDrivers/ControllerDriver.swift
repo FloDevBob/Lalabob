@@ -107,13 +107,13 @@ extension ControllerDriver {
 
 extension ControllerDriver {
     /// Ce que LightKey dit d'une cue : Note On (vélocité > 0) = allumée, Note Off = éteinte, sur la note de la case.
-    /// Le canal est ignoré (LightKey répond sur celui qu'il a appris). `nil` si le message ne concerne aucune case.
-    public func lightFeedback(for event: MIDIEvent) -> (position: GridPosition, state: LightState)? {
+    /// Le canal (1 à 16) dit de quelle grille il s'agit : chaque grille a le sien. `nil` si le message ne concerne aucune case.
+    public func lightFeedback(for event: MIDIEvent) -> (channel: Int, position: GridPosition, state: LightState)? {
         switch event {
-        case let .noteOn(_, note, velocity):
-            return position(forNote: note).map { ($0, velocity > 0 ? .on : .off) }
-        case let .noteOff(_, note, _):
-            return position(forNote: note).map { ($0, .off) }
+        case let .noteOn(channel, note, velocity):
+            return position(forNote: note).map { (Int(channel) + 1, $0, velocity > 0 ? .on : .off) }
+        case let .noteOff(channel, note, _):
+            return position(forNote: note).map { (Int(channel) + 1, $0, .off) }
         case .controlChange, .systemExclusive:
             return nil
         }

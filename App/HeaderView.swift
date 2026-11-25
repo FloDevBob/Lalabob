@@ -189,6 +189,13 @@ struct GridTabsView: View {
     @FocusState private var nameFieldFocused: Bool
     @Namespace private var tabHighlight
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Changement de canal LightKey en attente de confirmation (les appairages de la grille sont à refaire).
+    @State private var pendingChannel: PendingChannel?
+
+    private struct PendingChannel {
+        let grid: Int
+        let channel: Int?
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -211,6 +218,37 @@ struct GridTabsView: View {
             }
         }
         .frame(height: 36)
+        .alert(
+            "Changer le canal LightKey ?",
+            isPresented: Binding(get: { pendingChannel != nil }, set: { if !$0 { pendingChannel = nil } }),
+            presenting: pendingChannel
+        ) { pending in
+            Button("Changer") { controller.setLightChannel(grid: pending.grid, channel: pending.channel) }
+            Button("Annuler", role: .cancel) {}
+        } message: { pending in
+            Text(
+                pending.channel == nil
+                    ? "Sans canal, les cues et faders lumière de cette grille n'enverront plus rien à LightKey."
+                    : "Les cues et faders lumière de cette grille sont à réappairer dans LightKey sur le canal \(pending.channel ?? 0)."
+            )
+        }
+    }
+
+    /// Pastille du canal LightKey de la grille : « Can. 2 », ou « Sans canal » en pointillés rouges.
+    private func channelBadge(_ channel: Int?) -> some View {
+        Text(channel.map { "Can. \($0)" } ?? "Sans canal")
+            .font(.system(size: 10, design: .monospaced))
+            .foregroundStyle(channel == nil ? Color.red.opacity(0.9) : Surface.lightAccent)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .overlay {
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(
+                        channel == nil ? Color.red.opacity(0.5) : Surface.lightAccent.opacity(0.35),
+                        style: StrokeStyle(lineWidth: 1, dash: channel == nil ? [3, 2] : []))
+            }
+            .help(channel.map { "Canal LightKey \($0) : les cues et faders lumière de cette grille partent sur ce canal" }
+                ?? "Sans canal : la lumière de cette grille n'envoie rien à LightKey")
     }
 
     private func tab(index: Int, grid: PadGrid) -> some View {
@@ -237,6 +275,7 @@ struct GridTabsView: View {
             Text("\(controller.padCount(inGrid: index))")
                 .font(Typography.mono)
                 .foregroundStyle(Surface.textTertiary)
+            channelBadge(grid.lightChannel)
         }
         .padding(.horizontal, 10)
         .frame(height: 32)
@@ -273,7 +312,9 @@ struct GridTabsView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityLabel("Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads")
+        .accessibilityLabel(
+            "Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads, "
+                + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey"))
     }
 
     @ViewBuilder
@@ -284,8 +325,34 @@ struct GridTabsView: View {
             Button("Déplacer vers la droite") { controller.moveGrid(from: index, to: index + 1) }
                 .disabled(index == controller.show.grids.count - 1)
             Divider()
+            channelMenu(index: index, grid: grid)
+            Divider()
             Button("Supprimer la grille", role: .destructive) { controller.removeGrid(at: index) }
                 .disabled(controller.show.grids.count == 1)
+    }
+
+    /// Sous-menu « Canal LightKey » : les 16 canaux (ceux des autres grilles grisés, avec leur nom) et « Sans canal ».
+    private func channelMenu(index: Int, grid: PadGrid) -> some View {
+        Menu("Canal LightKey : \(grid.lightChannel.map(String.init) ?? "aucun")") {
+            ForEach(Array(Show.lightChannels), id: \.self) { channel in
+                let owner = controller.gridIndex(usingLightChannel: channel)
+                let title = owner.flatMap { $0 == index ? nil : "Canal \(channel) — \(controller.show.grids[$0].name)" }
+                    ?? "Canal \(channel)"
+                Button {
+                    pendingChannel = PendingChannel(grid: index, channel: channel)
+                } label: {
+                    Text(grid.lightChannel == channel ? "✓ " + title : title)
+                }
+                .disabled(owner != nil)
+            }
+            Divider()
+            Button {
+                pendingChannel = PendingChannel(grid: index, channel: nil)
+            } label: {
+                Text(grid.lightChannel == nil ? "✓ Sans canal" : "Sans canal")
+            }
+            .disabled(grid.lightChannel == nil)
+        }
     }
 
     private static let dragPrefix = "lalabob-grid:"

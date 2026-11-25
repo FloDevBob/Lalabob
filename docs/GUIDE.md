@@ -37,6 +37,10 @@ Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien :
 4. Fader : « Add Trigger… » sur le réglage, puis bouger le fader.
 5. **Terminer** (Échap reste « Tout arrêter »).
 
+Chaque grille a **son canal LightKey** (« Can. 2 » sur l'onglet) : la même touche lance une cue différente selon la grille
+affichée. On appaire donc chaque grille à part. Clic droit sur l'onglet › **Canal LightKey** pour le changer (ses appairages sont
+alors à refaire). Un spectacle d'avant cette version le signale à l'ouverture : les cues des grilles 2 et suivantes sont à réappairer.
+
 Sur la grille : une cue **allumée** dans LightKey a un contour, un halo et une ampoule à sa couleur ; **éteinte**, l'ampoule est atténuée ; sans ampoule, LightKey n'a rien dit. La couleur réelle de la cue n'est pas connue de Lalabob.
 
 ## En cas de problème

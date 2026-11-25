@@ -27,6 +27,28 @@ public enum ShowPackage {
         public var audioFileNames: [String]
         /// Sons utilisés par un pad mais absents de `Audio/`, triés. Le spectacle s'ouvre quand même.
         public var missingAudio: [String]
+        /// Grilles (index) dont les appairages lumière ont été retirés en passant au canal par grille (ancien fichier) :
+        /// à signaler une fois à l'ouverture.
+        public var lightPairingsReset: [Int] = []
+    }
+
+    /// Un spectacle décodé, migré et validé.
+    public struct Decoded: Equatable, Sendable {
+        public var show: Show
+        /// Voir `Contents.lightPairingsReset`.
+        public var lightPairingsReset: [Int]
+    }
+
+    /// Ce qu'on regarde du JSON avant migration : quelles grilles ont une clé `lightChannel` (même `null`).
+    private struct ChannelProbe: Decodable {
+        struct Grid: Decodable {
+            let hasLightChannel: Bool
+            private enum CodingKeys: String, CodingKey { case lightChannel }
+            init(from decoder: any Decoder) throws {
+                hasLightChannel = try decoder.container(keyedBy: CodingKeys.self).contains(.lightChannel)
+            }
+        }
+        let grids: [Grid]
     }
 
     // MARK: - show.json
@@ -39,11 +61,23 @@ public enum ShowPackage {
 
     /// Décode et valide. Toute donnée lue d'un fichier passe par ici avant usage.
     public static func decode(_ data: Data) throws(ShowPackageError) -> Show {
+        try decodeMigrating(data).show
+    }
+
+    /// Décode, migre (canal LightKey par grille) puis valide, en disant ce que la migration a changé.
+    public static func decodeMigrating(_ data: Data) throws(ShowPackageError) -> Decoded {
         guard data.count <= maximumShowFileSize else { throw .tooLarge }
-        let show: Show
-        do { show = try JSONDecoder().decode(Show.self, from: data) } catch { throw .corrupt }
+        var show: Show
+        let probe: ChannelProbe
+        do {
+            let decoder = JSONDecoder()
+            show = try decoder.decode(Show.self, from: data)
+            probe = try decoder.decode(ChannelProbe.self, from: data)
+        } catch { throw .corrupt }
+        let withoutChannel = probe.grids.indices.filter { !probe.grids[$0].hasLightChannel }
+        let reset = withoutChannel.isEmpty ? [] : show.migrateToLightChannelPerGrid(gridsWithoutChannel: withoutChannel)
         do { try show.validate() } catch { throw .invalid(error) }
-        return show
+        return Decoded(show: show, lightPairingsReset: reset)
     }
 
     // MARK: - Paquet
@@ -53,10 +87,13 @@ public enum ShowPackage {
         guard let file = children[showFileName], file.isRegularFile, let data = file.regularFileContents else {
             throw .missingShowFile
         }
-        let show = try decode(data)
+        let decoded = try decodeMigrating(data)
+        let show = decoded.show
         let audio = audioFileNames(in: children[audioFolderName])
         let used = show.usedAudioFileNames
-        return Contents(show: show, audioFileNames: audio, missingAudio: used.subtracting(audio).sorted())
+        return Contents(
+            show: show, audioFileNames: audio, missingAudio: used.subtracting(audio).sorted(),
+            lightPairingsReset: decoded.lightPairingsReset)
     }
 
     /// Le dossier `Audio/` d'un paquet lu, à conserver pour le réécrire sans recopier les sons.

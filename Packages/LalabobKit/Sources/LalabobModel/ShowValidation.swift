@@ -10,6 +10,8 @@ public enum ShowValidationError: Error, Equatable, Sendable {
     case padKindMismatch(grid: Int, position: GridPosition)
     case unsafeFileName(String)
     case valueOutOfRange(String)
+    /// Deux grilles utilisent le même canal LightKey.
+    case duplicateLightChannel(Int)
 }
 
 extension Show {
@@ -24,6 +26,13 @@ extension Show {
         }
         guard !grids.isEmpty else { throw .noGrid }
         guard grids.count <= Show.maximumGridCount else { throw .tooManyGrids(grids.count) }
+
+        var lightChannels: Set<Int> = []
+        for grid in grids {
+            guard let channel = grid.lightChannel else { continue }
+            guard Show.lightChannels.contains(channel) else { throw .valueOutOfRange("canal LightKey") }
+            guard lightChannels.insert(channel).inserted else { throw .duplicateLightChannel(channel) }
+        }
 
         for (g, grid) in grids.enumerated() {
             guard grid.columns.count == PadGrid.size else {

@@ -147,13 +147,17 @@ struct LightFeedbackTests {
         #expect(off.state == .off)
     }
 
-    @Test("Un Note On de vélocité 0 est éteint, le canal est sans importance")
+    @Test("Un Note On de vélocité 0 est éteint ; le canal (1 à 16) accompagne la case")
     func zeroVelocityAndChannel() throws {
         let zero = try #require(apc.lightFeedback(for: .noteOn(channel: 0, note: 14, velocity: 0)))
         #expect(zero.state == .off)
+        #expect(zero.channel == 1)
         let channel = try #require(apc.lightFeedback(for: .noteOn(channel: 15, note: 14, velocity: 127)))
         #expect(channel.state == .on)
+        #expect(channel.channel == 16)
         #expect(channel.position == zero.position)
+        let off = try #require(apc.lightFeedback(for: .noteOff(channel: 2, note: 14, velocity: 0)))
+        #expect(off.channel == 3)
     }
 
     @Test("Hors grille ou autre type de message : ignoré")
@@ -166,9 +170,10 @@ struct LightFeedbackTests {
     @Test("Le Launchpad utilise ses propres notes")
     func launchpad() throws {
         let launchpad = LaunchpadDriver(model: .launchpadX)
-        let result = try #require(launchpad.lightFeedback(for: .noteOn(channel: 0, note: 81, velocity: 127)))
+        let result = try #require(launchpad.lightFeedback(for: .noteOn(channel: 1, note: 81, velocity: 127)))
         #expect(result.position == GridPosition(column: 0, row: 0))
         #expect(result.state == .on)
+        #expect(result.channel == 2)
     }
 }
 

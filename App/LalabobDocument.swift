@@ -25,6 +25,8 @@ nonisolated final class LalabobDocument: ReferenceFileDocument {
     let workingAudio: URL
     /// Sons utilisés par des pads mais absents du paquet (signalés à l'ouverture).
     let missingAudio: [String]
+    /// Ancien spectacle : grilles (index) dont les appairages lumière ont été retirés en passant au canal par grille.
+    let lightPairingsReset: [Int]
     /// Spectacle déjà enregistré : il s'ouvre verrouillé (prêt pour la scène) ; un nouveau s'ouvre déverrouillé.
     let opensLocked: Bool
 
@@ -32,6 +34,7 @@ nonisolated final class LalabobDocument: ReferenceFileDocument {
         mirror = ShowMirror(.new())
         workingAudio = Self.makeWorkingDirectory()
         missingAudio = []
+        lightPairingsReset = []
         opensLocked = false
     }
 
@@ -54,6 +57,7 @@ nonisolated final class LalabobDocument: ReferenceFileDocument {
         mirror = ShowMirror(contents.show)
         workingAudio = directory
         missingAudio = contents.missingAudio
+        lightPairingsReset = contents.lightPairingsReset
         opensLocked = true
     }
 
@@ -108,6 +112,7 @@ struct DocumentWindow: View {
     @Environment(\.appearsActive) private var appearsActive
     @State private var controller: ShowController?
     @State private var showsMissingAudio = false
+    @State private var showsPairingReset = false
 
     var body: some View {
         Group {
@@ -128,6 +133,8 @@ struct DocumentWindow: View {
                 created.onShowChange = { mirror.update($0) }
                 controller = created
                 showsMissingAudio = !document.missingAudio.isEmpty
+                // Deux alertes ne s'affichent pas en même temps : celle des appairages suit celle des sons manquants.
+                showsPairingReset = document.missingAudio.isEmpty && !document.lightPairingsReset.isEmpty
             }
             attachIfActive()
         }
@@ -136,10 +143,25 @@ struct DocumentWindow: View {
             if let controller { midiSession?.detach(controller) }
         }
         .alert("Sons manquants", isPresented: $showsMissingAudio) {
-            Button("OK") {}
+            Button("OK") { showsPairingReset = !document.lightPairingsReset.isEmpty }
         } message: {
             Text("Ces sons sont introuvables dans le spectacle ; leurs pads restent muets :\n" + document.missingAudio.joined(separator: ", "))
         }
+        .alert("Lumière : appairages à refaire", isPresented: $showsPairingReset) {
+            Button("OK") {}
+        } message: {
+            Text(pairingResetMessage)
+        }
+    }
+
+    /// « Chaque grille a maintenant son propre canal LightKey… », avec les grilles concernées.
+    private var pairingResetMessage: String {
+        let grids = document.mirror.current.grids
+        let names = document.lightPairingsReset.filter { grids.indices.contains($0) }
+            .map { "\($0 + 1). \(grids[$0].name)" }
+        return "Chaque grille a maintenant son propre canal LightKey. Les cues et faders lumière de ces grilles sont à "
+            + "réappairer dans LightKey (mode Appairage) :\n" + names.joined(separator: ", ")
+            + "\n\nEnregistrez le spectacle pour ne plus voir ce message."
     }
 
     private func attachIfActive() {

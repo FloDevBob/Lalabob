@@ -63,8 +63,12 @@ public final class ShowController {
 
     /// État de lecture des pads qui jouent ou sont en pause (les autres sont absents).
     public private(set) var playback: [Pad.ID: PlaybackEvent] = [:]
-    /// État de chaque cue lumière d'après le retour de LightKey, par case (la même sur toutes les grilles : c'est la note du contrôleur).
-    public private(set) var lightStates: [GridPosition: LightState] = [:]
+    /// État des cues lumière d'après le retour de LightKey, par canal (1 à 16) puis par case. Chaque grille a son canal.
+    private(set) var lightStatesByChannel: [Int: [GridPosition: LightState]] = [:]
+    /// État des cues de la grille affichée (celles de son canal LightKey).
+    public var lightStates: [GridPosition: LightState] {
+        currentLightChannel.flatMap { lightStatesByChannel[$0] } ?? [:]
+    }
     public private(set) var outputDevices: [AudioOutputDevice] = []
     /// `nil` = sortie par défaut du système.
     public private(set) var selectedOutputUID: String?
@@ -177,6 +181,14 @@ public final class ShowController {
     }
 
     public var currentGrid: PadGrid { show.grids[selectedGridIndex] }
+
+    /// Canal LightKey (1 à 16) de la grille affichée ; `nil` = « Sans canal » : rien ne part vers LightKey.
+    public var currentLightChannel: Int? { currentGrid.lightChannel }
+
+    /// La grille qui utilise ce canal LightKey (pour le menu de l'onglet), `nil` s'il est libre.
+    public func gridIndex(usingLightChannel channel: Int) -> Int? {
+        show.grids.firstIndex { $0.lightChannel == channel }
+    }
 
     public func selectGrid(at index: Int) {
         guard show.grids.indices.contains(index) else { return }
@@ -334,9 +346,9 @@ public final class ShowController {
     /// État d'une case lumière d'après LightKey (`.unknown` tant qu'il n'a rien dit).
     public func lightState(at position: GridPosition) -> LightState { lightStates[position] ?? .unknown }
 
-    func setLightStates(_ states: [GridPosition: LightState]) {
-        guard states != lightStates else { return }
-        lightStates = states
+    func setLightStates(_ states: [Int: [GridPosition: LightState]]) {
+        guard states != lightStatesByChannel else { return }
+        lightStatesByChannel = states
     }
 
     func setConnectedController(_ model: ControllerModel?) {

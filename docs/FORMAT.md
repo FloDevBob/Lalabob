@@ -59,6 +59,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 | `id` | UUID | identifiant stable de l'onglet |
 | `name` | texte | nom de l'onglet |
 | `columns` | tableau de colonnes | **exactement 8**, de gauche à droite |
+| `lightChannel` | entier ou `null` | canal MIDI LightKey de la grille, **1 à 16**, unique entre les grilles ; `null` = « Sans canal » (la lumière de la grille n'envoie rien). **Toujours écrit**, `null` compris. **Absent à la lecture** = fichier d'avant le canal par grille : migration (voir § 3) |
 
 ### 2.3 Colonne (`Column`)
 
@@ -166,7 +167,12 @@ choisie (gardée dans les `UserDefaults`), contrôleur connecté, cadenas (un sp
 
 ## 3. Validation à la lecture
 
-Toute donnée lue d'un fichier passe par `ShowPackage.decode`, qui enchaîne : taille ≤ 10 Mio → décodage JSON → `Show.validate()`.
+Toute donnée lue d'un fichier passe par `ShowPackage.decode` (ou `decodeMigrating`), qui enchaîne : taille ≤ 10 Mio → décodage JSON →
+migration → `Show.validate()`.
+
+**Migration « canal par grille »** (25/11/2026) : les grilles lues **sans** clé `lightChannel` reçoivent un canal (grille N → canal N s'il est
+libre, sinon le premier libre, sinon `null`). Jusque-là tout partait sur le canal 1 : les cues (`isPaired`) et faders (`isFaderPaired`)
+appairés des grilles 2 et suivantes sont remis à `false`, et `Contents.lightPairingsReset` donne ces grilles (l'app le signale une fois).
 Premier échec = ouverture refusée, avec l'erreur correspondante :
 
 | Erreur | Cause |
@@ -179,7 +185,8 @@ Premier échec = ouverture refusée, avec l'erreur correspondante :
 | `invalid(wrongSlotCount)` | une colonne n'a pas 8 cases |
 | `invalid(padKindMismatch)` | un pad son dans une colonne lumière, ou l'inverse |
 | `invalid(unsafeFileName)` | `fileName` vide, > 255 caractères, `.`/`..`, commençant par un point, ou contenant `/ \ :`, NUL, un caractère de contrôle |
-| `invalid(valueOutOfRange)` | niveau de colonne hors 0…1, filtre hors −1…1, `trimStart` < 0, `trimEnd` ≤ `trimStart`, fondu < 0 ou > 600 s, gain hors −60…24 dB, MIDI hors plage |
+| `invalid(duplicateLightChannel)` | deux grilles sur le même canal LightKey |
+| `invalid(valueOutOfRange)` | canal LightKey hors 1…16, niveau de colonne hors 0…1, filtre hors −1…1, `trimStart` < 0, `trimEnd` ≤ `trimStart`, fondu < 0 ou > 600 s, gain hors −60…24 dB, MIDI hors plage |
 
 Erreurs de paquet (avant `show.json`) : `notAPackage` (pas un dossier), `missingShowFile` (pas de `show.json` régulier).
 

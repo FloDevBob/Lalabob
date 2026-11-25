@@ -234,6 +234,18 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   **Non fait** : égaliseur 3 bandes ; APC (ses 8 faders servent déjà au volume, on n'y touche pas).
 - **Reste pour l'étape 0** : « cue supprimée » n'a pas été relevé ; les fixtures Swift d'après le journal brut ne sont pas écrites.
 
+### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
+- **Canal LightKey par grille (25/11/2026, branche `j9/canal-par-grille`, fiche 01)** ✅ code, essai réel à faire.
+  `PadGrid.lightChannel` (1…16, `null` = « Sans canal », toujours écrit) ; nouvelle grille = premier canal libre, réordonner ne change rien,
+  supprimer libère. Migration à la lecture (`ShowPackage.decodeMigrating`) : grille N → canal N, appairages des grilles 2+ remis à faux,
+  alerte unique à l'ouverture. `ControllerSession` : clics, appuis relayés (Note Off sur le canal du Note On), faders lumière et retour par
+  canal ; `ControllerDriver.lightFeedback` renvoie le canal ; état des cues par canal (`ShowController.lightStatesByChannel`, `lightStates` =
+  canal de la grille affichée). Interface : pastille « Can. N » sur l'onglet, clic droit › « Canal LightKey » (confirmation).
+  Format inchangé en version 1 (clé facultative). 21 tests (`LightChannelTests` modèle et moteur, pilotes) ; tous les tests du package verts.
+  **Limite** : l'interface (pastille, menu, alerte) n'a pas été regardée à l'œil, seulement compilée.
+  **À essayer** : ☐ banc d'essai sur le canal 2 : LightKey distingue-t-il la même note sur les canaux 1 et 2 ? ☐ deux grilles, même pad, deux
+  cues ☐ retour : la cue allumée ne s'affiche que sur sa grille ☐ ancien spectacle : alerte, grille 1 toujours appairée ☐ aucun son ne s'arrête.
+
 ## Risques suivis
 
 | Risque | Parade |
