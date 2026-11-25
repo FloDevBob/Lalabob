@@ -10,6 +10,7 @@ struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsLibrary = true
+    @State private var showsSettings = false
 
     /// En-tête de la fenêtre (56) et son filet.
     private static let headerAreaHeight: CGFloat = 57
@@ -32,6 +33,8 @@ struct ContentView: View {
         .overlay(alignment: .top) { lockBanner }
         .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: controller.lockNotice)
         .focusedSceneValue(\.showController, controller)
+        .focusedSceneValue(\.showSettingsPresented, $showsSettings)
+        .sheet(isPresented: $showsSettings) { ShowSettingsView().environment(controller) }
         .alert(
             "Import impossible",
             isPresented: Binding(get: { controller.importError != nil }, set: { if !$0 { controller.dismissImportError() } })

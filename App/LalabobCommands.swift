@@ -13,6 +13,7 @@ struct LalabobCommands: Commands {
     static let helpWindowID = "help"
 
     @FocusedValue(\.showController) private var controller
+    @FocusedValue(\.showSettingsPresented) private var showSettings
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
@@ -34,6 +35,10 @@ struct LalabobCommands: Commands {
             Button(controller?.isLocked == true ? "Déverrouiller" : "Verrouiller") { controller?.isLocked.toggle() }
                 .keyboardShortcut("l")
                 .disabled(controller == nil)
+            Divider()
+            Button("Réglages du spectacle…") { showSettings?.wrappedValue = true }
+                .keyboardShortcut(",", modifiers: [.command, .option])
+                .disabled(showSettings == nil || controller?.isLocked != false)
         }
         CommandMenu("Grilles") {
             Button("Nouvelle grille") { controller?.addGrid() }

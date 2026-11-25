@@ -285,11 +285,11 @@ public final class ControllerSession {
         for event in events { lightingOutbox.yield(event) }
     }
 
-    /// Canal MIDI (0 à 15) de la lumière de la grille affichée : chaque grille a le sien (fiche 01). `nil` = « Sans canal » :
-    /// rien ne part. Sans spectacle rattaché, canal 1.
-    private var lightMIDIChannel: UInt8? {
+    /// Canal MIDI (0 à 15) d'une colonne lumière de la grille affichée : celui de la grille (fiche 01), ou le canal commun pour
+    /// une colonne lumière commune (fiche 01b). `nil` = « Sans canal » : rien ne part. Sans spectacle rattaché, canal 1.
+    private func lightMIDIChannel(column: Int) -> UInt8? {
         guard let controller = attachedController else { return 0 }
-        return controller.currentLightChannel.map { UInt8($0 - 1) }
+        return controller.lightChannel(forColumn: column).map { UInt8($0 - 1) }
     }
 
     /// Le même message sur un autre canal (les pilotes produisent tout sur le canal 1).
@@ -316,7 +316,7 @@ public final class ControllerSession {
         guard position.isValid else { return }
         let note = driver.note(for: position)
         if pressed {
-            guard let channel = lightMIDIChannel else {
+            guard let channel = lightMIDIChannel(column: position.column) else {
                 log.notice("Appui lumière non relayé : la grille affichée est « Sans canal »")
                 return
             }
@@ -330,7 +330,7 @@ public final class ControllerSession {
     /// Fader physique d'une colonne lumière : le même CC part vers LightKey, sur le canal de la grille (une valeur
     /// inchangée n'est pas répétée).
     private func relayFader(column: Int, value: Double, driver: any ControllerDriver) {
-        guard isLightColumn(column), let channel = lightMIDIChannel,
+        guard isLightColumn(column), let channel = lightMIDIChannel(column: column),
             let event = driver.faderEvent(column: column, value: value).map({ Self.onChannel(channel, $0) }),
             lastLightFaderEvents[column] != event
         else { return }
@@ -351,17 +351,17 @@ public final class ControllerSession {
             // Les notes du retour sont celles du contrôleur : même disposition que pour les appuis.
             let driver = active?.driver ?? (attachedController?.lastControllerModel ?? .apcMiniMK2).driver
             var changed = false
-            // Seul le canal de la grille affichée concerne l'appairage en cours.
-            let displayedChannel = attachedController?.currentLightChannel
             for event in events {
                 // Un CC de retour sur le numéro d'un fader lumière : LightKey a reconnu ce fader (mode d'appairage).
-                if case .controlChange = event, Self.channel(of: event) == displayedChannel,
-                    case .columnFader(let column, _)? = driver.interpret(event) ?? ControllerModel.apcMiniMK2.driver.interpret(event)
+                // Seul le canal de cette colonne, dans la grille affichée, concerne l'appairage en cours.
+                if case .controlChange = event,
+                    case .columnFader(let column, _)? = driver.interpret(event) ?? ControllerModel.apcMiniMK2.driver.interpret(event),
+                    Self.channel(of: event) == attachedController?.lightChannel(forColumn: column)
                 {
                     attachedController?.faderFeedbackArrived(column: column)
                 }
                 guard let (channel, position, state) = driver.lightFeedback(for: event) else { continue }
-                if channel == displayedChannel {
+                if channel == attachedController?.lightChannel(forColumn: position.column) {
                     attachedController?.lightFeedbackArrived(at: position)  // mode d'appairage : la case cible répond
                 }
                 guard lightStates[channel]?[position] != state else { continue }
@@ -379,7 +379,7 @@ public final class ControllerSession {
             log.notice("Clic lumière ignoré : aucun contrôleur connu pour choisir la note")
             return
         }
-        guard let channel = lightMIDIChannel else {
+        guard let channel = lightMIDIChannel(column: position.column) else {
             log.notice("Clic lumière ignoré : la grille affichée est « Sans canal »")
             return
         }
@@ -399,7 +399,7 @@ public final class ControllerSession {
             log.notice("Fader lumière ignoré : aucun contrôleur connu pour choisir le CC")
             return
         }
-        guard let channel = lightMIDIChannel else {
+        guard let channel = lightMIDIChannel(column: column) else {
             log.notice("Fader lumière ignoré : la grille affichée est « Sans canal »")
             return
         }

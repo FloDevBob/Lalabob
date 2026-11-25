@@ -183,6 +183,17 @@ struct ColumnView: View {
                     .overlay { (isAudio ? Icon.music : Icon.spotlight).view(size: 15).foregroundStyle(tileTint) }
                     .accessibilityHidden(true)
                 ColumnTitle(index: index, name: column.name)
+                if controller.show.isSharedLightColumn(index) {
+                    // Colonne lumière commune à toutes les grilles (Réglages du spectacle).
+                    Text("Commune")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(Surface.lightAccent)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .overlay { Capsule().strokeBorder(Surface.lightAccent.opacity(0.4)) }
+                        .help("Commune à toutes les grilles : la même dans chaque onglet (Spectacle › Réglages du spectacle…)")
+                        .accessibilityLabel("Commune à toutes les grilles")
+                }
                 Spacer(minLength: 0)
                 Text("\(index + 1)")
                     .font(Typography.mono)

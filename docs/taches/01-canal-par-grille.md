@@ -1,6 +1,6 @@
 # Fiche 01 — Canal LightKey par grille
 
-Branche `j9/canal-par-grille`. Maquette : planche 6 (onglets avec « Can. N », menu de l'onglet).
+Branche `j9/canal-par-grille`. Maquette : planche 6 (menu de l'onglet ; **la pastille « Can. N » de la maquette a été retirée le 25/11/2026** : le canal ne s'affiche pas en permanence, il se lit dans l'infobulle de l'onglet et se change par clic droit).
 
 ## Pour l'utilisateur
 La même touche du contrôleur déclenche une cue différente dans LightKey selon la grille affichée. Chaque onglet montre
@@ -46,7 +46,7 @@ spectacle sont à réappairer (une alerte le dit une fois à l'ouverture).
   celui de la grille affichée.
 
 ## Interface (`App/HeaderView.swift`, `GridTabsView`)
-- Pastille « Can. N » (mono, 10,5 pt, bordure ambrée à 35 %) dans chaque onglet ; « Sans canal » en pointillés rouges.
+- ~~Pastille « Can. N » dans chaque onglet~~ retirée (décision du 25/11/2026) : le canal est dans l'infobulle de l'onglet.
 - Menu contextuel de l'onglet : sous-menu « Canal LightKey » (1…16, canaux pris grisés avec le nom de leur grille,
   « Sans canal ») ; avant de changer : alerte « Les appairages de cette grille sont à refaire dans LightKey. » ;
   déverrouillé seulement.

@@ -133,7 +133,8 @@ extension Show {
     /// Noms des fichiers de `Audio/` que des pads utilisent (un son partagé par plusieurs pads compte une fois).
     public var usedAudioFileNames: Set<String> {
         Set(
-            grids.flatMap(\.columns).flatMap(\.slots).compactMap { pad -> String? in
+            // Les colonnes mises de côté (lumière commune) comptent : leurs sons doivent rester dans le paquet.
+            grids.flatMap { $0.columns + $0.parkedColumns.map(\.column) }.flatMap(\.slots).compactMap { pad -> String? in
                 if case .audio(let clip) = pad?.content { clip.fileName } else { nil }
             })
     }
