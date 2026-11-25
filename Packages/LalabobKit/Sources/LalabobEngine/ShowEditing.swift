@@ -433,6 +433,17 @@ extension ShowController {
         }
     }
 
+    /// Vide une colonne de la grille affichée (ses 8 cases) : une annulation, refusé verrouillé. La colonne garde son type, son nom, son fader.
+    @discardableResult
+    public func clearColumn(_ column: Int) -> Bool {
+        commit("Vider la colonne") { show, grid in
+            guard show.grids[grid].columns.indices.contains(column), show.grids[grid].columns[column].slots.contains(where: { $0 != nil })
+            else { return false }
+            show.grids[grid].columns[column].slots = Array(repeating: nil, count: PadGrid.size)
+            return true
+        }
+    }
+
     /// Renomme une colonne de la grille affichée (nom vide refusé, 80 caractères au plus ; une seule annulation).
     public func renameColumn(at index: Int, to name: String) {
         let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maximumTextLength))

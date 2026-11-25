@@ -407,6 +407,40 @@ struct MixedColumnsTests {
         #expect(rig.controller.selection == Self.both)
     }
 
+    @Test("Tester la cue envoie la note sans lancer le son d'un pad son et lumière, même verrouillé")
+    func testCueOnly() async {
+        let rig = makeRig(locked: true)
+        defer { rig.runner.cancel() }
+        await plugAPC(rig)
+        rig.controller.testCue(at: Self.both)
+        let expected: [MIDIEvent] = [.noteOn(channel: 0, note: 56, velocity: 127), .noteOff(channel: 0, note: 56, velocity: 0)]
+        #expect(await waitUntil { await rig.transport.lighting == expected })
+        #expect(await triggers(rig) == 0)
+        rig.controller.testCue(at: Self.soundOnly)  // pas de cue : rien
+        rig.controller.testCue(at: Self.empty)
+        await settle()
+        #expect(await rig.transport.lighting.count == 2)
+    }
+
+    @Test("Vider une colonne : une annulation, la colonne garde son type et son nom ; refusé verrouillé")
+    func clearColumn() {
+        let rig = makeRig()
+        rig.runner.cancel()
+        let controller = rig.controller
+        #expect(controller.clearColumn(0))
+        #expect(controller.currentGrid.columns[0].slots.allSatisfy { $0 == nil })
+        #expect(controller.currentGrid.columns[0].kind == .mixed)
+        #expect(controller.currentGrid.columns[0].name == "Scènes")
+        #expect(!controller.clearColumn(0))  // déjà vide : rien à annuler
+        rig.undo.undo()
+        #expect(controller.pad(at: Self.both)?.title == "Aube")
+
+        let locked = makeRig(locked: true)
+        locked.runner.cancel()
+        #expect(!locked.controller.clearColumn(0))
+        #expect(locked.controller.pad(at: Self.both) != nil)
+    }
+
     // MARK: Jouer au contrôleur
 
     @Test("Appui physique sur un pad son et lumière : le son part et la cue est relayée ; le Note Off suit le relâchement")

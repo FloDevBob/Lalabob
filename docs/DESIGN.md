@@ -31,10 +31,21 @@ Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dos
 ### Grille (centre)
 - **8 colonnes de même largeur**, dans leur ordre réel (plus de zone lumière à droite : une colonne lumière peut être n'importe où).
   Par défaut, les 6 premières sont des colonnes sons et les 2 dernières des colonnes lumière.
-- En-tête de colonne : pastille icône (note de musique, ou projecteur ambre pour la lumière), nom, numéro, et un **liseré** de 2 pt
-  dans le bas de l'en-tête : blanc à 6 % pour un son, ambre plein pour la lumière.
+- En-tête de colonne : pastille de **type** (note de musique pour le son, projecteur ambre pour la lumière, **les deux** pour son et lumière),
+  nom, numéro, et un **liseré** de 2 pt dans le bas de l'en-tête : blanc à 6 % pour un son, ambre plein pour la lumière, **ambre pointillé** pour son et lumière.
+  - **Type de la colonne** (déverrouillé seulement) : la pastille est un bouton avec un petit chevron ; elle ouvre un popover (Son · Son et lumière · Lumière,
+    avec une ligne d'explication chacun, la ligne devient la raison quand le choix est impossible). Le **clic droit** sur l'en-tête donne : Renommer… · Type de colonne ›
+    (coche sur le type actuel, « … » sur les choix qui retireraient quelque chose) · Arrêter les sons de la colonne · Vider la colonne…. Verrouillé : seulement « Arrêter les sons ».
+  - **Feuille de confirmation** quand un changement retire quelque chose : titre « Passer « Nom » en colonne Son ? », une ligne par catégorie avec pastille (rouge = supprimé,
+    ambre = perd sa cue ou son son, vert = reste tel quel) avec le nombre et les titres des pads, « Annulable avec ⌘Z. Aucun son en cours n'est arrêté » (ou quel son s'arrête net),
+    boutons Annuler · [« Passer en Son et lumière » quand c'est la sortie sans perte] · **Convertir** (rouge). Un changement sans perte s'applique tout de suite.
+  - Avec les **colonnes lumière communes** actives : une colonne commune ne change pas de type et aucune colonne ne devient lumière (le popover donne la raison).
 - 8 pads par colonne, 56 px de haut : titre (13 px, demi-gras), sous-titre (11,5 px) + durée en mono.
-  - Case vide : bordure pointillée blanche à 11 %, « + Déposer un son » (ou « + Nouvelle cue »).
+  - Case vide : bordure pointillée blanche à 11 %, « + Déposer un son » (ou « + Nouvelle cue »). **Colonne son et lumière** : la case est coupée en deux, « + Son »
+    (un son déposé n'importe où fait un pad son) et « + Cue » (bouton ambre : crée une cue).
+  - **Pad son et lumière** : une **capsule** (fond noir 30 %, contour blanc 6 %) à droite avec le bouton lecture / stop au-dessus de l'ampoule, 22 pt chacun (26 pt sur un grand pad) ;
+    **côte à côte** sur un pad bas (< 54 pt), pour que la capsule tienne. L'ampoule ne lance **que la cue** (« Tester la cue »). Pad « en attente de son » : badge ambre « + Son ».
+    Son et cue sont indépendants : le contour suit le son (ou la cue allumée) ; pas de badge sur un pad bas (< 50 pt).
   - En lecture : contour et halo dans la couleur vive, mini-égaliseur animé, barre de progression de 3 px en bas.
   - En pause : contour atténué, icône pause, barre de progression figée et estompée.
   - Lumière active : contour + badge « ON ».
@@ -67,6 +78,11 @@ largeur (zones élaguées assombries, poignées d'élagage, tête de lecture). *
 31/10/2026, retour d'essai : « très pratique ») : une puce « + Fondu » sous la courbe, en bas à gauche (entrée) et en bas à
 droite (sortie) ; une fois actif, la puce affiche la durée (« 0,8 s ») avec une croix pour le retirer, et une poignée au
 bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il n'y a plus de bouton « Fondus ».
+
+**Pad son et lumière** (colonne mixte) : même bande du haut que le pad son, plus un **groupe Lumière** après le titre (ampoule, « Note 52 ✓ », bouton Tester = la cue seule)
+et, à droite, un menu **Nouvel appui** unique (son : relancer ou arrêter ; lumière : allumer seulement ou basculer à chaque appui) et le **type du pad** en segmenté
+[Son | Lumière | Les deux]. Écart avec la maquette (variante A) : pour tenir dans la largeur minimale, le canal n'est plus écrit dans le groupe (infobulle), les deux réglages « nouvel appui »
+sont réunis dans un menu, et le nom du fichier est abrégé d'abord. Un pad son ou lumière d'une colonne mixte a aussi le segmenté « Type du pad ».
 
 **Pad lumière** (ADR 0006) : une seule bande — titre, bouton **Tester** et rappel de la note envoyée
 à LightKey, puis couleur (popover) et actions. L'état allumé / éteint ne vient pas de l'inspecteur : il se lit sur le pad

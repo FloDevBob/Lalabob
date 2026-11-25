@@ -72,6 +72,8 @@ struct GridView: View {
 
 struct ColumnView: View {
     @Environment(\.gridDensity) private var density
+    /// Incrémenté par « Renommer… » du menu : le titre passe en saisie.
+    @State private var renameRequest = 0
     /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
     private func lightValueText(_ column: Column) -> String {
         let percent = Int((column.level * 100).rounded())
@@ -154,15 +156,9 @@ struct ColumnView: View {
         let column = controller.currentGrid.columns[index]
         VStack(spacing: Metrics.padSpacing) {
             HStack(spacing: 8) {
-                // Pastille arrondie derrière l'icône (même principe que la carte d'astuce) : neutre pour les sons, ambrée pour la lumière.
-                let isAudio = column.kind.hasAudio
-                let tileTint = isAudio ? Surface.textSecondary : Surface.lightAccent
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(tileTint.opacity(isAudio ? 0.12 : 0.14))
-                    .frame(width: 26, height: 26)
-                    .overlay { (isAudio ? Icon.music : Icon.spotlight).view(size: 15).foregroundStyle(tileTint) }
-                    .accessibilityHidden(true)
-                ColumnTitle(index: index, name: column.name)
+                // Pastille de type : note (son), projecteur (lumière), les deux (son et lumière) ; un bouton déverrouillé.
+                ColumnKindPill(index: index, kind: column.kind, name: column.name)
+                ColumnTitle(index: index, name: column.name, renameTrigger: renameRequest)
                 if controller.show.isSharedLightColumn(index) {
                     // Colonne lumière commune à toutes les grilles (Réglages du spectacle).
                     Text("Commune")
@@ -181,14 +177,9 @@ struct ColumnView: View {
             }
             .frame(height: 30)
             // Liseré de type sous l'en-tête (dans la hauteur de l'en-tête : les pads ne bougent pas) : discret pour un son,
-            // ambre plein pour la lumière.
-            .overlay(alignment: .bottom) {
-                Capsule()
-                    .fill(column.kind == .audio ? Color.white.opacity(0.06) : Surface.lightAccent.opacity(0.85))
-                    .frame(height: 2)
-                    .padding(.horizontal, 4)
-                    .accessibilityHidden(true)
-            }
+            // ambre plein pour la lumière, ambre pointillé pour son et lumière.
+            .overlay(alignment: .bottom) { ColumnKindRule(kind: column.kind) }
+            .contextMenu { ColumnContextMenu(index: index, rename: { renameRequest += 1 }) }
 
             // Les 8 pads de la colonne : seuls eux défilent (comme une page) quand on change d'onglet.
             PadsPager(column: index, kind: column.kind, onPress: onPress)
@@ -333,6 +324,8 @@ struct ColumnTitle: View {
     @Environment(ShowController.self) private var controller
     let index: Int
     let name: String
+    /// Un changement de valeur (menu « Renommer… ») ouvre la saisie du nom.
+    var renameTrigger = 0
 
     @State private var isEditing = false
     @State private var draft = ""
@@ -369,6 +362,7 @@ struct ColumnTitle: View {
         // Un changement d'onglet ou le verrouillage pendant la saisie l'abandonne.
         .onChange(of: controller.isLocked) { isEditing = false }
         .onChange(of: controller.selectedGridIndex) { isEditing = false }
+        .onChange(of: renameTrigger) { start() }
         .accessibilityLabel("Colonne \(index + 1) : \(name)")
         .accessibilityAction(named: "Renommer") { start() }
     }
@@ -500,11 +494,15 @@ struct PadView: View {
         // Main ouverte : le pad peut être saisi et glissé (déplacer, ⌥ pour copier). Flèche sinon.
         .interactiveCursor(.grabIdle, enabled: pad != nil && !controller.isLocked && !isEditingText)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind.hasAudio ? "Case vide" : "Case lumière vide"))
-        .accessibilityValue(lightAccessibilityValue(pad))
+        .accessibilityLabel(
+            pad.map { "\($0.title), \($0.subtitle)" + ($0.kind == .mixed ? ", son et lumière" : "") }
+                ?? (kind.hasAudio ? "Case vide" : "Case lumière vide")
+        )
+        .accessibilityValue(accessibilityValue(pad, event: event))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { controller.audition(at: position) }
         .accessibilityAction(named: "Sélectionner") { activate() }
+        .accessibilityAction(named: "Tester la cue") { controller.testCue(at: position) }
         .help(padHelp(pad))
     }
 
@@ -512,7 +510,7 @@ struct PadView: View {
     /// ampoule cliquable (envoie la note à LightKey) sur toutes les cases lumière.
     @ViewBuilder
     private var pairingOverlay: some View {
-        if controller.isPairingLights, !controller.isLocked, kind == .light {
+        if controller.isPairingLights, !controller.isLocked, controller.isLightCell(position) {
             let paired = controller.isPaired(at: position)
             let isTarget = controller.selection == position
             ZStack(alignment: .bottomTrailing) {
@@ -550,8 +548,17 @@ struct PadView: View {
         }
     }
 
+    /// Pad son et lumière : « En lecture, cue allumée ». Un pad son ou lumière seul : son état, ou celui de sa cue.
+    private func accessibilityValue(_ pad: Pad?, event: PlaybackEvent?) -> String {
+        var parts: [String] = []
+        if case .playing = event?.state { parts.append("En lecture") } else if event?.state.isPaused == true { parts.append("En pause") }
+        let light = lightAccessibilityValue(pad)
+        if !light.isEmpty { parts.append(pad?.audio != nil ? "cue " + light.lowercased() : light) }
+        return parts.joined(separator: ", ")
+    }
+
     private func lightAccessibilityValue(_ pad: Pad?) -> String {
-        if controller.isPairingLights, !controller.isLocked, kind == .light {
+        if controller.isPairingLights, !controller.isLocked, controller.isLightCell(position) {
             return controller.isPaired(at: position) ? "Appairée" : "À appairer"
         }
         guard pad?.light != nil else { return "" }
@@ -569,6 +576,7 @@ struct PadView: View {
                 : "Clic : sélectionner · Double-clic : jouer · Glisser : déplacer (⌥ : copier)"
         }
         guard !controller.isLocked else { return "" }
+        if kind == .mixed { return "Glissez un son ici (bibliothèque ou Finder), ou cliquez « + Cue » pour créer une cue lumière" }
         return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
     }
 
@@ -642,8 +650,12 @@ struct PadView: View {
             Spacer(minLength: 0)
             if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
             if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
-            if pad.audio != nil { playStopButton(pad, event: event) }
-            if pad.light != nil { cueButton(pad, state: lightState) }
+            if pad.audio != nil, pad.light != nil {
+                mixedCapsule(pad, event: event, state: lightState)
+            } else {
+                if pad.audio != nil { playStopButton(pad, event: event) }
+                if pad.light != nil { cueButton(pad, state: lightState) }
+            }
         }
         .foregroundStyle(pad.tint.labelColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -670,6 +682,21 @@ struct PadView: View {
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(vivid.opacity(outline), lineWidth: 2)
         }
+        // « Son et lumière » choisi, son pas encore déposé : un badge ambre invite à déposer un fichier (masqué sur un pad bas).
+        .overlay(alignment: .topTrailing) {
+            if pad.awaitsSound, density.padHeight >= 50 {
+                Text("+ Son")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Surface.lightAccent, in: .capsule)
+                    .foregroundStyle(Surface.window)
+                    .padding(.top, 3)
+                    .padding(.trailing, 6)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
         .shadow(color: vivid.opacity(halo), radius: 8)
         // La lueur s'éteint en fondu (0,35 s) quand le son s'arrête ; à l'allumage rien n'est animé.
         .animation(reduceMotion || outline > 0 ? nil : Motion.glowOut, value: outline)
@@ -679,27 +706,34 @@ struct PadView: View {
     /// à LightKey (comme un double-clic ; marche aussi verrouillé). Sa couleur dit l'état renvoyé par LightKey : pleine
     /// couleur du pad = allumée, atténuée = éteinte, neutre = LightKey n'a encore rien dit. En mode d'appairage, il envoie
     /// la note et désigne la case comme cible.
-    private func cueButton(_ pad: Pad, state: LightState) -> some View {
-        let size = Self.buttonSize(for: density)
+    private func cueButton(_ pad: Pad, state: LightState, size: CGFloat? = nil, inCapsule: Bool = false) -> some View {
+        let size = size ?? Self.buttonSize(for: density)
         let isOn = state == .on
         let isOff = state == .off
+        let idleBackground: Color = inCapsule ? .clear : pad.tint.labelColor.opacity(isOff ? 0.10 : 0.18)
         return Button {
             if controller.isPairingLights, !controller.isLocked {
                 controller.pairingSend(at: position)
             } else {
-                controller.audition(at: position)
+                controller.testCue(at: position)  // la cue seule : le son d'un pad son et lumière ne part pas
             }
         } label: {
             Icon.lightbulbFill.view(size: size * 0.5)
                 .frame(width: size, height: size)
-                .background(isOn ? pad.tint.vividColor : pad.tint.labelColor.opacity(isOff ? 0.10 : 0.18), in: .circle)
+                .background(isOn ? pad.tint.vividColor : idleBackground, in: .circle)
                 .foregroundStyle(isOn ? pad.tint.surfaceColor : pad.tint.labelColor.opacity(isOff ? 0.55 : 1))
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
         .interactiveCursor(.link)
-        .help(controller.isPairingLights ? "Envoyer la note de cette case à LightKey" : "Envoyer la cue à LightKey (double-clic sur le pad : pareil)")
-        .accessibilityLabel(controller.isPairingLights ? "Envoyer la note à LightKey" : "Envoyer la cue")
+        .help(
+            controller.isPairingLights
+                ? "Envoyer la note de cette case à LightKey"
+                : pad.audio != nil
+                    ? "Tester la cue : l'envoie à LightKey sans lancer le son"
+                    : "Envoyer la cue à LightKey (double-clic sur le pad : pareil)"
+        )
+        .accessibilityLabel(controller.isPairingLights ? "Envoyer la note à LightKey" : "Tester la cue")
         .accessibilityValue(isOn ? "Allumée" : isOff ? "Éteinte" : "")
     }
 
@@ -716,20 +750,42 @@ struct PadView: View {
     /// Bouton à deux états à côté de l'égaliseur : triangle (lecture) tant que le son est à l'arrêt ou en pause,
     /// carré (stop) quand il joue. Un vrai `Button` : seule sa petite zone capte la souris, le reste du pad garde
     /// son clic / double-clic / glisser.
-    private func playStopButton(_ pad: Pad, event: PlaybackEvent?) -> some View {
+    private func playStopButton(_ pad: Pad, event: PlaybackEvent?, size: CGFloat? = nil, inCapsule: Bool = false) -> some View {
         let isPlaying: Bool = if case .playing = event?.state { true } else { false }
+        let size = size ?? Self.buttonSize(for: density)
         return Button {
             controller.togglePlayStop(at: position)
         } label: {
-            (isPlaying ? Icon.stopFill : Icon.playFill).view(size: Self.buttonSize(for: density) * 0.5)
-                .frame(width: Self.buttonSize(for: density), height: Self.buttonSize(for: density))
-                .background(isPlaying ? pad.tint.vividColor : pad.tint.labelColor.opacity(0.18), in: .circle)
+            (isPlaying ? Icon.stopFill : Icon.playFill).view(size: size * 0.5)
+                .frame(width: size, height: size)
+                .background(isPlaying ? pad.tint.vividColor : inCapsule ? Color.clear : pad.tint.labelColor.opacity(0.18), in: .circle)
                 .foregroundStyle(isPlaying ? pad.tint.surfaceColor : pad.tint.labelColor)
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
         .interactiveCursor(.link)
         .help(isPlaying ? "Arrêter ce son" : event?.state.isPaused == true ? "Reprendre ce son" : "Lancer ce son")
+    }
+
+    /// Pad son et lumière : une capsule avec le bouton lecture / stop et l'ampoule (22 pt chacun, 26 sur un grand pad), l'un au-dessus
+    /// de l'autre ; sur un pad bas (fenêtre basse), côte à côte, pour que la capsule tienne dans la hauteur du pad.
+    @ViewBuilder
+    private func mixedCapsule(_ pad: Pad, event: PlaybackEvent?, state: LightState) -> some View {
+        let size: CGFloat = density.padHeight >= 74 ? 26 : 22
+        let buttons = Group {
+            playStopButton(pad, event: event, size: size, inCapsule: true)
+            cueButton(pad, state: state, size: size, inCapsule: true)
+        }
+        Group {
+            if density.padHeight >= 54 {
+                VStack(spacing: 2) { buttons }
+            } else {
+                HStack(spacing: 2) { buttons }
+            }
+        }
+        .padding(2)
+        .background(Color.black.opacity(0.3), in: .capsule)
+        .overlay { Capsule().strokeBorder(Color.white.opacity(0.06)) }
     }
 
     /// Barre de progression de 3 px ; figée et estompée en pause. Une boucle revient au début.
@@ -756,9 +812,33 @@ struct PadView: View {
         // ZStack et non Group : un Group vide n'a aucune vue sur laquelle poser cadre et bordure, la case disparaîtrait.
         ZStack {
             if !controller.isLocked {
-                IconLabel(kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                if kind == .mixed {
+                    // Colonne son et lumière : deux moitiés. Un son déposé n'importe où fait un pad son ; « + Cue » crée une cue.
+                    HStack(spacing: 0) {
+                        IconLabel("Son", icon: .plus, size: 12)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .foregroundStyle(Surface.textTertiary)
+                            .accessibilityHidden(true)
+                        Rectangle().fill(Surface.emptyPadStroke).frame(width: 1).padding(.vertical, 10)
+                        Button {
+                            controller.newLightCue(at: position)
+                        } label: {
+                            IconLabel("Cue", icon: .plus, size: 12)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .foregroundStyle(Surface.lightAccent)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .interactiveCursor(.link)
+                        .help("Créer une cue lumière sur cette case")
+                        .accessibilityLabel("Créer une cue")
+                    }
                     .font(.system(size: 11.5))
-                    .foregroundStyle(Surface.textTertiary)
+                } else {
+                    IconLabel(kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(Surface.textTertiary)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

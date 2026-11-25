@@ -262,6 +262,18 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   disparaît, le plan le dit avant ; (3) un pad qui perd son son est **coupé net** par le moteur audio (comme quand on supprime un pad aujourd'hui), pas avec le fondu de 40 ms ;
   (4) une cue vierge non appairée se retire sans confirmation ; (5) l'interface (menus, confirmation) arrive avec la fiche 07. **À essayer au contrôleur** : ☐ pad son et lumière :
   son + cue, réappui sans éteindre la cue ☐ mode « basculer » ☐ stop / Échap : la lumière reste ☐ appairage d'un pad son en colonne mixte.
+- **Interface des types de colonnes et de pads (25/11/2026, branche `j10/types-interface`, fiche 07)** ✅ code, **à regarder à l'œil** (rien n'a été vu : aucun test
+  automatique sur `App/`). Pastille de type de colonne (bouton + popover), clic droit sur l'en-tête (Renommer…, Type de colonne, Arrêter les sons, Vider la colonne…
+  — `ShowController.clearColumn`, nouveau), feuille de confirmation (`ConversionPrompter` / `ConversionSheet`, même texte pour colonnes et pads, avec la sortie sans perte
+  « Passer en Son et lumière »), liseré pointillé pour mixte, capsule lecture + ampoule sur les pads son et lumière (verticale ≥ 54 pt de haut, horizontale en dessous),
+  ampoule = `testCue` (la cue seule), badge « + Son », case vide coupée en deux (« + Son » / bouton « + Cue »), menu « Type du pad » (clic droit et segmenté du panneau),
+  groupe Lumière et menu « Nouvel appui » du panneau du bas, VoiceOver (« Titre, son et lumière, en lecture, cue allumée », action « Tester la cue »),
+  appairage sur les colonnes mixtes, barre de repos (compte des pads son et lumière, indication adaptée) et astuce. Aperçus Xcode : « Colonne son et lumière : types
+  et états des pads », « Inspecteur — pad son et lumière (largeur minimale) », « Inspecteur — pad lumière dans une colonne son et lumière ».
+  **Écarts avec la fiche** : le panneau du bas d'un pad mixte réunit les deux « nouvel appui » dans un menu, n'écrit pas le canal dans le groupe Lumière (infobulle) et abrège
+  le nom du fichier, pour tenir à la largeur minimale (1047 pt de panneau, bibliothèque ouverte) — **à vérifier à l'œil** ; pas d'astuce « Garder Son et lumière » (identique à Annuler).
+  2 tests moteur de plus (`clearColumn`, `testCue`) ; tout le package est vert (631). **À essayer** : ☐ changer le type d'une colonne pleine, lire la feuille, ⌘Z ☐ créer un pad
+  mixte par les trois chemins (menu, glisser un son sur une cue, appairage d'un pad son) ☐ capsule lisible sur un pad de 38 pt ☐ verrouillé : aucun menu de type ☐ VoiceOver.
 
 
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)

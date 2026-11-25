@@ -48,10 +48,14 @@ struct IdleBar: View {
     }
 
     private func hint(for position: GridPosition) -> String {
-        if controller.currentGrid.columns[position.column].kind == .light {
+        switch controller.currentGrid.columns[position.column].kind {
+        case .light:
             return "Ajoutez une commande lumière — LightKey apprend la note de ce pad sur le contrôleur."
+        case .mixed:
+            return "Glissez un son de la bibliothèque ou du Finder sur ce pad, ou cliquez « Cue » pour une commande lumière."
+        case .audio:
+            return "Glissez un son de la bibliothèque ou du Finder sur ce pad."
         }
-        return "Glissez un son de la bibliothèque ou du Finder sur ce pad."
     }
 }
 
@@ -99,14 +103,19 @@ struct IdleContent: View {
     private var gridCard: StatusCardModel {
         let stats = gridStats
         let playing = playingCount
+        var lines: [StatusCardModel.Line] = [
+            .init(text: stats.sounds == 0 ? "Aucun son" : stats.sounds == 1 ? "1 son" : "\(stats.sounds) sons", tone: .neutral)
+        ]
+        if stats.both > 0 {
+            lines.append(
+                .init(text: stats.both == 1 ? "1 pad son et lumière" : "\(stats.both) pads son et lumière", tone: .neutral))
+        }
+        lines.append(
+            .init(
+                text: playing == 0 ? "Rien en lecture" : playing == 1 ? "1 pad en lecture" : "\(playing) pads en lecture",
+                tone: playing == 0 ? .neutral : .active))
         return StatusCardModel(
-            id: "grille", icon: .wave, title: "Grille en cours", headline: controller.currentGrid.name,
-            lines: [
-                .init(text: stats.sounds == 0 ? "Aucun son" : stats.sounds == 1 ? "1 son" : "\(stats.sounds) sons", tone: .neutral),
-                .init(
-                    text: playing == 0 ? "Rien en lecture" : playing == 1 ? "1 pad en lecture" : "\(playing) pads en lecture",
-                    tone: playing == 0 ? .neutral : .active),
-            ])
+            id: "grille", icon: .wave, title: "Grille en cours", headline: controller.currentGrid.name, lines: lines)
     }
 
     private var controllerCard: StatusCardModel {
@@ -143,15 +152,19 @@ struct IdleContent: View {
             ])
     }
 
-    private var gridStats: (sounds: Int, lights: Int) {
+    /// Pads de la grille : avec un son, avec une cue, et ceux qui ont les deux (comptés dans les deux premiers aussi).
+    private var gridStats: (sounds: Int, lights: Int, both: Int) {
         var sounds = 0
         var lights = 0
+        var both = 0
         for column in controller.currentGrid.columns {
             for case let pad? in column.slots {
-                if pad.audio != nil { sounds += 1 } else { lights += 1 }  // fiche 07 : les pads mixtes auront leur ligne
+                if pad.audio != nil { sounds += 1 }
+                if pad.light != nil { lights += 1 }
+                if pad.audio != nil, pad.light != nil { both += 1 }
             }
         }
-        return (sounds, lights)
+        return (sounds, lights, both)
     }
 
     private var playingCount: Int {

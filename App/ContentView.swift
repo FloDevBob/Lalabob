@@ -11,6 +11,8 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsLibrary = true
     @State private var showsSettings = false
+    /// Confirmation d'un changement de type qui retire quelque chose (colonne ou pad).
+    @State private var prompter = ConversionPrompter()
 
     /// En-tête de la fenêtre (56) et son filet.
     private static let headerAreaHeight: CGFloat = 57
@@ -26,6 +28,7 @@ struct ContentView: View {
                     GridDensity.fitting(
                         availableHeight: proxy.size.height - Self.headerAreaHeight - Self.inspectorAreaHeight))
         }
+        .environment(prompter)
         // Titre masqué : sans cela, une bande vide (la barre de titre invisible) reste en haut de la fenêtre. L'en-tête
         // remonte jusqu'au bord et les boutons de fenêtre se posent sur sa partie gauche, laissée libre.
         .ignoresSafeArea(.container, edges: .top)
@@ -35,6 +38,17 @@ struct ContentView: View {
         .focusedSceneValue(\.showController, controller)
         .focusedSceneValue(\.showSettingsPresented, $showsSettings)
         .sheet(isPresented: $showsSettings) { ShowSettingsView().environment(controller) }
+        .sheet(item: Binding(get: { prompter.pending }, set: { prompter.pending = $0 })) { pending in
+            ConversionSheet(pending: pending, close: { prompter.pending = nil })
+        }
+        .alert(
+            "Changement impossible",
+            isPresented: Binding(get: { controller.conversionNotice != nil }, set: { if !$0 { controller.dismissConversionNotice() } })
+        ) {
+            Button("OK") { controller.dismissConversionNotice() }
+        } message: {
+            Text(controller.conversionNotice ?? "")
+        }
         .alert(
             "Import impossible",
             isPresented: Binding(get: { controller.importError != nil }, set: { if !$0 { controller.dismissImportError() } })
@@ -152,6 +166,30 @@ extension ContentView {
         title: "Rire", subtitle: "Public", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
     return ContentView()
         .environment(ShowController(show: Show(name: "Essai", grids: [grid])))
+        .environment(LibraryController(securityScoped: false))
+        .environment(PreviewController())
+        .frame(width: 1320, height: 780)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Colonne son et lumière : types et états des pads") {
+    Fonts.register()
+    var grid = PadGrid.empty(name: "Essai")
+    grid.columns[0] = Column.empty(name: "Scènes", kind: .mixed)
+    grid.columns[1] = Column.empty(name: "Sons", kind: .audio)
+    let cue = LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0), isPaired: true)
+    let sound = AudioClip(fileName: "essai.wav")
+    // Colonne mixte : son seul, cue seule, son et lumière, « en attente de son », puis deux cases vides (« Son » / « Cue »).
+    grid[GridPosition(column: 0, row: 0)] = Pad(title: "Pluie", subtitle: "Son seul", tint: .ciel, audio: sound)
+    grid[GridPosition(column: 0, row: 1)] = Pad(title: "Face", subtitle: "Cue seule", tint: .blanc, light: cue)
+    grid[GridPosition(column: 0, row: 2)] = Pad(title: "Aube", subtitle: "Son et lumière", tint: .ambre, audio: sound, light: cue)
+    grid[GridPosition(column: 0, row: 3)] = Pad(title: "Orage", subtitle: "Son et lumière", tint: .azur, audio: sound, light: .blank)
+    grid[GridPosition(column: 0, row: 4)] = Pad(title: "À venir", subtitle: "En attente de son", tint: .rose, light: cue, awaitsSound: true)
+    grid[GridPosition(column: 1, row: 0)] = Pad(title: "Rire", subtitle: "Public", tint: .vert, audio: sound)
+    let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
+    controller.selection = GridPosition(column: 0, row: 2)
+    return ContentView()
+        .environment(controller)
         .environment(LibraryController(securityScoped: false))
         .environment(PreviewController())
         .frame(width: 1320, height: 780)

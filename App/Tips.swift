@@ -67,6 +67,10 @@ enum Tips {
             text: "Double-cliquez sur le nom d'un pad, ou d'une colonne, pour le changer.",
             keys: [], mode: .unlockedOnly),
         Tip(
+            id: "son-et-lumiere", title: "Un son et une lumière d'un seul appui",
+            text: "Cliquez sur le petit logo à gauche du nom d'une colonne pour la passer en « Son et lumière » : ses pads peuvent alors lancer un son, une commande lumière, ou les deux à la fois.",
+            keys: [], mode: .unlockedOnly),
+        Tip(
             id: "nouvel-appui", title: "Et si on rappuie sur un son en cours ?",
             text: "Choisissez pour chaque pad : il repart du début, ou il s'arrête.",
             keys: [], mode: .unlockedOnly),

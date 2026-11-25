@@ -309,6 +309,13 @@ public final class ShowController {
         play(at: position)
     }
 
+    /// « Tester la cue » (ampoule d'un pad, bouton Tester) : envoie la note de la cue à LightKey, **sans** jouer le son d'un pad son et
+    /// lumière et sans tenir compte de « nouvel appui ». Marche aussi verrouillé (c'est du jeu).
+    public func testCue(at position: GridPosition) {
+        guard position.isValid, currentGrid[position]?.light != nil else { return }
+        lightPressHandler?(position)
+    }
+
     /// Lance un pad : son, cue, ou les deux. Un pad son et lumière lance le son, puis sa cue — mais seulement si LightKey ne la dit
     /// pas déjà allumée (`LightRetrigger.turnOnOnly`, défaut) : LightKey bascule la cue à chaque note, relancer le son ne doit pas
     /// l'éteindre. `.toggle` l'envoie à chaque appui, comme un pad lumière.
