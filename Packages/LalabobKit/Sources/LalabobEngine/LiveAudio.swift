@@ -26,6 +26,6 @@ extension ControllerSession {
     /// Session reliée au vrai MIDI du Mac. `nil` si CoreMIDI n'est pas disponible.
     public static func live() -> ControllerSession? {
         guard let transport = try? CoreMIDISession() else { return nil }
-        return ControllerSession(transport: transport)
+        return ControllerSession(transport: transport, mediaVolume: AppleMusicVolume())
     }
 }

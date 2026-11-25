@@ -45,6 +45,7 @@ struct HeaderView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // À droite : contrôleur, sortie audio, cadenas, Tout arrêter.
+            if let session = midiSession, controller.connectedController == .apcMiniMK2 { MusicVolumePill(session: session) }
             controllerStatusControl
             outputPicker
             PairingButton()

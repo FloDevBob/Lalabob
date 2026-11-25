@@ -71,11 +71,11 @@ struct APCMiniMK2DriverTests {
         }
     }
 
-    @Test("Les 8 faders de colonne sont lus, le 9e est ignoré")
+    @Test("Les 8 faders de colonne sont lus ; le 9e ne bouge aucune colonne (il règle Apple Music)")
     func faders() {
         #expect(driver.interpret(.controlChange(channel: 0, controller: 48, value: 127)) == .columnFader(column: 0, value: 1))
         #expect(driver.interpret(.controlChange(channel: 0, controller: 55, value: 0)) == .columnFader(column: 7, value: 0))
-        #expect(driver.interpret(.controlChange(channel: 0, controller: 56, value: 64)) == nil)
+        #expect(driver.interpret(.controlChange(channel: 0, controller: 56, value: 64)) == .auxiliaryFader(value: 64.0 / 127))
     }
 
     @Test("Luminosité portée par le canal, couleur par la vélocité")
@@ -304,5 +304,30 @@ struct GridButtonTests {
     func shutdown() {
         #expect(apc.shutdownMessages.contains(.noteOn(channel: 0, note: 112, velocity: 0)))
         #expect(launchpad.shutdownMessages.contains(.controlChange(channel: 0, controller: 91, value: 0)))
+    }
+}
+
+/// 9e fader de l'APC mini mk2 → volume d'Apple Music (fiche 03).
+@Suite("9e fader de l'APC")
+struct AuxiliaryFaderTests {
+    private let apc = APCMiniMK2Driver()
+
+    @Test("CC 56 canal 1 et CC 7 canal 3 (ancien script) sont le 9e fader")
+    func bothMessages() {
+        #expect(apc.interpret(.controlChange(channel: 0, controller: 56, value: 127)) == .auxiliaryFader(value: 1))
+        #expect(apc.interpret(.controlChange(channel: 2, controller: 7, value: 0)) == .auxiliaryFader(value: 0))
+    }
+
+    @Test("Les 8 faders de colonne et les autres CC sont inchangés")
+    func unchanged() {
+        #expect(apc.interpret(.controlChange(channel: 0, controller: 48, value: 127)) == .columnFader(column: 0, value: 1))
+        #expect(apc.interpret(.controlChange(channel: 0, controller: 55, value: 0)) == .columnFader(column: 7, value: 0))
+        #expect(apc.interpret(.controlChange(channel: 0, controller: 7, value: 64)) == nil)  // CC 7 sur le canal 1 : pas le 9e fader
+        #expect(apc.interpret(.controlChange(channel: 2, controller: 56, value: 64)) == nil)
+    }
+
+    @Test("Le Launchpad n'a pas de 9e fader")
+    func launchpad() {
+        #expect(LaunchpadDriver(model: .launchpadMiniMK3).interpret(.controlChange(channel: 2, controller: 7, value: 64)) == nil)
     }
 }

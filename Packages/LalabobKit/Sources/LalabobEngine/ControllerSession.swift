@@ -34,6 +34,13 @@ public final class ControllerSession {
     public private(set) var ledSettingsByFamily: [String: LEDSettings]
     @ObservationIgnored private let defaults: UserDefaults
     static let settingsDefaultsKey = "ledSettings"
+    /// Le 9e fader de l'APC règle le volume d'Apple Music (préférence de ce Mac, comme l'étalonnage des LED ; activé par défaut).
+    public private(set) var isMusicVolumeEnabled: Bool
+    /// Dernier volume envoyé à Apple Music (0 à 100), `nil` tant que rien n'est parti.
+    public private(set) var musicVolume: Int?
+    public private(set) var musicStatus: MediaVolumeStatus = .notRunning
+    static let musicVolumeKey = "musicVolumeEnabled"
+    @ObservationIgnored private var volumeRelay: MediaVolumeRelay?
     /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
@@ -62,14 +69,18 @@ public final class ControllerSession {
     @ObservationIgnored private var relayedPresses: [GridPosition: UInt8] = [:]
 
     /// Session rattachée à un seul spectacle (tests, aperçus).
-    public convenience init(controller: ShowController, transport: any MIDITransport, defaults: UserDefaults = .standard) {
-        self.init(transport: transport, defaults: defaults)
+    public convenience init(
+        controller: ShowController, transport: any MIDITransport, defaults: UserDefaults = .standard,
+        mediaVolume: (any MediaVolumeControlling)? = nil
+    ) {
+        self.init(transport: transport, defaults: defaults, mediaVolume: mediaVolume)
         attach(controller)
     }
 
-    public init(transport: any MIDITransport, defaults: UserDefaults = .standard) {
+    public init(transport: any MIDITransport, defaults: UserDefaults = .standard, mediaVolume: (any MediaVolumeControlling)? = nil) {
         self.transport = transport
         self.defaults = defaults
+        self.isMusicVolumeEnabled = defaults.object(forKey: Self.musicVolumeKey) as? Bool ?? true
         self.ledSettingsByFamily =
             (defaults.data(forKey: Self.settingsDefaultsKey)
             .flatMap { try? JSONDecoder().decode([String: LEDSettings].self, from: $0) } ?? [:])
@@ -97,6 +108,11 @@ public final class ControllerSession {
             }
         }
         bench.send = { [weak self] events in self?.sendToLightKey(events) }
+        if let mediaVolume {
+            self.volumeRelay = MediaVolumeRelay(target: mediaVolume, isEnabled: self.isMusicVolumeEnabled) { [weak self] status, percent in
+                Task { @MainActor in self?.musicUpdated(status: status, percent: percent) }
+            }
+        }
     }
 
     @ObservationIgnored private var runner: Task<Void, Never>?
@@ -159,6 +175,20 @@ public final class ControllerSession {
         await outboxTask?.value
         // CoreMIDI remet les messages au pilote USB de façon asynchrone : on lui laisse un instant avant de quitter.
         if active != nil { try? await Task.sleep(for: .milliseconds(80)) }
+    }
+
+    // MARK: - Volume d'Apple Music
+
+    /// Active ou coupe le pilotage du volume d'Apple Music par le 9e fader.
+    public func setMusicVolumeEnabled(_ enabled: Bool) {
+        isMusicVolumeEnabled = enabled
+        defaults.set(enabled, forKey: Self.musicVolumeKey)
+        if let volumeRelay { Task { await volumeRelay.setEnabled(enabled) } }
+    }
+
+    private func musicUpdated(status: MediaVolumeStatus, percent: Int?) {
+        musicStatus = status
+        if let percent { musicVolume = percent }
     }
 
     // MARK: - Fenêtre active
@@ -274,6 +304,8 @@ public final class ControllerSession {
                     relayPad(position, pressed: false, driver: active.driver)
                 case .columnStop(let column):
                     attachedController?.stopColumn(column)
+                case .auxiliaryFader(let value):
+                    if let volumeRelay { Task { await volumeRelay.faderMoved(to: value) } }
                 case .gridSelect(let index):
                     attachedController?.selectGrid(at: index + (shiftHeld ? 8 : 0))
                 case .gridStep(let delta):

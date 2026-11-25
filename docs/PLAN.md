@@ -277,6 +277,12 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
 
 
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
+- **9e fader de l'APC → volume d'Apple Music (25/11/2026, branche `j9/volume-apple-music`, fiche 03, ADR 0009)** ✅ code, essai réel à faire.
+  Remplace le script Python : `ControllerInput.auxiliaryFader`, `MediaVolumeRelay` (seuil 2 %, un envoi / 66 ms, dernière valeur gagnante, extrêmes 0 / 100 toujours envoyés),
+  `AppleMusicVolume` (ScriptingBridge, ne lance jamais Music), pastille « Apple Music » dans l'en-tête (APC branché) avec interrupteur, préférence par Mac (activée par défaut).
+  Entitlements Apple Events + `NSAppleEventsUsageDescription` dans `project.yml`. 8 tests (pilote, relais, session) ; `AppleMusicVolume` sans test automatique.
+  ⚠︎ **Message du 9e fader non relevé** : CC 56 canal 1 *et* CC 7 canal 3 acceptés. **À essayer** : ☐ arrêter le script Python ☐ autorisation macOS à la première utilisation
+  ☐ le fader suit sans à-coups ☐ Music fermé : rien, il ne s'ouvre pas ☐ refus : pastille « à autoriser » ☐ aucun effet sur les sons de Lalabob ☐ latence des pads inchangée.
 - **Changer de grille depuis le contrôleur (25/11/2026, branche `j9/changement-grille-controleur`, fiche 02)** ✅ code, essai sur le matériel à faire.
   **APC mini mk2** : boutons de scène (notes 112–119) = grilles 1 à 8, **Shift** (note 122) tenu = grilles 9 à 16 ; LED du bouton de la grille affichée.
   **Launchpad** : CC 91 = grille précédente, CC 92 = suivante (vert si une grille existe de ce côté, bornés, pas de boucle). Marche verrouillé, ne coupe aucun son,

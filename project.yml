@@ -47,6 +47,9 @@ targets:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.bookmarks.app-scope: true
+        # Le 9e fader de l'APC règle le volume d'Apple Music (Apple Events vers Music seulement, ADR 0009).
+        com.apple.security.automation.apple-events: true
+        com.apple.security.temporary-exception.apple-events: [com.apple.Music]
     info:
       path: App/Info.plist
       properties:
@@ -56,6 +59,7 @@ targets:
         LSApplicationCategoryType: public.app-category.music
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: "© 2026 Lalabob"
+        NSAppleEventsUsageDescription: Lalabob règle le volume d'Apple Music avec le 9e fader de l'APC mini mk2.
         # Document .lalabob : un paquet (dossier) avec show.json et Audio/.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: fr.flodevbob.lalabob.show
