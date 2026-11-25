@@ -48,7 +48,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 
 | Clé | Type | Contraintes |
 | --- | --- | --- |
-| `formatVersion` | entier | 1 ≤ valeur ≤ `Show.currentFormatVersion` (1). Plus grand : refusé (`unsupportedFormatVersion`) |
+| `formatVersion` | entier | 1 ≤ valeur ≤ `Show.currentFormatVersion` (**2**). Plus grand : refusé (`unsupportedFormatVersion`). Un fichier de version 1 se lit (migration, § 5) et se réécrit en version 2 |
 | `name` | texte | nom du spectacle |
 | `grids` | tableau de grilles | 1 à **64** grilles (onglets), dans l'ordre d'affichage |
 | `sharedLight` | objet, **facultatif** | option « Colonnes lumière communes à toutes les grilles » ; absent = désactivée. `channel` (1…16, canal LightKey commun, qu'aucune grille n'utilise), `originGridID` (UUID de la grille qui reprend les colonnes en désactivant), `columnIndices` (positions 0…7 des colonnes communes, triées, non vides). **Chaque grille porte une copie identique** de chaque colonne commune, de type `light` |
@@ -69,7 +69,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 | --- | --- | --- |
 | `id` | UUID | |
 | `name` | texte | « Colonne 1 »… par défaut |
-| `kind` | `"audio"` ou `"light"` | un pad de la colonne doit être du même type |
+| `kind` | `"audio"`, `"light"` ou `"mixed"` (son et lumière) | `audio` accepte des pads son, `light` des pads lumière, `mixed` les trois types de pads (son, lumière, son et lumière). Volume, filtre et stop : `audio` et `mixed` ; fader MIDI vers LightKey : `light` |
 | `level` | nombre | fader de la colonne, **0 à 1** (0,8 par défaut en audio, 1 en lumière) |
 | `slots` | tableau de 8 éléments | **exactement 8**, de haut en bas ; `null` = case vide, sinon un pad |
 | `isFaderPaired` | booléen | colonne lumière : fader appairé à LightKey. **Facultatif à la lecture** (absent = `false`) |
@@ -86,14 +86,22 @@ Par défaut, les colonnes d'indices 6 et 7 (les deux de droite) sont des colonne
 | `subtitle` | texte | idem |
 | `tint` | texte | l'une des 16 teintes (§ 2.5). **Jamais un code couleur** : chaque pilote la traduit |
 | `ledIntensity` | texte | `"pastel"`, `"full"`, `"half"`, `"quarter"` |
-| `content` | objet | `{"audio": {"clip": …}}` ou `{"light": {"cue": …}}` |
+| `audio` | objet `AudioClip`, **facultatif** | le son du pad (§ 2.6) |
+| `light` | objet `LightCue`, **facultatif** | la cue envoyée à LightKey (§ 2.7) |
+| `awaitsSound` | booléen, facultatif | « son et lumière » choisi, son pas encore déposé : seulement avec `light` et sans `audio`. Absent = `false`. **Écrit seulement s'il est vrai** |
+| `lightRetrigger` | `"turnOnOnly"` ou `"toggle"`, facultatif | nouvel appui d'un pad son **et** lumière : n'envoyer la note que si LightKey dit la cue éteinte ou inconnue (défaut), ou à chaque appui. **Écrit seulement s'il n'est pas le défaut** |
+
+Un pad a **au moins une** des deux parties `audio` / `light` ; son type est déduit : `audio` seul = son, `light` seul = lumière, les deux (ou
+`light` avec `awaitsSound`) = son et lumière. **Version 1** : un pad portait `content` = `{"audio": {"clip": …}}` ou `{"light": {"cue": …}}` ; cette
+forme est toujours lue et convertie, jamais écrite. Un pad qui mêle les deux formes (`content` avec `audio` ou `light`), ou dont `content` est
+vide, est illisible (`corrupt`).
 
 ### 2.5 Teintes (`Tint`)
 
 `rouge`, `orange`, `ambre`, `lime`, `vert`, `menthe`, `lagon`, `turquoise`, `ciel`, `azur`, `indigo`, `violet`,
 `fuchsia`, `rose`, `blanc`, `graphite`.
 
-### 2.6 Son (`AudioClip`, dans `content.audio.clip`)
+### 2.6 Son (`AudioClip`, dans `audio`)
 
 | Clé | Type | Contraintes / valeur par défaut |
 | --- | --- | --- |
@@ -106,7 +114,7 @@ Par défaut, les colonnes d'indices 6 et 7 (les deux de droite) sont des colonne
 | `retrigger` | `"restart"` ou `"stop"` | effet d'un nouvel appui sur un pad qui joue (un appui sur un pad en pause reprend toujours) |
 | `gainDB` | nombre | volume propre au pad, décibels, **−60 à +24** (l'inspecteur propose −60 à +12) |
 
-### 2.7 Cue lumière (`LightCue`, dans `content.light.cue`)
+### 2.7 Cue lumière (`LightCue`, dans `light`)
 
 | Clé | Type | Contraintes |
 | --- | --- | --- |
@@ -133,7 +141,7 @@ choisie (gardée dans les `UserDefaults`), contrôleur connecté, cadenas (un sp
 
 ```json
 {
-  "formatVersion" : 1,
+  "formatVersion" : 2,
   "grids" : [
     {
       "columns" : [
@@ -144,9 +152,9 @@ choisie (gardée dans les `UserDefaults`), contrôleur connecté, cadenas (un sp
           "name" : "Colonne 1",
           "slots" : [
             {
-              "content" : { "audio" : { "clip" : {
+              "audio" : {
                 "fileName" : "rire.wav", "gainDB" : 0, "loops" : false,
-                "retrigger" : "restart", "trimStart" : 0 } } },
+                "retrigger" : "restart", "trimStart" : 0 },
               "id" : "0F3A5C52-7C1D-4E0A-8D0B-2B7C9E6A1D33",
               "ledIntensity" : "full",
               "subtitle" : "",
@@ -181,14 +189,14 @@ Premier échec = ouverture refusée, avec l'erreur correspondante :
 | --- | --- |
 | `tooLarge` | `show.json` > 10 Mio |
 | `corrupt` | JSON illisible, ou clé obligatoire manquante / de mauvais type |
-| `invalid(unsupportedFormatVersion)` | `formatVersion` < 1 ou > 1 |
+| `invalid(unsupportedFormatVersion)` | `formatVersion` < 1 ou > 2 |
 | `invalid(noGrid)` / `tooManyGrids` | 0 grille / plus de 64 |
 | `invalid(wrongColumnCount)` | une grille n'a pas 8 colonnes |
 | `invalid(wrongSlotCount)` | une colonne n'a pas 8 cases |
-| `invalid(padKindMismatch)` | un pad son dans une colonne lumière, ou l'inverse |
+| `invalid(padKindMismatch)` | un pad que sa colonne n'accepte pas : un pad son dans une colonne lumière (ou l'inverse), ou un pad son et lumière dans une colonne qui n'est pas `mixed` |
 | `invalid(unsafeFileName)` | `fileName` vide, > 255 caractères, `.`/`..`, commençant par un point, ou contenant `/ \ :`, NUL, un caractère de contrôle |
 | `invalid(duplicateLightChannel)` | deux grilles sur le même canal LightKey |
-| `invalid(valueOutOfRange)` | canal LightKey hors 1…16, colonnes communes incohérentes (vides, hors 0…7, ou pas de type `light` dans une grille), colonne mise de côté hors 0…7, niveau de colonne hors 0…1, filtre hors −1…1, `trimStart` < 0, `trimEnd` ≤ `trimStart`, fondu < 0 ou > 600 s, gain hors −60…24 dB, MIDI hors plage |
+| `invalid(valueOutOfRange)` | pad sans son ni lumière, pad « en attente de son » qui a déjà un son (ou pas de cue), canal LightKey hors 1…16, colonnes communes incohérentes (vides, hors 0…7, ou pas de type `light` dans une grille), colonne mise de côté hors 0…7, niveau de colonne hors 0…1, filtre hors −1…1, `trimStart` < 0, `trimEnd` ≤ `trimStart`, fondu < 0 ou > 600 s, gain hors −60…24 dB, MIDI hors plage |
 
 Erreurs de paquet (avant `show.json`) : `notAPackage` (pas un dossier), `missingShowFile` (pas de `show.json` régulier).
 
@@ -208,7 +216,11 @@ Erreurs de paquet (avant `show.json`) : `notAPackage` (pas un dossier), `missing
   valeur par défaut, comme pour `isFaderPaired`, `isPaired` et `filter` : un spectacle ancien s'ouvre sans modification.
   *Attention* : un spectacle enregistré par une version récente puis rouvert par une version plus ancienne perd les clés qu'elle ne connaît pas.
 - **Changement incompatible** (clé renommée ou retirée, sens modifié) : incrémenter `Show.currentFormatVersion`, écrire la migration
-  dans `ShowMigration` (pas encore créé : aucune migration n'a été nécessaire), ajouter un fichier d'exemple de l'ancienne version aux tests.
+  à la lecture (`ShowPackage.decodeMigrating` et les `init(from:)` concernés), ajouter un fichier d'exemple de l'ancienne version aux tests.
+- **Version 2 (25/11/2026, ADR 0008)** : le contenu d'un pad passe de `content` (un son **ou** une cue) à `audio` et `light` à plat (un son, une cue,
+  ou les deux), pour les pads « son et lumière » et les colonnes `mixed`. La lecture convertit `content` ; l'écriture est toujours en version 2.
+  **Une ancienne version de Lalabob ne peut pas ouvrir un fichier de version 2** (`unsupportedFormatVersion`) : mettre à jour tous les Mac de
+  régie en même temps, et garder une copie des spectacles avant la première ouverture avec la nouvelle version.
 - Un format de fichier ne se modifie jamais sans test (`CLAUDE.md`) : `ShowPackageTests`, `ShowTests`, `ClipSettingsTests`.
 
 ## 6. Tests de référence
@@ -217,4 +229,5 @@ Erreurs de paquet (avant `show.json`) : `notAPackage` (pas un dossier), `missing
 | --- | --- |
 | `Tests/LalabobModelTests/ShowPackageTests.swift` | aller-retour du paquet, JSON stable, sons manquants, paquet invalide, JSON illisible, taille |
 | `Tests/LalabobModelTests/ShowTests.swift` | validation du modèle |
+| `Tests/LalabobModelTests/PadTypesTests.swift` | types de colonnes et de pads, lecture d'un **vrai** `show.json` de version 1 (`Fixtures/show-v1.json`), aller-retour en version 2 |
 | `Tests/LalabobModelTests/ClipSettingsTests.swift` | élagage, fondus, gain |

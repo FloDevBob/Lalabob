@@ -189,9 +189,9 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
         var wanted: [Pad.ID: (column: Int, clip: AudioClip)] = [:]
         for grid in show.grids {
-            for (c, column) in grid.columns.enumerated() where column.kind == .audio && c < columnMixers.count {
+            for (c, column) in grid.columns.enumerated() where column.kind.hasAudio && c < columnMixers.count {
                 for case let pad? in column.slots {
-                    if case .audio(let clip) = pad.content { wanted[pad.id] = (c, clip) }
+                    if let clip = pad.audio { wanted[pad.id] = (c, clip) }
                 }
             }
         }

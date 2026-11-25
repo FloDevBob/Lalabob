@@ -51,7 +51,7 @@ actor RecordingAudioEngine: AudioEngineControlling {
 struct ShowControllerAudioTests {
     private func makeShow() -> (Show, Pad) {
         var grid = PadGrid.empty(name: "G1")
-        let pad = Pad(title: "Applaudissements", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        let pad = Pad(title: "Applaudissements", tint: .vert, audio: AudioClip(fileName: "a.wav"))
         grid.columns[0].slots[2] = pad
         return (Show(name: "S", grids: [grid]), pad)
     }
@@ -128,7 +128,7 @@ struct ShowControllerAudioTests {
     @Test func lightPadsAreNotSentToTheAudioEngine() async {
         var grid = PadGrid.empty(name: "G")
         let cue = LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 60))
-        grid.columns[6].slots[0] = Pad(title: "Flash", tint: .ambre, content: .light(cue: cue))
+        grid.columns[6].slots[0] = Pad(title: "Flash", tint: .ambre, light: cue)
         let audio = RecordingAudioEngine()
         let controller = makeController(audio, show: Show(name: "S", grids: [grid]))
         controller.isLocked = true

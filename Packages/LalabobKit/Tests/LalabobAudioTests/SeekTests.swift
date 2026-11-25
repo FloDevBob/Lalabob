@@ -16,7 +16,7 @@ struct SeekTests {
     {
         let dir = try makeTemporaryDirectory()
         try writeTestFile(named: "a.wav", in: dir, duration: seconds) { Float(Int($0 * 10) + 1) / 20 }
-        let pad = Pad(title: "P", tint: .rouge, content: .audio(clip: clip))
+        let pad = Pad(title: "P", tint: .rouge, audio: clip)
         var grid = PadGrid.empty(name: "T")
         grid.columns[0].slots[0] = pad
         let engine = AVAudioEngineController(output: .offline(sampleRate: rate, maxFrames: 4096), preloadLimit: preloadLimit)

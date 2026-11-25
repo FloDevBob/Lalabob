@@ -241,6 +241,14 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   « Colonnes égales : une colonne lumière en position 3 ». Pas de test automatique (vues). **Non vérifié à l'œil** (capture refusée dans cette
   session). **À essayer** : ☐ fenêtre à 1320 pt, bibliothèque ouverte, rien de coupé (potard, bouton ■) ☐ plein écran portable ☐ glisser-déposer
   et sélection multiple inchangés ☐ colonne lumière en position 3 (aperçu) bien à sa place.
+- **Modèle : types de colonnes et de pads, format v2 (25/11/2026, branche `j10/types-modele`, fiche 05, ADR 0008)** ✅ code, aucun changement visible.
+  `Pad.content` / `PadContent` supprimés : un pad a `audio: AudioClip?` et `light: LightCue?` (plus `awaitsSound`, `lightRetrigger`) ; `Pad.kind` (`PadKind` :
+  son, lumière, mixte) est déduit ; `ColumnKind.mixed`, `accepts(_:)`, `hasAudio`. Format `.lalabob` **version 2** ; la version 1 (`content`) se lit et se
+  réécrit en version 2 (test sur un vrai `show.json` v1, `Fixtures/show-v1.json`). **Une ancienne version de l'app ne lit pas la version 2** : mettre à jour
+  les deux Mac ensemble. Usages migrés (moteur, audio, app) en gardant le comportement ; un pad qui aurait les deux parties se comporte comme un son jusqu'à la
+  fiche 06. 15 tests (`PadTypesTests`) ; tout le package est vert (576 tests). **À essayer** : ☐ ouvrir un vrai spectacle (copie !) : tout est là, ⌘S, rouvrir
+  ☐ sons, cues, appairages, glisser-déposer, ⌘Z comme avant.
+
 
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
 - **Canal LightKey par grille (25/11/2026, branche `j9/canal-par-grille`, fiche 01)** ✅ code, essai réel à faire.

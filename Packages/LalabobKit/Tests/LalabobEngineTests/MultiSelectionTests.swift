@@ -16,7 +16,7 @@ struct MultiSelectionTests {
     static let d = GridPosition(column: 1, row: 1)
 
     private func sound(_ title: String) -> Pad {
-        Pad(title: title, tint: .vert, content: .audio(clip: AudioClip(fileName: "\(title).wav")))
+        Pad(title: title, tint: .vert, audio: AudioClip(fileName: "\(title).wav"))
     }
 
     /// Un carré 2 × 2 de sons « A B / C D » dans les colonnes 0 et 1, lignes 0 et 1.

@@ -25,7 +25,7 @@ struct LightingTests {
         var grid = PadGrid.empty(name: "G1")
         grid[Self.light] = Pad(
             title: "Plein feu", tint: .ambre,
-            content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+            light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
         let audio = RecordingAudioEngine()
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),

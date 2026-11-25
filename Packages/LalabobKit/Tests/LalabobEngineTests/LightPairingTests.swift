@@ -17,7 +17,7 @@ struct LightPairingTests {
 
     private func makeController(locked: Bool = false) -> (ShowController, UndoManager) {
         var grid = PadGrid.empty(name: "G")
-        grid[Self.sound] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        grid[Self.sound] = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "a.wav"))
         let controller = ShowController(
             show: Show(name: "S", grids: [grid]), defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!)
         let undo = UndoManager()
@@ -57,7 +57,7 @@ struct LightPairingTests {
         controller.setPairingLights(true)
         controller.lightFeedbackArrived(at: Self.first)
 
-        guard case .light(let cue)? = controller.pad(at: Self.first)?.content else {
+        guard let cue = controller.pad(at: Self.first)?.light else {
             Issue.record("la cue n'a pas été créée")
             return
         }

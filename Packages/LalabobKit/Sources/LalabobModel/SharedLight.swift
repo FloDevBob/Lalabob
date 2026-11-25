@@ -181,9 +181,9 @@ extension Column {
         var column = self
         column.isFaderPaired = false
         for r in column.slots.indices {
-            guard var pad = column.slots[r], case .light(var cue) = pad.content, cue.isPaired else { continue }
+            guard var pad = column.slots[r], var cue = pad.light, cue.isPaired else { continue }
             cue.isPaired = false
-            pad.content = .light(cue: cue)
+            pad.light = cue
             column.slots[r] = pad
         }
         return column

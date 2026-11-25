@@ -65,7 +65,7 @@ extension Show {
                 guard (-1...1).contains(column.filter) else { throw .valueOutOfRange("filtre de colonne") }
                 for (r, pad) in column.slots.enumerated() {
                     guard let pad else { continue }
-                    guard pad.kind == column.kind else {
+                    guard column.kind.accepts(pad.kind) else {
                         throw .padKindMismatch(grid: g, position: GridPosition(column: c, row: r))
                     }
                     try pad.validate()
@@ -77,8 +77,9 @@ extension Show {
 
 extension Pad {
     func validate() throws(ShowValidationError) {
-        switch content {
-        case .audio(let clip):
+        guard audio != nil || light != nil else { throw .valueOutOfRange("pad sans son ni lumière") }
+        if awaitsSound, audio != nil || light == nil { throw .valueOutOfRange("pad en attente de son") }
+        if let clip = audio {
             guard AudioClip.isSafeFileName(clip.fileName) else { throw .unsafeFileName(clip.fileName) }
             guard clip.trimStart >= 0 else { throw .valueOutOfRange("début d'élagage") }
             if let end = clip.trimEnd, end <= clip.trimStart { throw .valueOutOfRange("fin d'élagage") }
@@ -86,7 +87,8 @@ extension Pad {
                 throw .valueOutOfRange("durée de fondu")
             }
             guard (-60...24).contains(clip.gainDB) else { throw .valueOutOfRange("gain") }
-        case .light(let cue):
+        }
+        if let cue = light {
             let out = cue.output
             guard out.channel < 16, out.number < 128, out.value < 128 else {
                 throw .valueOutOfRange("message MIDI")

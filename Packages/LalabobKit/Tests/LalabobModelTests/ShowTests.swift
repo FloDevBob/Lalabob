@@ -17,11 +17,11 @@ struct ShowTests {
         var show = Show.new(name: "Match du 14 novembre")
         show.grids[0][GridPosition(column: 1, row: 0)] = Pad(
             title: "Porte", subtitle: "Grincement lent", tint: .turquoise,
-            content: .audio(clip: AudioClip(fileName: "porte.wav", trimStart: 0.1, fadeOut: 2, loops: true))
+            audio: AudioClip(fileName: "porte.wav", trimStart: 0.1, fadeOut: 2, loops: true)
         )
         show.grids[0][GridPosition(column: 6, row: 0)] = Pad(
             title: "Plein feu", tint: .blanc,
-            content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 1, number: 36)))
+            light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 1, number: 36))
         )
 
         let data = try JSONEncoder().encode(show)
@@ -33,10 +33,10 @@ struct ShowTests {
 
     @Test("La duplication crée un nouvel identifiant mais garde le contenu")
     func duplication() {
-        let pad = Pad(title: "Gong", tint: .ambre, content: .audio(clip: AudioClip(fileName: "gong.aif")))
+        let pad = Pad(title: "Gong", tint: .ambre, audio: AudioClip(fileName: "gong.aif"))
         let copy = pad.duplicated()
         #expect(copy.id != pad.id)
-        #expect(copy.title == pad.title && copy.content == pad.content)
+        #expect(copy.title == pad.title && copy.audio == pad.audio && copy.light == pad.light)
     }
 }
 
@@ -59,7 +59,7 @@ struct ValidationTests {
     func kindMismatch() {
         var show = Show.new()
         show.grids[0][GridPosition(column: 7, row: 2)] = Pad(
-            title: "Intrus", tint: .rouge, content: .audio(clip: AudioClip(fileName: "x.wav"))
+            title: "Intrus", tint: .rouge, audio: AudioClip(fileName: "x.wav")
         )
         #expect(throws: ShowValidationError.padKindMismatch(grid: 0, position: GridPosition(column: 7, row: 2))) {
             try show.validate()

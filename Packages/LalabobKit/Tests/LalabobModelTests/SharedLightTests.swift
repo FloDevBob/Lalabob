@@ -10,11 +10,11 @@ struct SharedLightTests {
     static let sound = GridPosition(column: 0, row: 0)
 
     private func cuePad(_ title: String, paired: Bool = false) -> Pad {
-        Pad(title: title, tint: .blanc, content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0), isPaired: paired)))
+        Pad(title: title, tint: .blanc, light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0), isPaired: paired))
     }
 
     private func soundPad(_ file: String) -> Pad {
-        Pad(title: file, tint: .vert, content: .audio(clip: AudioClip(fileName: file)))
+        Pad(title: file, tint: .vert, audio: AudioClip(fileName: file))
     }
 
     /// Trois grilles (canaux 1, 2, 3). Grille 1 : cue en colonne 6. Grille 2 : sa propre cue en colonne 6 et une colonne

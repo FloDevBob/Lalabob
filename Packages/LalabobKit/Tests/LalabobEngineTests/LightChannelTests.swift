@@ -27,14 +27,14 @@ struct LightChannelEngineTests {
     }
 
     private static func cue() -> Pad {
-        Pad(title: "Face", tint: .blanc, content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+        Pad(title: "Face", tint: .blanc, light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     }
 
     /// Deux grilles (canaux 1 et 2), une cue sur la même case dans chacune, un son en grille 1.
     private func makeRig(locked: Bool = false) -> Rig {
         var first = PadGrid.empty(name: "G1")
         first[Self.light] = Self.cue()
-        first[Self.sound] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        first[Self.sound] = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "a.wav"))
         var second = PadGrid.empty(name: "G2")
         second[Self.light] = Self.cue()
         let audio = RecordingAudioEngine()

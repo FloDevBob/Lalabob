@@ -86,7 +86,7 @@ struct MeterTests {
         var grid = PadGrid.empty(name: "Test")
         var ids: [Pad.ID] = []
         for (column, level) in levels.enumerated() {
-            let pad = Pad(title: "P\(column)", tint: .rouge, content: .audio(clip: AudioClip(fileName: "a.wav")))
+            let pad = Pad(title: "P\(column)", tint: .rouge, audio: AudioClip(fileName: "a.wav"))
             grid.columns[column].slots[0] = pad
             grid.columns[column].level = level
             ids.append(pad.id)

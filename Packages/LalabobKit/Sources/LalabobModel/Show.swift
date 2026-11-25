@@ -22,9 +22,10 @@ public struct GridPosition: Hashable, Codable, Sendable, CustomStringConvertible
 
 /// Un spectacle : le contenu d'un document `.lalabob`.
 public struct Show: Codable, Sendable, Equatable {
-    /// Version du format de fichier. À incrémenter à chaque changement incompatible,
-    /// avec une migration dans `ShowMigration`.
-    public static let currentFormatVersion = 1
+    /// Version du format de fichier. À incrémenter à chaque changement incompatible, avec une migration à la lecture
+    /// (`ShowPackage.decodeMigrating`). 2 : un pad a un son et / ou une cue (`Pad.audio`, `Pad.light`), voir ADR 0008.
+    /// Les fichiers de version 1 se lisent et se réécrivent en version 2 ; une ancienne version de l'app ne lit pas la 2.
+    public static let currentFormatVersion = 2
 
     public var formatVersion: Int
     public var name: String
@@ -88,10 +89,9 @@ extension Show {
                     changed = true
                 }
                 for r in grids[index].columns[c].slots.indices {
-                    guard var pad = grids[index].columns[c].slots[r], case .light(var cue) = pad.content, cue.isPaired
-                    else { continue }
+                    guard var pad = grids[index].columns[c].slots[r], var cue = pad.light, cue.isPaired else { continue }
                     cue.isPaired = false
-                    pad.content = .light(cue: cue)
+                    pad.light = cue
                     grids[index].columns[c].slots[r] = pad
                     changed = true
                 }
@@ -167,8 +167,40 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// Le type d'une colonne : ce qu'elle accepte (`accepts`) et ce que porte son fader.
 public enum ColumnKind: String, Codable, Sendable {
-    case audio, light
+    /// Sons uniquement : fader de volume, filtre, stop.
+    case audio
+    /// Cues uniquement : fader MIDI vers LightKey.
+    case light
+    /// Son et lumière : accepte des pads son, lumière, ou les deux à la fois ; fader de volume.
+    case mixed
+
+    /// La colonne a un volume, un filtre, un vumètre et un bouton stop (sons).
+    public var hasAudio: Bool { self != .light }
+
+    /// La colonne accepte un pad de ce type : une colonne mixte accepte tout, les autres leur seul type.
+    public func accepts(_ pad: PadKind) -> Bool {
+        switch self {
+        case .mixed: true
+        case .audio: pad == .audio
+        case .light: pad == .light
+        }
+    }
+}
+
+/// Le type d'un pad, déduit de ses parties (`Pad.kind`).
+public enum PadKind: String, Codable, Sendable {
+    case audio, light, mixed
+}
+
+/// Ce que fait un nouvel appui sur un pad « son et lumière » dont la cue est déjà allumée dans LightKey (fiche 06).
+/// LightKey bascule la cue à chaque note reçue : relancer le son ne doit pas l'éteindre.
+public enum LightRetrigger: String, Codable, Sendable {
+    /// N'envoyer la note que si LightKey dit la cue éteinte ou inconnue (défaut).
+    case turnOnOnly
+    /// Envoyer la note à chaque appui, comme un pad lumière.
+    case toggle
 }
 
 /// Une colonne de 8 cases, avec son fader (volume pour l'audio, intensité pour la lumière).
@@ -219,13 +251,23 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
 }
 
 /// Un pad : ce qu'une touche du contrôleur déclenche.
-public struct Pad: Codable, Sendable, Equatable, Identifiable {
+///
+/// Un pad a un son (`audio`), une cue lumière (`light`), ou les deux (« son et lumière »). Au moins une partie : un pad sans
+/// rien est refusé par `Show.validate()`.
+public struct Pad: Sendable, Equatable, Identifiable {
     public var id: UUID
     public var title: String
     public var subtitle: String
     public var tint: Tint
     public var ledIntensity: LEDIntensity
-    public var content: PadContent
+    /// Le son du pad et ses réglages de lecture.
+    public var audio: AudioClip?
+    /// La cue envoyée à LightKey.
+    public var light: LightCue?
+    /// « Son et lumière » choisi sans que le son soit encore déposé : le pad ne joue que sa cue en attendant. Seulement avec `light`.
+    public var awaitsSound: Bool
+    /// Nouvel appui d'un pad son et lumière : voir `LightRetrigger`.
+    public var lightRetrigger: LightRetrigger
 
     public init(
         id: UUID = UUID(),
@@ -233,21 +275,41 @@ public struct Pad: Codable, Sendable, Equatable, Identifiable {
         subtitle: String = "",
         tint: Tint,
         ledIntensity: LEDIntensity = .full,
-        content: PadContent
+        audio: AudioClip? = nil,
+        light: LightCue? = nil,
+        awaitsSound: Bool = false,
+        lightRetrigger: LightRetrigger = .turnOnOnly
     ) {
         self.id = id
         self.title = title
         self.subtitle = subtitle
         self.tint = tint
         self.ledIntensity = ledIntensity
-        self.content = content
+        self.audio = audio
+        self.light = light
+        self.awaitsSound = awaitsSound
+        self.lightRetrigger = lightRetrigger
     }
 
-    public var kind: ColumnKind {
-        switch content {
-        case .audio: .audio
-        case .light: .light
-        }
+    /// Un pad son.
+    public static func sound(
+        id: UUID = UUID(), title: String, subtitle: String = "", tint: Tint, ledIntensity: LEDIntensity = .full, clip: AudioClip
+    ) -> Pad {
+        Pad(id: id, title: title, subtitle: subtitle, tint: tint, ledIntensity: ledIntensity, audio: clip)
+    }
+
+    /// Un pad lumière.
+    public static func cue(
+        id: UUID = UUID(), title: String, subtitle: String = "", tint: Tint, ledIntensity: LEDIntensity = .full, cue: LightCue
+    ) -> Pad {
+        Pad(id: id, title: title, subtitle: subtitle, tint: tint, ledIntensity: ledIntensity, light: cue)
+    }
+
+    /// Son, lumière, ou les deux : déduit des parties. « En attente de son » compte comme un pad mixte.
+    public var kind: PadKind {
+        if audio != nil, light != nil { return .mixed }
+        if light != nil { return awaitsSound ? .mixed : .light }
+        return .audio
     }
 
     /// Copie avec un nouvel identifiant (duplication, ⌥-glisser, coller).
@@ -258,9 +320,67 @@ public struct Pad: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
-public enum PadContent: Codable, Sendable, Equatable {
-    case audio(clip: AudioClip)
-    case light(cue: LightCue)
+// MARK: - Lecture et écriture d'un pad (format versions 1 et 2)
+
+extension Pad: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case id, title, subtitle, tint, ledIntensity
+        case audio, light, awaitsSound, lightRetrigger
+        /// Version 1 : `content` = `{"audio": {"clip": …}}` ou `{"light": {"cue": …}}`.
+        case content
+    }
+
+    private enum LegacyContentKeys: String, CodingKey { case audio, light }
+    private struct LegacyAudio: Decodable { let clip: AudioClip }
+    private struct LegacyLight: Decodable { let cue: LightCue }
+
+    /// Version 2 : `audio` et `light` à plat, facultatifs. Version 1 : `content`, converti ici (un pad son devient un pad avec
+    /// `audio`, un pad lumière un pad avec `light`). Les deux formes mêlées, ou un `content` vide, sont refusés.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        subtitle = try container.decode(String.self, forKey: .subtitle)
+        tint = try container.decode(Tint.self, forKey: .tint)
+        ledIntensity = try container.decode(LEDIntensity.self, forKey: .ledIntensity)
+        awaitsSound = try container.decodeIfPresent(Bool.self, forKey: .awaitsSound) ?? false
+        lightRetrigger = try container.decodeIfPresent(LightRetrigger.self, forKey: .lightRetrigger) ?? .turnOnOnly
+
+        if container.contains(.content) {
+            guard !container.contains(.audio), !container.contains(.light) else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .content, in: container, debugDescription: "Un pad ne peut pas avoir à la fois « content » (version 1) et « audio » / « light » (version 2).")
+            }
+            let legacy = try container.nestedContainer(keyedBy: LegacyContentKeys.self, forKey: .content)
+            if legacy.contains(.audio) {
+                audio = try legacy.decode(LegacyAudio.self, forKey: .audio).clip
+                light = nil
+            } else if legacy.contains(.light) {
+                audio = nil
+                light = try legacy.decode(LegacyLight.self, forKey: .light).cue
+            } else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .content, in: container, debugDescription: "« content » ne contient ni son ni lumière.")
+            }
+        } else {
+            audio = try container.decodeIfPresent(AudioClip.self, forKey: .audio)
+            light = try container.decodeIfPresent(LightCue.self, forKey: .light)
+        }
+    }
+
+    /// Toujours la version 2 ; les valeurs par défaut (`awaitsSound` faux, `lightRetrigger` « allumer seulement ») ne sont pas écrites.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(subtitle, forKey: .subtitle)
+        try container.encode(tint, forKey: .tint)
+        try container.encode(ledIntensity, forKey: .ledIntensity)
+        try container.encodeIfPresent(audio, forKey: .audio)
+        try container.encodeIfPresent(light, forKey: .light)
+        if awaitsSound { try container.encode(true, forKey: .awaitsSound) }
+        if lightRetrigger != .turnOnOnly { try container.encode(lightRetrigger, forKey: .lightRetrigger) }
+    }
 }
 
 /// Un extrait audio et ses réglages de lecture.

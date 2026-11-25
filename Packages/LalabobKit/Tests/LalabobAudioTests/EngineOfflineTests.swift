@@ -15,7 +15,7 @@ struct EngineOfflineTests {
         var grid = PadGrid.empty(name: "Test")
         var ids: [Pad.ID] = []
         for (i, clip) in clips.enumerated() {
-            let pad = Pad(title: "P\(i)", tint: .rouge, content: .audio(clip: clip))
+            let pad = Pad(title: "P\(i)", tint: .rouge, audio: clip)
             grid.columns[i].slots[0] = pad
             if i < levels.count { grid.columns[i].level = levels[i] }
             ids.append(pad.id)
@@ -183,7 +183,7 @@ struct EngineOfflineTests {
         for column in 0..<2 {
             grid.columns[column].level = 1
             for row in 0..<8 {
-                let pad = Pad(title: "p", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
+                let pad = Pad(title: "p", tint: .vert, audio: AudioClip(fileName: "a.wav"))
                 grid.columns[column].slots[row] = pad
                 ids.append(pad.id)
             }
@@ -218,7 +218,7 @@ struct EngineEditingTests {
     @Test func movingAPlayingPadToAnotherColumnKeepsItPlaying() async throws {
         let dir = try makeTemporaryDirectory()
         try writeTestFile(named: "a.wav", in: dir, duration: 2) { _ in 0.5 }
-        let pad = Pad(title: "P", tint: .rouge, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        let pad = Pad(title: "P", tint: .rouge, audio: AudioClip(fileName: "a.wav"))
         var grid = PadGrid.empty(name: "T")
         grid.columns[0].slots[0] = pad
         let engine = AVAudioEngineController(output: .offline(sampleRate: 44100, maxFrames: 4096))

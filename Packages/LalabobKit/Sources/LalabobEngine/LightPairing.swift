@@ -28,8 +28,7 @@ extension ShowController {
 
     /// La cue de la case est marquée appairée.
     public func isPaired(at position: GridPosition) -> Bool {
-        guard let pad = pad(at: position), case .light(let cue) = pad.content else { return false }
-        return cue.isPaired
+        return pad(at: position)?.light?.isPaired == true
     }
 
     /// Clic sur l'ampoule d'une case lumière : la case devient la cible et la note part vers LightKey.
@@ -126,9 +125,9 @@ extension ShowController {
         let done = commit("Appairer la cue") { show, grid in
             guard position.isValid, show.grids[grid].columns[position.column].kind == .light else { return false }
             var pad = show.grids[grid][position] ?? Self.blankLightPad()
-            guard case .light(var cue) = pad.content, !cue.isPaired else { return false }
+            guard var cue = pad.light, !cue.isPaired else { return false }
             cue.isPaired = true
-            pad.content = .light(cue: cue)
+            pad.light = cue
             show.grids[grid][position] = pad
             return true
         }
@@ -140,11 +139,11 @@ extension ShowController {
     @discardableResult
     public func unpairCue(at position: GridPosition) -> Bool {
         commit("Retirer l'appairage") { show, grid in
-            guard position.isValid, var pad = show.grids[grid][position], case .light(var cue) = pad.content, cue.isPaired else {
+            guard position.isValid, var pad = show.grids[grid][position], var cue = pad.light, cue.isPaired else {
                 return false
             }
             cue.isPaired = false
-            pad.content = .light(cue: cue)
+            pad.light = cue
             show.grids[grid][position] = pad
             return true
         }

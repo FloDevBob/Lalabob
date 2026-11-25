@@ -309,11 +309,12 @@ public final class ShowController {
 
     private func play(at position: GridPosition) {
         guard let pad = currentGrid[position] else { return }
-        switch pad.content {
-        case .audio:
+        // Fiche 06 : un pad son et lumière lancera aussi sa cue. Pour l'instant (aucun pad mixte ne peut être créé), le son prime.
+        if pad.audio != nil {
             commands.yield(.trigger(pad.id))
             if isLocked { selection = position }
-        case .light: lightPressHandler?(position)
+        } else if pad.light != nil {
+            lightPressHandler?(position)
         }
     }
 
@@ -321,7 +322,7 @@ public final class ShowController {
     /// qui joue. Rien n'est écrit dans le spectacle ni dans l'historique : `setGain` valide la valeur finale
     /// (une seule annulation). Marche aussi verrouillé ; ignoré si la case n'a pas de son.
     public func previewGain(at position: GridPosition, _ decibels: Double) {
-        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        guard let pad = pad(at: position), pad.audio != nil else { return }
         let clamped = AudioClip(fileName: "x").withGain(decibels).gainDB
         commands.yield(.padGain(pad.id, clamped))
     }
@@ -330,7 +331,7 @@ public final class ShowController {
     /// dans le fichier ; il est ramené à la partie élaguée. Le son joue de là, ou reste en pause là, ou démarre de là
     /// s'il était arrêté. Marche aussi verrouillé (le spectacle n'est pas modifié) ; ignoré si la case n'a pas de son.
     public func seek(at position: GridPosition, toFileTime fileTime: TimeInterval, fileDuration: TimeInterval) {
-        guard let pad = pad(at: position), case .audio(let clip) = pad.content else { return }
+        guard let pad = pad(at: position), let clip = pad.audio else { return }
         commands.yield(.seek(pad.id, clip.playbackOffset(atFileTime: fileTime, fileDuration: fileDuration)))
     }
 
@@ -352,7 +353,7 @@ public final class ShowController {
 
     /// Appui sur un pad du contrôleur : joue toujours, quel que soit le mode de l'écran.
     func pressFromController(at position: GridPosition) {
-        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        guard let pad = pad(at: position), pad.audio != nil else { return }
         commands.yield(.trigger(pad.id))
         if isLocked { selection = position }
     }
@@ -379,7 +380,7 @@ public final class ShowController {
     }
 
     public func togglePause(at position: GridPosition) {
-        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        guard let pad = pad(at: position), pad.audio != nil else { return }
         commands.yield(.togglePause(pad.id))
     }
 
@@ -387,7 +388,7 @@ public final class ShowController {
     /// (ou cue lumière envoyée). Marche aussi verrouillé : c'est du jeu, pas de l'édition.
     public func togglePlaybackOfSelection() {
         guard let position = selection, let pad = pad(at: position) else { return }
-        if case .audio = pad.content, playback[pad.id]?.state.isActive == true {
+        if pad.audio != nil, playback[pad.id]?.state.isActive == true {
             commands.yield(.togglePause(pad.id))
         } else {
             play(at: position)
@@ -397,7 +398,7 @@ public final class ShowController {
     /// Bouton lecture / stop d'un pad son : arrête un son qui joue, reprend un son en pause, lance un son à l'arrêt.
     /// Marche aussi verrouillé (c'est du jeu). Sans effet sur une case vide ou une cue lumière.
     public func togglePlayStop(at position: GridPosition) {
-        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        guard let pad = pad(at: position), pad.audio != nil else { return }
         switch playback[pad.id]?.state {
         case .playing: stop(at: position)
         case .paused: togglePause(at: position)
@@ -412,14 +413,14 @@ public final class ShowController {
     }
 
     public func stop(at position: GridPosition) {
-        guard let pad = pad(at: position), case .audio = pad.content else { return }
+        guard let pad = pad(at: position), pad.audio != nil else { return }
         commands.yield(.stop(pad.id))
     }
 
     /// Arrête tous les sons de cette colonne **de la grille affichée** (joués ou en pause), avec le fondu d'arrêt habituel.
     /// Sans effet sur une colonne lumière ou une colonne sans son qui joue. Marche aussi verrouillé : c'est du jeu.
     public func stopColumn(_ column: Int) {
-        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .audio else { return }
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind.hasAudio else { return }
         for case let pad? in currentGrid.columns[column].slots where playback[pad.id] != nil {
             commands.yield(.stop(pad.id))
         }
@@ -428,7 +429,7 @@ public final class ShowController {
     /// Colonnes dont le bouton « stop » est actif : les colonnes son de la grille affichée (celles de lumière n'en ont pas).
     /// Le bouton de l'interface et la LED rouge du contrôleur suivent cet ensemble.
     public var stopButtonColumns: Set<Int> {
-        Set(currentGrid.columns.indices.filter { currentGrid.columns[$0].kind == .audio })
+        Set(currentGrid.columns.indices.filter { currentGrid.columns[$0].kind.hasAudio })
     }
 
     /// « Tout arrêter » (Échap).
@@ -467,7 +468,7 @@ public final class ShowController {
         show.grids[selectedGridIndex].columns[column].level = level
         if show.isSharedLightColumn(column) { show.propagateSharedLight(from: selectedGridIndex) }
         onShowChange?(show)
-        if show.grids[selectedGridIndex].columns[column].kind == .audio {
+        if show.grids[selectedGridIndex].columns[column].kind.hasAudio {
             commands.yield(.level(column: column, level: level))
         }
     }
@@ -476,7 +477,7 @@ public final class ShowController {
     /// passe-haut (`FilterCurve`). Borné, et aimanté au neutre tout près du centre. Comme le volume, il se règle en jouant
     /// (actif cadenas fermé) et ne passe pas par ⌘Z ; il est enregistré avec le spectacle. Sans effet sur une colonne lumière.
     public func setColumnFilter(_ column: Int, value: Double) {
-        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .audio else { return }
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind.hasAudio else { return }
         let value = FilterCurve.snapped(value)
         guard show.grids[selectedGridIndex].columns[column].filter != value else { return }
         show.grids[selectedGridIndex].columns[column].filter = value
@@ -614,7 +615,7 @@ public final class ShowController {
 
     /// Niveaux et filtres de la grille affichée vers le moteur (ouverture, changement d'onglet, annulation).
     private func syncColumnLevels() {
-        for (index, column) in currentGrid.columns.enumerated() where column.kind == .audio {
+        for (index, column) in currentGrid.columns.enumerated() where column.kind.hasAudio {
             commands.yield(.level(column: index, level: column.level))
             commands.yield(.filter(column: index, value: column.filter))
         }

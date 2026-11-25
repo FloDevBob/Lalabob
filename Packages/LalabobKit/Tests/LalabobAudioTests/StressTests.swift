@@ -41,7 +41,7 @@ struct EngineStressTests {
                 case 1: clip = AudioClip(fileName: "boucle.wav", fadeIn: 0.05, fadeOut: 0.05, loops: true)
                 default: clip = AudioClip(fileName: "long.wav", fadeIn: 0.1, fadeOut: 0.1)
                 }
-                let pad = Pad(title: "P\(column)\(row)", tint: .rouge, content: .audio(clip: clip))
+                let pad = Pad(title: "P\(column)\(row)", tint: .rouge, audio: clip)
                 grid.columns[column].slots[row] = pad
                 ids.append(pad.id)
             }

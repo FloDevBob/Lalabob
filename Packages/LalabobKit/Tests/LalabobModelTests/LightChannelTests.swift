@@ -11,7 +11,7 @@ struct LightChannelTests {
     private func pairedCue() -> Pad {
         Pad(
             title: "Face", tint: .blanc,
-            content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0), isPaired: true)))
+            light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0), isPaired: true))
     }
 
     /// Un spectacle de `count` grilles, chacune avec une cue appairée et un fader lumière appairé.
@@ -40,8 +40,7 @@ struct LightChannelTests {
     }
 
     private func isPaired(_ show: Show, grid: Int) -> Bool {
-        guard case .light(let cue)? = show.grids[grid][Self.cueCell]?.content else { return false }
-        return cue.isPaired
+        show.grids[grid][Self.cueCell]?.light?.isPaired == true
     }
 
     // MARK: Attribution

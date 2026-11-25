@@ -9,10 +9,10 @@ import Testing
 struct LEDPlannerTests {
     private func grid() -> (PadGrid, sound: Pad, light: Pad) {
         var grid = PadGrid.empty(name: "G")
-        let sound = Pad(title: "S", tint: .vert, ledIntensity: .half, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        let sound = Pad(title: "S", tint: .vert, ledIntensity: .half, audio: AudioClip(fileName: "a.wav"))
         let light = Pad(
             title: "L", tint: .ambre,
-            content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 60))))
+            light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 60)))
         grid.columns[0].slots[0] = sound
         grid.columns[6].slots[1] = light
         return (grid, sound, light)

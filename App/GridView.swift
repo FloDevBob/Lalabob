@@ -155,7 +155,7 @@ struct ColumnView: View {
         VStack(spacing: Metrics.padSpacing) {
             HStack(spacing: 8) {
                 // Pastille arrondie derrière l'icône (même principe que la carte d'astuce) : neutre pour les sons, ambrée pour la lumière.
-                let isAudio = column.kind == .audio
+                let isAudio = column.kind.hasAudio
                 let tileTint = isAudio ? Surface.textSecondary : Surface.lightAccent
                 RoundedRectangle(cornerRadius: 8)
                     .fill(tileTint.opacity(isAudio ? 0.12 : 0.14))
@@ -196,7 +196,7 @@ struct ColumnView: View {
             // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
             // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
             Group {
-                if column.kind == .audio {
+                if column.kind.hasAudio {
                     HStack(alignment: .top, spacing: 8) {
                         VerticalFader(
                             name: column.name,
@@ -236,7 +236,7 @@ struct ColumnView: View {
                     .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
             )
             .overlay { faderPairingOverlay(column) }
-            .overlay(alignment: .bottomTrailing) { if column.kind == .audio { stopColumnButton } }
+            .overlay(alignment: .bottomTrailing) { if column.kind.hasAudio { stopColumnButton } }
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)
@@ -500,7 +500,7 @@ struct PadView: View {
         // Main ouverte : le pad peut être saisi et glissé (déplacer, ⌥ pour copier). Flèche sinon.
         .interactiveCursor(.grabIdle, enabled: pad != nil && !controller.isLocked && !isEditingText)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind == .audio ? "Case vide" : "Case lumière vide"))
+        .accessibilityLabel(pad.map { "\($0.title), \($0.subtitle)" } ?? (kind.hasAudio ? "Case vide" : "Case lumière vide"))
         .accessibilityValue(lightAccessibilityValue(pad))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { controller.audition(at: position) }
@@ -569,7 +569,7 @@ struct PadView: View {
                 : "Clic : sélectionner · Double-clic : jouer · Glisser : déplacer (⌥ : copier)"
         }
         guard !controller.isLocked else { return "" }
-        return kind == .audio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
+        return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
     }
 
     /// Clic : ⇧ étend la sélection en rectangle depuis l'ancre, ⌘ ajoute ou retire la case, sinon la case seule.
@@ -642,8 +642,8 @@ struct PadView: View {
             Spacer(minLength: 0)
             if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
             if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
-            if case .audio = pad.content { playStopButton(pad, event: event) }
-            if case .light = pad.content { cueButton(pad, state: lightState) }
+            if pad.audio != nil { playStopButton(pad, event: event) }
+            if pad.light != nil { cueButton(pad, state: lightState) }
         }
         .foregroundStyle(pad.tint.labelColor)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -756,7 +756,7 @@ struct PadView: View {
         // ZStack et non Group : un Group vide n'a aucune vue sur laquelle poser cadre et bordure, la case disparaîtrait.
         ZStack {
             if !controller.isLocked {
-                IconLabel(kind == .audio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                IconLabel(kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
                     .font(.system(size: 11.5))
                     .foregroundStyle(Surface.textTertiary)
             }

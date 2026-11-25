@@ -62,7 +62,7 @@ struct AudioImportTests {
     @Test func padFromAFileIsPrefilled() {
         let pad = AudioImporter.pad(forFileName: "Porte qui grince.wav")
         #expect(pad.title == "Porte qui grince")
-        guard case .audio(let clip) = pad.content else {
+        guard let clip = pad.audio else {
             Issue.record("pad audio attendu")
             return
         }

@@ -83,7 +83,7 @@ struct ControllerSessionTests {
 
     private func makeRig() -> Rig {
         var grid = PadGrid.empty(name: "G1")
-        let pad = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
+        let pad = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "a.wav"))
         grid.columns[0].slots[0] = pad  // en haut à gauche
         let audio = RecordingAudioEngine()
         let controller = ShowController(

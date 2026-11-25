@@ -59,6 +59,6 @@ extension AudioClip {
 extension Show {
     /// Valide un extrait seul, comme le ferait `validate()` à l'ouverture (tests).
     static func validatePad(_ clip: AudioClip) throws(ShowValidationError) {
-        try Pad(title: "test", tint: .rouge, content: .audio(clip: clip)).validate()
+        try Pad(title: "test", tint: .rouge, audio: clip).validate()
     }
 }

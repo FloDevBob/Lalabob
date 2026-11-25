@@ -8,7 +8,7 @@ struct ShowPackageTests {
     private func sampleShow() -> Show {
         var show = Show.new(name: "Match du 14 novembre")
         show.grids[0][GridPosition(column: 0, row: 0)] = Pad(
-            title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+            title: "Rire", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
         return show
     }
 
@@ -72,7 +72,7 @@ struct ShowPackageTests {
     func invalidShowIsRejected() throws {
         var show = sampleShow()
         show.grids[0][GridPosition(column: 1, row: 0)] = Pad(
-            title: "Piège", tint: .rouge, content: .audio(clip: AudioClip(fileName: "../../secret.wav")))
+            title: "Piège", tint: .rouge, audio: AudioClip(fileName: "../../secret.wav"))
         let data = try JSONEncoder().encode(show)
         #expect(throws: ShowPackageError.invalid(.unsafeFileName("../../secret.wav"))) { try ShowPackage.decode(data) }
     }
@@ -92,7 +92,7 @@ struct ShowPackageTests {
     func addingAudioKeepsExistingFiles() throws {
         var show = sampleShow()
         show.grids[0][GridPosition(column: 0, row: 1)] = Pad(
-            title: "Porte", tint: .vert, content: .audio(clip: AudioClip(fileName: "porte.wav")))
+            title: "Porte", tint: .vert, audio: AudioClip(fileName: "porte.wav"))
         let existing = FileWrapper(directoryWithFileWrappers: ["rire.wav": FileWrapper(regularFileWithContents: Data([1]))])
         let added = ["porte.wav": FileWrapper(regularFileWithContents: Data([2]))]
         let package = try ShowPackage.wrapper(for: show, audio: existing, adding: added)
@@ -116,7 +116,7 @@ struct ShowPackageTests {
     func sharedAudioIsKeptOnce() throws {
         var show = sampleShow()
         show.grids[0][GridPosition(column: 1, row: 0)] = Pad(
-            title: "Rire bis", tint: .rouge, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+            title: "Rire bis", tint: .rouge, audio: AudioClip(fileName: "rire.wav"))
         #expect(show.usedAudioFileNames == ["rire.wav"])
     }
 

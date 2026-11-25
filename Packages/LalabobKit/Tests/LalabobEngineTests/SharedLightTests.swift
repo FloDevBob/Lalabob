@@ -26,8 +26,8 @@ struct SharedLightEngineTests {
     private func makeRig(locked: Bool = false) -> Rig {
         var first = PadGrid.empty(name: "G1")
         first[Self.light] = Pad(
-            title: "Face", tint: .blanc, content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
-        first[GridPosition(column: 0, row: 0)] = Pad(title: "Rire", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
+            title: "Face", tint: .blanc, light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
+        first[GridPosition(column: 0, row: 0)] = Pad(title: "Rire", tint: .vert, audio: AudioClip(fileName: "a.wav"))
         let audio = RecordingAudioEngine()
         let controller = ShowController(
             show: Show(name: "S", grids: [first, .empty(name: "G2")]), audio: audio,

@@ -36,7 +36,7 @@ struct PadGainEngineTests {
         let dir = try makeTemporaryDirectory()
         try writeTestFile(named: "a.wav", in: dir, duration: seconds) { _ in level }
         let pad = Pad(
-            title: "P", tint: .rouge, content: .audio(clip: AudioClip(fileName: "a.wav", gainDB: gainDB)))
+            title: "P", tint: .rouge, audio: AudioClip(fileName: "a.wav", gainDB: gainDB))
         var grid = PadGrid.empty(name: "T")
         grid.columns[0].slots[0] = pad
         let engine = AVAudioEngineController(output: .offline(sampleRate: rate, maxFrames: 4096), preloadLimit: preloadLimit)
@@ -86,7 +86,7 @@ struct PadGainEngineTests {
         _ = try await engine.renderOffline(frames: 4410)
 
         var louder = pad
-        louder.content = .audio(clip: AudioClip(fileName: "a.wav", gainDB: 6.0206))
+        louder.audio = AudioClip(fileName: "a.wav", gainDB: 6.0206)
         var newGrid = grid
         newGrid.columns[0].slots[0] = louder
         try await engine.configure(show: Show(name: "T", grids: [newGrid]), audioDirectory: dir)

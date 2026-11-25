@@ -11,11 +11,11 @@ import Testing
 @MainActor
 @Suite("Stop de colonne et extinction", .serialized)
 struct StopColumnTests {
-    let soundA = Pad(title: "A", tint: .vert, content: .audio(clip: AudioClip(fileName: "a.wav")))
-    let soundB = Pad(title: "B", tint: .rouge, content: .audio(clip: AudioClip(fileName: "b.wav")))
-    let otherColumn = Pad(title: "C", tint: .violet, content: .audio(clip: AudioClip(fileName: "c.wav")))
-    let idle = Pad(title: "D", tint: .vert, content: .audio(clip: AudioClip(fileName: "d.wav")))
-    let cue = Pad(title: "Feu", tint: .ambre, content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+    let soundA = Pad(title: "A", tint: .vert, audio: AudioClip(fileName: "a.wav"))
+    let soundB = Pad(title: "B", tint: .rouge, audio: AudioClip(fileName: "b.wav"))
+    let otherColumn = Pad(title: "C", tint: .violet, audio: AudioClip(fileName: "c.wav"))
+    let idle = Pad(title: "D", tint: .vert, audio: AudioClip(fileName: "d.wav"))
+    let cue = Pad(title: "Feu", tint: .ambre, light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
 
     struct Rig {
         let audio: RecordingAudioEngine
