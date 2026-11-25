@@ -554,7 +554,7 @@ struct PadView: View {
         if controller.isPairingLights, !controller.isLocked, kind == .light {
             return controller.isPaired(at: position) ? "Appairée" : "À appairer"
         }
-        guard pad?.kind == .light else { return "" }
+        guard pad?.light != nil else { return "" }
         switch controller.lightState(at: position) {
         case .on: return "Allumée"
         case .off: return "Éteinte"
@@ -629,7 +629,7 @@ struct PadView: View {
 
     private func filled(_ pad: Pad, event: PlaybackEvent?) -> some View {
         let vivid = pad.tint.vividColor
-        let lightState: LightState = pad.kind == .light ? controller.lightState(at: position) : .unknown
+        let lightState: LightState = pad.light != nil ? controller.lightState(at: position) : .unknown
         let outline: Double = event.map { $0.state.isPaused ? 0.45 : 1 } ?? (lightState == .on ? 1 : 0)
         let halo: Double = event.map { $0.state.isPaused ? 0 : 0.45 } ?? (lightState == .on ? 0.45 : 0)
         // Texte (titre + sous-titre serrés) à gauche, état et bouton à droite : tout est centré sur le même axe horizontal.

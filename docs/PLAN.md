@@ -248,6 +248,20 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   les deux Mac ensemble. Usages migrés (moteur, audio, app) en gardant le comportement ; un pad qui aurait les deux parties se comporte comme un son jusqu'à la
   fiche 06. 15 tests (`PadTypesTests`) ; tout le package est vert (576 tests). **À essayer** : ☐ ouvrir un vrai spectacle (copie !) : tout est là, ⌘S, rouvrir
   ☐ sons, cues, appairages, glisser-déposer, ⌘Z comme avant.
+- **Règles : conversions de type et jeu d'un pad mixte (25/11/2026, branche `j10/types-regles`, fiche 06)** ✅ code, sans interface (fiche 07).
+  `ConversionPlan` (modèle pur : pads supprimés, pads qui perdent leur cue appairée ou leur son, appairage du fader oublié, filtre remis au neutre ;
+  `Column.converted(to:)`, `Pad.converted(to:)`) ; commandes `ShowController.setColumnKind`, `setPadKind`, `setLightRetrigger`, `conversionPlan(…)` (pour la
+  feuille de confirmation), `columnKindProblem` ; une annulation par conversion, refusées verrouillé. **Jouer** : un pad son et lumière lance le son puis sa cue ;
+  « allumer seulement » (défaut) n'envoie la note que si LightKey ne dit pas la cue déjà allumée, « basculer » à chaque appui ; pause / stop / Échap ne touchent jamais
+  la lumière. **Contrôleur** : `ShowController.controllerPress` route chaque appui (colonne lumière → relais, son → son, mixte → selon le pad) ; le Note Off ne part que
+  si le Note On a été relayé. **Appairage** : les colonnes mixtes comptent ; un pad son d'une colonne mixte reçoit sa cue en s'appairant (sans jouer son pendant
+  l'appairage). Glisser un son sur une cue d'une colonne mixte la rend son et lumière ; sur un pad son et lumière, seul le son est remplacé. LED : le son prime, sinon l'état de la cue.
+  `Column.empty(kind: .mixed)` a un niveau de volume (0,8). 21 tests de modèle (`ConversionPlanTests`) + 32 tests moteur (`MixedColumnsTests`) ; tout le package vert (629).
+  **Décisions et limites** : (1) **règle 5 de la fiche 01b reportée** : avec les colonnes lumière communes actives, une colonne commune ne change pas de type et
+  aucune colonne ne devient lumière (`columnKindProblem` explique : désactiver l'option d'abord) ; (2) **Lumière → Son** (pad seul) n'a aucun son à garder : le pad
+  disparaît, le plan le dit avant ; (3) un pad qui perd son son est **coupé net** par le moteur audio (comme quand on supprime un pad aujourd'hui), pas avec le fondu de 40 ms ;
+  (4) une cue vierge non appairée se retire sans confirmation ; (5) l'interface (menus, confirmation) arrive avec la fiche 07. **À essayer au contrôleur** : ☐ pad son et lumière :
+  son + cue, réappui sans éteindre la cue ☐ mode « basculer » ☐ stop / Échap : la lumière reste ☐ appairage d'un pad son en colonne mixte.
 
 
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)

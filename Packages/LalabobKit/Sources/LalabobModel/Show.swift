@@ -246,7 +246,7 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     }
 
     public static func empty(name: String, kind: ColumnKind) -> Column {
-        Column(name: name, kind: kind, level: kind == .audio ? 0.8 : 1, slots: Array(repeating: nil, count: PadGrid.size))
+        Column(name: name, kind: kind, level: kind.hasAudio ? 0.8 : 1, slots: Array(repeating: nil, count: PadGrid.size))
     }
 }
 

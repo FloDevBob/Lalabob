@@ -70,6 +70,18 @@ extension ShowController {
         }
         do {
             let name = try AudioImporter.importFile(at: url, into: audioDirectory)
+            // Un son déposé sur un pad qui a une cue (colonne mixte) s'y ajoute : un pad lumière, ou « en attente de son »,
+            // devient son et lumière sans rien perdre ; sur un pad son et lumière, seul le son est remplacé. Sur un pad son,
+            // ou une case vide, c'est un nouveau pad prérempli (comme avant).
+            if currentGrid.columns[position.column].kind == .mixed, let existing = pad(at: position), existing.light != nil {
+                return commit("Ajouter un son au pad") { show, grid in
+                    guard var pad = show.grids[grid][position], pad.light != nil else { return false }
+                    pad.audio = AudioClip(fileName: name)
+                    pad.awaitsSound = false
+                    show.grids[grid][position] = pad
+                    return true
+                }
+            }
             return place(AudioImporter.pad(forFileName: name), at: position)
         } catch {
             let reason =
