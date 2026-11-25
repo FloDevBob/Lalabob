@@ -251,16 +251,19 @@ public final class ControllerSession {
                 switch active.driver.interpret(event) {
                 case .padPressed(let position, let velocity) where velocity > 0:
                     bench.setControllerPad(position, pressed: true)
-                    // Une colonne lumière ne touche jamais au son : l'appui part vers LightKey, rien d'autre.
-                    if isLightColumn(position.column) {
-                        relayPad(position, pressed: true, driver: active.driver)
-                        attachedController?.pairingPress(at: position)
-                    } else {
-                        attachedController?.pressFromController(at: position)
-                    }
+                    // Une colonne lumière ne touche jamais au son ; une colonne mixte joue ce que son pad contient (son, cue,
+                    // ou les deux) ; une colonne son ne touche jamais à la lumière. Sans spectacle rattaché : colonnes par défaut.
+                    let press =
+                        attachedController?.controllerPress(at: position)
+                        ?? ShowController.ControllerPress(
+                            playsSound: false, relaysLight: PadGrid.defaultLightColumns.contains(position.column))
+                    if press.playsSound { attachedController?.pressFromController(at: position) }
+                    if press.relaysLight { relayPad(position, pressed: true, driver: active.driver) }
+                    attachedController?.pairingPress(at: position)
                 case .padReleased(let position):
                     bench.setControllerPad(position, pressed: false)
-                    if isLightColumn(position.column) { relayPad(position, pressed: false, driver: active.driver) }
+                    // Le Note Off ne part que si le Note On a été relayé (`relayedPresses`) : on peut l'appeler pour toute case.
+                    relayPad(position, pressed: false, driver: active.driver)
                 case .columnStop(let column):
                     attachedController?.stopColumn(column)
                 case .columnFader(let column, let value):

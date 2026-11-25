@@ -21,9 +21,9 @@ extension ShowController {
         }
     }
 
-    /// La case est dans une colonne lumière de la grille affichée.
+    /// La case est dans une colonne lumière ou mixte de la grille affichée : sa cue peut s'appairer.
     public func isLightCell(_ position: GridPosition) -> Bool {
-        position.isValid && currentGrid.columns[position.column].kind == .light
+        position.isValid && currentGrid.columns[position.column].kind != .audio
     }
 
     /// La cue de la case est marquée appairée.
@@ -123,9 +123,11 @@ extension ShowController {
     func pairCue(at position: GridPosition) -> Bool {
         guard isPairingLights else { return false }
         let done = commit("Appairer la cue") { show, grid in
-            guard position.isValid, show.grids[grid].columns[position.column].kind == .light else { return false }
+            guard position.isValid, show.grids[grid].columns[position.column].kind != .audio else { return false }
             var pad = show.grids[grid][position] ?? Self.blankLightPad()
-            guard var cue = pad.light, !cue.isPaired else { return false }
+            // Un pad son d'une colonne mixte reçoit sa cue : il devient son et lumière.
+            var cue = pad.light ?? .blank
+            guard !cue.isPaired else { return false }
             cue.isPaired = true
             pad.light = cue
             show.grids[grid][position] = pad
@@ -158,9 +160,11 @@ extension ShowController {
 
     /// Première case lumière sans cue appairée après `position` (colonne par colonne, de haut en bas), ou la première de la grille.
     func nextUnpairedLightPosition(after position: GridPosition?) -> GridPosition? {
+        // Colonne lumière : toutes les cases. Colonne mixte : seulement les pads qui ont déjà une cue (les autres cases sont des sons).
         let free = currentGrid.columns.indices
-            .filter { currentGrid.columns[$0].kind == .light }
+            .filter { currentGrid.columns[$0].kind != .audio }
             .flatMap { column in (0..<PadGrid.size).map { GridPosition(column: column, row: $0) } }
+            .filter { currentGrid.columns[$0.column].kind == .light || pad(at: $0)?.light != nil }
             .filter { !isPaired(at: $0) }
         guard let position else { return free.first }
         return free.first { ($0.column, $0.row) > (position.column, position.row) }

@@ -7,7 +7,8 @@ enum LEDPlanner {
     /// État voulu pour les 64 cases.
     /// - case vide : éteinte ; pad : sa teinte à son intensité ;
     /// - son en lecture : pulsation ; son en pause : teinte atténuée ;
-    /// - cue lumière : allumée dans LightKey = pulsation, éteinte = teinte atténuée, état inconnu = teinte à son intensité.
+    /// - cue lumière : allumée dans LightKey = pulsation, éteinte = teinte atténuée, état inconnu = teinte à son intensité ;
+    /// - pad son et lumière : l'état du **son** prime (pulsation en lecture, atténué en pause), sinon celui de la cue.
     static func states(
         for grid: PadGrid, playback: [Pad.ID: PlaybackEvent], lightStates: [GridPosition: LightState] = [:]
     ) -> [GridPosition: LEDState] {
@@ -21,7 +22,7 @@ enum LEDPlanner {
             case .playing: states[position] = .pulsing(pad.tint)
             case .paused: states[position] = .lit(pad.tint, .quarter)
             case .idle, nil:
-                switch pad.kind == .light ? lightStates[position] ?? .unknown : .unknown {
+                switch pad.light != nil ? lightStates[position] ?? .unknown : .unknown {
                 case .on: states[position] = .pulsing(pad.tint)
                 case .off: states[position] = .lit(pad.tint, .quarter)
                 case .unknown: states[position] = .lit(pad.tint, pad.ledIntensity)

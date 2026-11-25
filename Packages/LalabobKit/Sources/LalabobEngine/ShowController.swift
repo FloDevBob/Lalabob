@@ -82,6 +82,8 @@ public final class ShowController {
     public private(set) var selectedOutputUID: String?
     /// Dernier import de son raté, à montrer à l'utilisateur (`nil` si rien à signaler).
     public internal(set) var importError: String?
+    /// Dernier changement de type refusé (colonne ou pad), avec la raison, à montrer à l'utilisateur (`nil` si rien à signaler).
+    public internal(set) var conversionNotice: String?
     /// Le contrôleur physique actuellement relié (Launchpad, APC), s'il y en a un.
     public private(set) var connectedController: ControllerModel?
     /// Dernier contrôleur relié (mémorisé) : donne les notes à envoyer à LightKey quand aucun n'est branché.
@@ -307,15 +309,50 @@ public final class ShowController {
         play(at: position)
     }
 
+    /// Lance un pad : son, cue, ou les deux. Un pad son et lumière lance le son, puis sa cue — mais seulement si LightKey ne la dit
+    /// pas déjà allumée (`LightRetrigger.turnOnOnly`, défaut) : LightKey bascule la cue à chaque note, relancer le son ne doit pas
+    /// l'éteindre. `.toggle` l'envoie à chaque appui, comme un pad lumière.
     private func play(at position: GridPosition) {
         guard let pad = currentGrid[position] else { return }
-        // Fiche 06 : un pad son et lumière lancera aussi sa cue. Pour l'instant (aucun pad mixte ne peut être créé), le son prime.
         if pad.audio != nil {
             commands.yield(.trigger(pad.id))
             if isLocked { selection = position }
-        } else if pad.light != nil {
+        }
+        if pad.light != nil, shouldSendLight(for: pad, at: position) {
             lightPressHandler?(position)
         }
+    }
+
+    /// La cue d'un pad doit-elle partir à cet appui ? Toujours pour un pad lumière seul (ou « en attente de son ») ; pour un pad
+    /// son et lumière, selon « nouvel appui » : jamais sur une cue que LightKey dit allumée (l'état vient du retour, ADR 0006).
+    func shouldSendLight(for pad: Pad, at position: GridPosition) -> Bool {
+        guard pad.light != nil else { return false }
+        guard pad.audio != nil else { return true }
+        return pad.lightRetrigger == .toggle || lightState(at: position) != .on
+    }
+
+    /// Ce qu'un appui sur le contrôleur déclenche pour une case (la session MIDI s'en sert pour router l'appui).
+    struct ControllerPress: Equatable, Sendable {
+        /// Le son du pad part.
+        var playsSound: Bool
+        /// L'appui est relayé à LightKey (Note On à l'appui, Note Off au relâchement).
+        var relaysLight: Bool
+    }
+
+    /// Routage d'un appui physique :
+    /// - colonne **lumière** : relayé à LightKey, même sur une case vide (pour apprendre la note), jamais de son ;
+    /// - colonne **son** : le son seul ;
+    /// - colonne **mixte** : selon le pad (son seul, lumière seule, ou les deux) ; une case vide ne fait rien ;
+    /// - en mode **appairage**, une colonne lumière ou mixte relaie toujours l'appui (c'est ainsi qu'on apprend la note à
+    ///   LightKey) et ne joue aucun son.
+    func controllerPress(at position: GridPosition) -> ControllerPress {
+        guard position.isValid else { return ControllerPress(playsSound: false, relaysLight: false) }
+        let kind = currentGrid.columns[position.column].kind
+        if kind == .light || (isPairingLights && !isLocked && kind == .mixed) {
+            return ControllerPress(playsSound: false, relaysLight: true)
+        }
+        guard let pad = currentGrid[position] else { return ControllerPress(playsSound: false, relaysLight: false) }
+        return ControllerPress(playsSound: pad.audio != nil, relaysLight: shouldSendLight(for: pad, at: position))
     }
 
     /// Volume d'un pad pendant qu'on déplace la jauge : le moteur le suit tout de suite, y compris sur un son
@@ -345,6 +382,10 @@ public final class ShowController {
     /// L'interface signale un geste d'édition tenté sur un spectacle verrouillé (glisser, renommer…).
     public func notifyLocked() {
         _ = refuseWhileLocked()
+    }
+
+    public func dismissConversionNotice() {
+        conversionNotice = nil
     }
 
     public func dismissLockNotice() {

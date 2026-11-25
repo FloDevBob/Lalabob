@@ -28,8 +28,7 @@ extension ShowController {
 
     /// Une cue lumière vierge. La note envoyée à LightKey est celle du contrôleur (ADR 0006) : le message stocké ne sert pas.
     static func blankLightPad() -> Pad {
-        let cue = LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))
-        return Pad.cue(title: "Nouvelle cue", tint: .ambre, cue: cue)
+        Pad.cue(title: "Nouvelle cue", tint: .ambre, cue: .blank)
     }
 
     @discardableResult
@@ -350,6 +349,88 @@ extension ShowController {
     /// Change le canal LightKey des colonnes communes (refusé s'il est pris par une grille, ou verrouillé).
     public func setSharedLightChannel(_ channel: Int) {
         commit("Canal des colonnes communes") { show, _ in show.setSharedLightChannel(channel) }
+    }
+
+    // MARK: - Types de colonnes et de pads (fiche 06)
+
+    /// Ce que coûterait le passage d'une colonne de la grille affichée à ce type (pour la feuille de confirmation).
+    public func conversionPlan(column: Int, to kind: ColumnKind) -> ConversionPlan {
+        guard (0..<PadGrid.size).contains(column) else { return ConversionPlan() }
+        return .column(currentGrid.columns[column], to: kind)
+    }
+
+    /// Ce que coûterait le passage d'un pad de la grille affichée à ce type (case vide : rien).
+    public func conversionPlan(padAt position: GridPosition, to kind: PadKind) -> ConversionPlan {
+        guard let pad = pad(at: position) else { return ConversionPlan() }
+        return .pad(pad, to: kind)
+    }
+
+    /// Pourquoi ce changement de type de colonne est impossible (`nil` s'il est permis). Le verrou est géré à part.
+    ///
+    /// Colonnes lumière communes (fiche 01b) : une colonne commune ne change pas de type et aucune colonne ne devient
+    /// « Lumière » tant que l'option est active, car cela vaudrait pour toutes les grilles (règle 5 de la fiche 01b, **reportée** :
+    /// il faut d'abord désactiver l'option, dans Spectacle › Réglages du spectacle…).
+    public func columnKindProblem(_ column: Int, to kind: ColumnKind) -> String? {
+        guard (0..<PadGrid.size).contains(column) else { return "Colonne introuvable." }
+        let current = currentGrid.columns[column].kind
+        guard current != kind, show.sharedLight != nil else { return nil }
+        if show.isSharedLightColumn(column) {
+            return "Cette colonne est commune à toutes les grilles : désactivez les colonnes lumière communes (Spectacle › Réglages du spectacle…) pour changer son type."
+        }
+        if kind == .light {
+            return "Les colonnes lumière sont communes à toutes les grilles : désactivez les colonnes lumière communes (Spectacle › Réglages du spectacle…) pour en ajouter une."
+        }
+        return nil
+    }
+
+    /// Change le type d'une colonne de la grille affichée (son, lumière, son et lumière). Élargir ne retire rien ; restreindre
+    /// retire ce qui ne rentre plus (`conversionPlan`, à montrer avant). Une seule annulation, refusé verrouillé, sans effet si le
+    /// type est déjà le bon. Aucun autre son ne s'arrête ; un pad qui perd son son s'arrête (le moteur coupe sa voix, comme
+    /// quand on supprime un pad).
+    @discardableResult
+    public func setColumnKind(_ column: Int, to kind: ColumnKind) -> Bool {
+        if let problem = columnKindProblem(column, to: kind) {
+            conversionNotice = problem
+            return false
+        }
+        return commit("Type de colonne") { show, grid in
+            guard show.grids[grid].columns.indices.contains(column), show.grids[grid].columns[column].kind != kind else { return false }
+            show.grids[grid].columns[column] = show.grids[grid].columns[column].converted(to: kind)
+            return true
+        }
+    }
+
+    /// Change le type d'un pad (dans une colonne **mixte** seulement : les autres n'acceptent qu'un type). Une seule annulation,
+    /// refusé verrouillé. Un pad qui n'a rien à garder (lumière → son, « en attente de son » → son) disparaît : `conversionPlan`
+    /// le dit avant.
+    @discardableResult
+    public func setPadKind(at position: GridPosition, to kind: PadKind) -> Bool {
+        guard position.isValid else { return false }
+        guard currentGrid.columns[position.column].kind == .mixed else {
+            conversionNotice = currentGrid.columns[position.column].kind == .audio
+                ? "La colonne n'accepte que le son. Changez son type pour mélanger."
+                : "La colonne n'accepte que la lumière. Changez son type pour mélanger."
+            return false
+        }
+        return commit("Type du pad") { show, grid in
+            guard let pad = show.grids[grid][position], pad.kind != kind else { return false }
+            show.grids[grid][position] = pad.converted(to: kind)
+            return true
+        }
+    }
+
+    /// « Nouvel appui » de la cue d'un pad son et lumière : n'envoyer la note que si LightKey dit la cue éteinte (`turnOnOnly`), ou à
+    /// chaque appui (`toggle`). Une annulation ; refusé verrouillé ; sans effet sur un pad sans son ou sans cue.
+    @discardableResult
+    public func setLightRetrigger(at position: GridPosition, to value: LightRetrigger) -> Bool {
+        commit("Nouvel appui de la lumière") { show, grid in
+            guard position.isValid, var pad = show.grids[grid][position], pad.audio != nil, pad.light != nil,
+                pad.lightRetrigger != value
+            else { return false }
+            pad.lightRetrigger = value
+            show.grids[grid][position] = pad
+            return true
+        }
     }
 
     /// Renomme une colonne de la grille affichée (nom vide refusé, 80 caractères au plus ; une seule annulation).
