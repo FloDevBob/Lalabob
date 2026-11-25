@@ -1,6 +1,7 @@
 # Plan — types de colonnes et de pads, canal par grille, grilles au contrôleur, Apple Music
 
 Version du 25/11/2026. Design validé : https://claude.ai/artifact/8KceUvus4vE8SWtJVY7iqM
+**Fiches détaillées pour coder chaque étape : `docs/taches/`** (une fiche = une branche = une PR).
 
 ## Ce qui est décidé
 
