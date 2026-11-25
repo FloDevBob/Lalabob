@@ -30,15 +30,71 @@ public struct Show: Codable, Sendable, Equatable {
     public var name: String
     public var grids: [PadGrid]
 
+    /// Un spectacle construit en mémoire (nouveau, tests) : chaque grille sans canal LightKey en reçoit un, dans l'ordre.
     public init(name: String, grids: [PadGrid]) {
         self.formatVersion = Show.currentFormatVersion
         self.name = name
         self.grids = grids
+        assignLightChannels(toGrids: Array(grids.indices.filter { grids[$0].lightChannel == nil }))
     }
 
     /// Un spectacle neuf avec une grille vide.
     public static func new(name: String = "Nouveau spectacle") -> Show {
         Show(name: name, grids: [.empty(name: "Grille 1")])
+    }
+}
+
+// MARK: - Canal LightKey par grille
+
+extension Show {
+    /// Canaux MIDI possibles pour LightKey.
+    public static let lightChannels = 1...16
+
+    /// Premier canal LightKey qu'aucune grille n'utilise (`nil` si les 16 sont pris).
+    public func firstFreeLightChannel() -> Int? {
+        let used = Set(grids.compactMap(\.lightChannel))
+        return Self.lightChannels.first { !used.contains($0) }
+    }
+
+    /// Donne un canal aux grilles `indices`, dans l'ordre : la grille N prend le canal N s'il est libre, sinon le premier
+    /// canal libre, sinon aucun (« Sans canal »).
+    public mutating func assignLightChannels(toGrids indices: [Int]) {
+        for index in indices where grids.indices.contains(index) {
+            let used = Set(grids.compactMap(\.lightChannel))
+            let preferred = index + 1
+            if Self.lightChannels.contains(preferred), !used.contains(preferred) {
+                grids[index].lightChannel = preferred
+            } else {
+                grids[index].lightChannel = firstFreeLightChannel()
+            }
+        }
+    }
+
+    /// Migration d'un fichier d'avant le canal par grille (`indices` : les grilles lues sans canal). Jusque-là tout
+    /// partait sur le canal 1 : les cues et faders lumière appairés des grilles 2 et suivantes étaient en réalité ceux de
+    /// la grille 1 dans LightKey. Ils sont marqués non appairés. Renvoie les index des grilles où un appairage a été retiré.
+    public mutating func migrateToLightChannelPerGrid(gridsWithoutChannel indices: [Int]) -> [Int] {
+        assignLightChannels(toGrids: indices)
+        var reset: [Int] = []
+        for index in indices where index > 0 && grids.indices.contains(index) {
+            var changed = false
+            for c in grids[index].columns.indices {
+                if grids[index].columns[c].isFaderPaired {
+                    grids[index].columns[c].isFaderPaired = false
+                    changed = true
+                }
+                for r in grids[index].columns[c].slots.indices {
+                    guard var pad = grids[index].columns[c].slots[r], case .light(var cue) = pad.content, cue.isPaired
+                    else { continue }
+                    cue.isPaired = false
+                    pad.content = .light(cue: cue)
+                    grids[index].columns[c].slots[r] = pad
+                    changed = true
+                }
+            }
+            if changed { reset.append(index) }
+        }
+        return reset
     }
 }
 
@@ -51,11 +107,37 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
     public var id: UUID
     public var name: String
     public var columns: [Column]
+    /// Canal MIDI (1 à 16) sur lequel cette grille parle à LightKey : cues, faders lumière et retour d'état.
+    /// `nil` = « Sans canal » : la lumière de cette grille n'envoie rien. Gardé quand on réordonne les onglets.
+    public var lightChannel: Int?
 
-    public init(id: UUID = UUID(), name: String, columns: [Column]) {
+    public init(id: UUID = UUID(), name: String, columns: [Column], lightChannel: Int? = nil) {
         self.id = id
         self.name = name
         self.columns = columns
+        self.lightChannel = lightChannel
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, columns, lightChannel }
+
+    /// Les fichiers d'avant le canal par grille n'ont pas `lightChannel` : la grille se lit « sans canal » et
+    /// `ShowPackage` lui en attribue un (migration). Un canal absent se distingue d'un « Sans canal » écrit (`null`).
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        columns = try container.decode([Column].self, forKey: .columns)
+        lightChannel = try container.decodeIfPresent(Int.self, forKey: .lightChannel)
+    }
+
+    /// `lightChannel` est toujours écrit, `null` compris : un « Sans canal » choisi ne doit pas être pris pour un
+    /// ancien fichier à migrer.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(columns, forKey: .columns)
+        try container.encode(lightChannel, forKey: .lightChannel)
     }
 
     public static func empty(name: String) -> PadGrid {

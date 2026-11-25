@@ -301,7 +301,9 @@ extension ShowController {
         let name = "Grille \(show.grids.count + 1)"
         let added = commit("Ajouter une grille") { show, _ in
             guard show.grids.count < Show.maximumGridCount else { return false }
-            show.grids.append(.empty(name: name))
+            var grid = PadGrid.empty(name: name)
+            grid.lightChannel = show.firstFreeLightChannel()  // nil au-delà de 16 : « Sans canal »
+            show.grids.append(grid)
             return true
         }
         if added { selectGrid(at: show.grids.count - 1) }
@@ -312,6 +314,21 @@ extension ShowController {
         commit("Renommer la grille") { show, _ in
             guard show.grids.indices.contains(index), !trimmed.isEmpty else { return false }
             show.grids[index].name = trimmed
+            return true
+        }
+    }
+
+    /// Change le canal LightKey d'une grille (`nil` = « Sans canal »). Refusé verrouillé, hors de 1…16, ou si une autre
+    /// grille utilise déjà ce canal. Les appairages de la grille sont à refaire dans LightKey (l'interface le dit avant).
+    public func setLightChannel(grid index: Int, channel: Int?) {
+        commit("Canal LightKey") { show, _ in
+            guard show.grids.indices.contains(index) else { return false }
+            if let channel {
+                guard Show.lightChannels.contains(channel),
+                    !show.grids.indices.contains(where: { $0 != index && show.grids[$0].lightChannel == channel })
+                else { return false }
+            }
+            show.grids[index].lightChannel = channel
             return true
         }
     }

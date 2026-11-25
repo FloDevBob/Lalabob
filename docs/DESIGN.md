@@ -16,7 +16,8 @@ Les valeurs de couleur et de dimension sont déjà dans `LalabobModel/Tint.swift
 
 ### Barre d'en-tête (56 px)
 De gauche à droite : bouton masquer la bibliothèque · logo « Lalabob » + nom du spectacle ·
-**onglets de grilles** au centre (pastille numérotée 1…n, nom, nombre de sons ; bouton +) ·
+**onglets de grilles** au centre (pastille numérotée 1…n, nom, nombre de sons, **pastille de canal LightKey** « Can. 2 » en mono 10 pt,
+contour ambré à 35 % — « Sans canal » en pointillés rouges ; clic droit › « Canal LightKey » pour le changer, avec confirmation ; bouton +) ·
 **sélecteur de contrôleur** (nom du modèle + pastille verte « Connecté ») · **sélecteur de sortie audio** (à ajouter) ·
 **cadenas** Verrouillé / Déverrouillé (⌘L, remplace la bascule Édition / Live de la maquette) · bouton rouge **Tout arrêter** (raccourci Échap).
 
