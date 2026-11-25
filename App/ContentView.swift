@@ -140,6 +140,24 @@ extension ContentView {
         .preferredColorScheme(.dark)
 }
 
+#Preview("Colonnes égales : une colonne lumière en position 3") {
+    Fonts.register()
+    var grid = PadGrid.empty(name: "Essai")
+    grid.columns[2] = Column.empty(name: "Éclairage", kind: .light)
+    grid.columns[6] = Column.empty(name: "Sons", kind: .audio)
+    grid[GridPosition(column: 2, row: 0)] = Pad(
+        title: "Plein feu", subtitle: "Cue", tint: .ambre,
+        content: .light(cue: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0))))
+    grid[GridPosition(column: 6, row: 0)] = Pad(
+        title: "Rire", subtitle: "Public", tint: .vert, content: .audio(clip: AudioClip(fileName: "rire.wav")))
+    return ContentView()
+        .environment(ShowController(show: Show(name: "Essai", grids: [grid])))
+        .environment(LibraryController(securityScoped: false))
+        .environment(PreviewController())
+        .frame(width: 1320, height: 780)
+        .preferredColorScheme(.dark)
+}
+
 #Preview("Plein écran portable (1440 × 900), pad sélectionné") {
     Fonts.register()
     var grid = PadGrid.empty(name: "Essai")

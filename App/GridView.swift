@@ -6,36 +6,19 @@ import SwiftUI
 import UniformTypeIdentifiers
 import os
 
-/// La grille : 6 colonnes sons, une ligne de séparation ambrée, puis 2 colonnes lumière.
-/// Elle reçoit ⌘X / ⌘C / ⌘V / ⌫ quand elle a le focus (un clic sur un pad le lui donne) ;
+/// La grille : 8 colonnes de **même largeur**, dans leur ordre réel. Le type de chaque colonne (son ou lumière) se lit dans
+/// la pastille et le liseré de son en-tête (`ColumnView`). Elle reçoit ⌘X / ⌘C / ⌘V / ⌫ quand elle a le focus (un clic sur un pad le lui donne) ;
 /// verrouillée, ces commandes sont refusées par `ShowController` avec un message.
 struct GridView: View {
     @Environment(ShowController.self) private var controller
     @FocusState private var focused: Bool
 
     var body: some View {
-        let grid = controller.currentGrid
-        HStack(alignment: .top, spacing: 16) {
-            HStack(spacing: Metrics.columnSpacing) {
-                ForEach(indices(of: .audio, in: grid), id: \.self) { index in
-                    ColumnView(index: index, onPress: { focused = true })
-                }
+        HStack(alignment: .top, spacing: Metrics.columnSpacing) {
+            ForEach(0..<PadGrid.size, id: \.self) { index in
+                ColumnView(index: index, onPress: { focused = true })
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
-
-            // Zone lumière : plus de carte ni de fond, une simple ligne verticale ambrée la sépare des colonnes sons
-            // (une zone fixe à droite, comme un panneau latéral qu'on ne referme pas).
-            Rectangle()
-                .fill(Surface.lightAccent.opacity(0.28))
-                .frame(width: 1)
-                .accessibilityHidden(true)
-
-            HStack(spacing: Metrics.columnSpacing) {
-                ForEach(indices(of: .light, in: grid), id: \.self) { index in
-                    ColumnView(index: index, onPress: { focused = true })
-                }
-            }
-            .frame(width: 264)
         }
         .focusable()
         .focusEffectDisabled()
@@ -85,9 +68,6 @@ struct GridView: View {
         NSApp.keyWindow?.firstResponder is NSTextView
     }
 
-    private func indices(of kind: ColumnKind, in grid: PadGrid) -> [Int] {
-        grid.columns.indices.filter { grid.columns[$0].kind == kind }
-    }
 }
 
 struct ColumnView: View {
@@ -200,6 +180,15 @@ struct ColumnView: View {
                     .foregroundStyle(Surface.textTertiary)
             }
             .frame(height: 30)
+            // Liseré de type sous l'en-tête (dans la hauteur de l'en-tête : les pads ne bougent pas) : discret pour un son,
+            // ambre plein pour la lumière.
+            .overlay(alignment: .bottom) {
+                Capsule()
+                    .fill(column.kind == .audio ? Color.white.opacity(0.06) : Surface.lightAccent.opacity(0.85))
+                    .frame(height: 2)
+                    .padding(.horizontal, 4)
+                    .accessibilityHidden(true)
+            }
 
             // Les 8 pads de la colonne : seuls eux défilent (comme une page) quand on change d'onglet.
             PadsPager(column: index, kind: column.kind, onPress: onPress)
