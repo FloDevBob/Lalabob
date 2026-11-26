@@ -457,3 +457,21 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
 Le brouillon (module `LalabobImport`, `AbletonImporter`, menu Fichier › « Importer un Live Set Ableton… », ADR 0007) n'a jamais été
 compilé ni essayé : il est **retiré de `main`** et conservé tel quel sur la branche **`j8/import-ableton`** (issue de `j7/filtre-colonne`
 1.1.1). À reprendre plus tard : rebaser cette branche sur `main`, compiler, `make test`, essai avec le dossier `Bob play`.
+
+### J11 — Grilles Apple Music 🚧 (spec : `docs/spec-grilles-apple-music.md`, maquette : https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ)
+Décisions (27/11/2026) : Apple Events (pas de compte développeur) ; grilles Music + lumière ; un morceau à la fois, fondu enchaîné de 1 s ;
+ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s pour la pré-écoute ; dépôt multiple colonne par colonne ;
+Échap arrête Music avec un fondu de 0,3 s ; départ à un moment précis : plus tard.
+- **Étape 0 — socle (27/11/2026)** : volume d'Apple Music par AppleScript (`NSAppleScript`) au lieu de ScriptingBridge, erreur exacte affichée,
+  « Vérifier la connexion » (lit le volume) ; autorisation `com.apple.security.scripting-targets` (groupes d'accès déclarés par Music :
+  `playback`, `library.read`, `library.read-write`). Lecture du dictionnaire de Music (`com.apple.Music.sdef`) : `play … once`, `folder playlist`
+  + `parent`, `download`, `artwork` (`raw data`), `player position` / `player state` existent ; **aucune propriété « téléchargé »** pour un morceau :
+  à déduire (classe `file track` = local, `shared track` = nuage) ⚠︎ à vérifier sur le Mac. Prototype de capture du son : reporté à l'étape 5.
+- **Étape 1 — modèle et types de grille (27/11/2026, branche `j11/grilles-apple-music-modele`)** ✅ code. `GridKind` (standard / Apple Music),
+  `ColumnKind.music`, `Pad.music` (`MusicTrackRef`), format **version 3 écrite seulement si nécessaire** ; validation (types permis par grille,
+  identifiant hexadécimal) ; conversions (grille, colonne, pad ; un morceau ne devient rien d'autre). Colonnes lumière communes : une grille
+  Apple Music reçoit des colonnes Music. Moteur : `addGrid(kind:)`, `setGridKind`, `gridKindRemovedPads` (une annulation, refusé verrouillé),
+  type de colonne limité par la grille, fader physique ignoré sur une colonne Music. Interface : bouton + des onglets (Sons et lumière / Apple Music),
+  Grilles › Nouvelle grille Apple Music (⌥⌘T), clic droit sur l'onglet › Type de grille (confirmation qui nomme les pads supprimés), note rose
+  sur l'onglet, types de colonne proposés selon la grille, carte « Volume : 9e fader » sous une colonne Music. 19 tests (`MusicGridTests`,
+  `MusicGridEditingTests`). **Pas encore** : panneau des playlists, lecture (étapes 2 et 3). Interface compilée, pas regardée à l'œil.

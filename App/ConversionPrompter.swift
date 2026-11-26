@@ -11,6 +11,7 @@ extension ColumnKind {
         case .audio: "Son"
         case .mixed: "Son et lumière"
         case .light: "Lumière"
+        case .music: "Apple Music"
         }
     }
 
@@ -20,6 +21,7 @@ extension ColumnKind {
         case .audio: "Sons uniquement · fader de volume, filtre, stop"
         case .mixed: "Pads son, lumière, ou les deux à la fois · fader de volume"
         case .light: "Cues uniquement · fader MIDI vers LightKey (intensité)"
+        case .music: "Morceaux d'Apple Music · volume général de Music (9e fader)"
         }
     }
 }
@@ -31,6 +33,7 @@ extension PadKind {
         case .audio: "Son"
         case .light: "Lumière"
         case .mixed: "Les deux"
+        case .music: "Apple Music"
         }
     }
 }

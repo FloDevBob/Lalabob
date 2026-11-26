@@ -52,12 +52,14 @@ extension Show {
             // Colonnes mises de côté (lumière commune) : lues d'un fichier comme le reste, donc vérifiées de même.
             for parked in grid.parkedColumns {
                 guard (0..<PadGrid.size).contains(parked.index) else { throw .valueOutOfRange("colonne mise de côté") }
+                guard grid.kind.allows(parked.column.kind) else { throw .valueOutOfRange("type de colonne mise de côté") }
                 guard parked.column.slots.count == PadGrid.size else {
                     throw .wrongSlotCount(grid: g, column: parked.index, count: parked.column.slots.count)
                 }
                 for pad in parked.column.slots.compactMap({ $0 }) { try pad.validate() }
             }
             for (c, column) in grid.columns.enumerated() {
+                guard grid.kind.allows(column.kind) else { throw .valueOutOfRange("type de colonne pour cette grille") }
                 guard column.slots.count == PadGrid.size else {
                     throw .wrongSlotCount(grid: g, column: c, count: column.slots.count)
                 }
@@ -77,6 +79,15 @@ extension Show {
 
 extension Pad {
     func validate() throws(ShowValidationError) {
+        if let track = music {
+            guard audio == nil, light == nil, !awaitsSound else { throw .valueOutOfRange("pad Music avec son ou cue") }
+            guard MusicTrackRef.isValidPersistentID(track.persistentID) else { throw .valueOutOfRange("identifiant de morceau") }
+            guard track.duration.isFinite, (0...86_400).contains(track.duration) else { throw .valueOutOfRange("durée du morceau") }
+            for text in [track.title, track.artist, track.album, track.playlistName ?? ""] where text.count > 500 {
+                throw .valueOutOfRange("texte du morceau")
+            }
+            return
+        }
         guard audio != nil || light != nil else { throw .valueOutOfRange("pad sans son ni lumière") }
         if awaitsSound, audio != nil || light == nil { throw .valueOutOfRange("pad en attente de son") }
         if let clip = audio {

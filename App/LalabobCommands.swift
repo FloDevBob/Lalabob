@@ -44,6 +44,9 @@ struct LalabobCommands: Commands {
             Button("Nouvelle grille") { controller?.addGrid() }
                 .keyboardShortcut("t")
                 .disabled(controller?.isLocked != false)
+            Button("Nouvelle grille Apple Music") { controller?.addGrid(kind: .appleMusic) }
+                .keyboardShortcut("t", modifiers: [.command, .option])
+                .disabled(controller?.isLocked != false)
             Divider()
             ForEach(1...9, id: \.self) { number in
                 Button("Grille \(number)") { controller?.selectGrid(at: number - 1) }

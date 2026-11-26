@@ -14,7 +14,7 @@ struct ColumnKindPill: View {
 
     @State private var shown = false
 
-    private var tint: Color { kind == .audio ? Surface.textSecondary : Surface.lightAccent }
+    private var tint: Color { kind == .music ? Surface.musicAccent : kind == .audio ? Surface.textSecondary : Surface.lightAccent }
 
     var body: some View {
         if controller.isLocked {
@@ -34,8 +34,9 @@ struct ColumnKindPill: View {
 
     private func pill(showsChevron: Bool) -> some View {
         HStack(spacing: 3) {
+            if kind == .music { Icon.music.view(size: 14).foregroundStyle(Surface.musicAccent) }
             if kind.hasAudio { Icon.music.view(size: 14).foregroundStyle(Surface.textSecondary) }
-            if kind != .audio { Icon.spotlight.view(size: 14).foregroundStyle(Surface.lightAccent) }
+            if kind.hasLight { Icon.spotlight.view(size: 14).foregroundStyle(Surface.lightAccent) }
             if showsChevron {
                 ColumnChevron()
                     .stroke(Surface.textTertiary, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
@@ -58,7 +59,7 @@ struct ColumnKindPill: View {
                 .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(Surface.textTertiary)
                 .lineLimit(1)
-            ForEach([ColumnKind.audio, .mixed, .light], id: \.self) { option in
+            ForEach(controller.currentGrid.kind.columnChoices, id: \.self) { option in
                 row(option)
             }
             Text("Élargir ne retire rien. Restreindre demande confirmation et s'annule avec ⌘Z.")
@@ -124,7 +125,7 @@ struct ColumnContextMenu: View {
         if !controller.isLocked {
             Button("Renommer…", action: rename)
             Menu("Type de colonne") {
-                ForEach([ColumnKind.audio, .mixed, .light], id: \.self) { option in
+                ForEach(controller.currentGrid.kind.columnChoices, id: \.self) { option in
                     let isCurrent = option == column.kind
                     let lossy = !isCurrent && !controller.conversionPlan(column: index, to: option).isLossless
                     Button {
@@ -158,6 +159,8 @@ struct ColumnKindRule: View {
                 Capsule().fill(Color.white.opacity(0.06)).frame(height: 2)
             case .light:
                 Capsule().fill(Surface.lightAccent.opacity(0.85)).frame(height: 2)
+            case .music:
+                Capsule().fill(Color(red: 1, green: 0.35, blue: 0.55).opacity(0.7)).frame(height: 2)
             case .mixed:
                 HorizontalLine()
                     .stroke(Surface.lightAccent.opacity(0.85), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [6, 5]))
@@ -186,4 +189,9 @@ private nonisolated struct ColumnChevron: Shape {
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
         return path
     }
+}
+
+extension GridKind {
+    /// Les types de colonne proposés dans une grille de ce type, dans l'ordre d'affichage.
+    var columnChoices: [ColumnKind] { self == .appleMusic ? [.music, .light] : [.audio, .mixed, .light] }
 }

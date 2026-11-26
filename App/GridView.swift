@@ -187,7 +187,22 @@ struct ColumnView: View {
             // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
             // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
             Group {
-                if column.kind.hasAudio {
+                if column.kind == .music {
+                    // Colonne Music : pas de fader (le volume est celui de Music, réglé par le 9e fader de l'APC).
+                    VStack(alignment: .leading, spacing: 6) {
+                        IconLabel("Volume", icon: .volume, size: 12)
+                            .font(.system(size: 10.5, weight: .semibold))
+                            .foregroundStyle(Surface.textTertiary)
+                        Text("Réglé par le 9e fader de l'APC (Apple Music)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Surface.textTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight, alignment: .topLeading)
+                    .accessibilityElement(children: .combine)
+                } else if column.kind.hasAudio {
                     HStack(alignment: .top, spacing: 8) {
                         VerticalFader(
                             name: column.name,
@@ -496,7 +511,7 @@ struct PadView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             pad.map { "\($0.title), \($0.subtitle)" + ($0.kind == .mixed ? ", son et lumière" : "") }
-                ?? (kind.hasAudio ? "Case vide" : "Case lumière vide")
+                ?? (kind == .music ? "Case Music vide" : kind.hasAudio ? "Case vide" : "Case lumière vide")
         )
         .accessibilityValue(accessibilityValue(pad, event: event))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
@@ -576,6 +591,7 @@ struct PadView: View {
                 : "Clic : sélectionner · Double-clic : jouer · Glisser : déplacer (⌥ : copier)"
         }
         guard !controller.isLocked else { return "" }
+        if kind == .music { return "Glissez ici un morceau d'une playlist d'Apple Music (panneau de gauche)" }
         if kind == .mixed { return "Glissez un son ici (bibliothèque ou Finder), ou cliquez « + Cue » pour créer une cue lumière" }
         return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
     }
@@ -835,7 +851,7 @@ struct PadView: View {
                     }
                     .font(.system(size: 11.5))
                 } else {
-                    IconLabel(kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                    IconLabel(kind == .music ? "Morceau" : kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
                         .font(.system(size: 11.5))
                         .foregroundStyle(Surface.textTertiary)
                 }

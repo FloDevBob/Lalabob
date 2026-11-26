@@ -199,11 +199,11 @@ struct PadTypesTests {
         #expect(show.grids[0].columns[6].kind == .light)
     }
 
-    @Test("Version 3 ou plus : refusée ; version 0 : refusée")
+    @Test("Version 4 ou plus : refusée ; version 0 : refusée (la 3 est celle des grilles Apple Music)")
     func unsupportedVersions() throws {
         var show = Show.new()
-        show.formatVersion = 3
-        #expect(throws: ShowValidationError.unsupportedFormatVersion(3)) { try show.validate() }
+        show.formatVersion = 4
+        #expect(throws: ShowValidationError.unsupportedFormatVersion(4)) { try show.validate() }
         show.formatVersion = 0
         #expect(throws: ShowValidationError.unsupportedFormatVersion(0)) { try show.validate() }
     }

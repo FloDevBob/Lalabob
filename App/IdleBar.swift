@@ -55,6 +55,8 @@ struct IdleBar: View {
             return "Glissez un son de la bibliothèque ou du Finder sur ce pad, ou cliquez « Cue » pour une commande lumière."
         case .audio:
             return "Glissez un son de la bibliothèque ou du Finder sur ce pad."
+        case .music:
+            return "Glissez un morceau d'une playlist d'Apple Music sur ce pad."
         }
     }
 }

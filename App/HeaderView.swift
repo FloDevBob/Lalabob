@@ -192,6 +192,14 @@ struct GridTabsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Changement de canal LightKey en attente de confirmation (les appairages de la grille sont à refaire).
     @State private var pendingChannel: PendingChannel?
+    /// Changement de type de grille qui supprime des pads, en attente de confirmation.
+    @State private var pendingKind: PendingKind?
+
+    private struct PendingKind {
+        let grid: Int
+        let kind: GridKind
+        let removed: [Pad]
+    }
 
     private struct PendingChannel {
         let grid: Int
@@ -206,10 +214,17 @@ struct GridTabsView: View {
                         tab(index: index, grid: grid)
                     }
                     if !controller.isLocked {
-                        Button("Nouvelle grille", icon: .plus) { controller.addGrid() }
-                            .labelStyle(.iconOnly)
-                            .buttonStyle(.borderless)
-                            .help("Nouvelle grille (⌘T)")
+                        Menu {
+                            Button("Sons et lumière") { controller.addGrid(kind: .standard) }
+                            Button("Apple Music") { controller.addGrid(kind: .appleMusic) }
+                        } label: {
+                            Icon.plus.view(size: 14)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Nouvelle grille : sons et lumière (⌘T) ou Apple Music (⌥⌘T)")
+                        .accessibilityLabel("Nouvelle grille")
                     }
                 }
                 .padding(.horizontal, 4)
@@ -233,6 +248,19 @@ struct GridTabsView: View {
                     : "Les cues et faders lumière de cette grille sont à réappairer dans LightKey sur le canal \(pending.channel ?? 0)."
             )
         }
+        .alert(
+            pendingKind.map { "Passer « \(controller.show.grids[safe: $0.grid]?.name ?? "") » en grille \($0.kind.title) ?" } ?? "",
+            isPresented: Binding(get: { pendingKind != nil }, set: { if !$0 { pendingKind = nil } }),
+            presenting: pendingKind
+        ) { pending in
+            Button("Convertir", role: .destructive) { controller.setGridKind(at: pending.grid, to: pending.kind) }
+            Button("Annuler", role: .cancel) {}
+        } message: { pending in
+            let names = pending.removed.prefix(5).map(\.title).joined(separator: ", ") + (pending.removed.count > 5 ? "…" : "")
+            Text(
+                "\(pending.removed.count) \(pending.removed.count == 1 ? "pad sera supprimé" : "pads seront supprimés") : \(names). "
+                    + "Les colonnes lumière restent telles quelles. Annulable avec ⌘Z.")
+        }
     }
 
     private func tab(index: Int, grid: PadGrid) -> some View {
@@ -243,6 +271,9 @@ struct GridTabsView: View {
                 .frame(width: 18, height: 18)
                 .background(isSelected ? Surface.textPrimary : Surface.well, in: .circle)
                 .foregroundStyle(isSelected ? Surface.window : Surface.textSecondary)
+            if grid.kind == .appleMusic {
+                Icon.music.view(size: 12).foregroundStyle(Surface.musicAccent).accessibilityHidden(true)
+            }
             if renaming == grid.id {
                 TextField("Nom de la grille", text: $draftName)
                     .textFieldStyle(.plain)
@@ -300,7 +331,8 @@ struct GridTabsView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityLabel(
             "Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads, "
-                + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey"))
+                + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey")
+                + (grid.kind == .appleMusic ? ", grille Apple Music" : ""))
     }
 
     @ViewBuilder
@@ -312,9 +344,29 @@ struct GridTabsView: View {
                 .disabled(index == controller.show.grids.count - 1)
             Divider()
             channelMenu(index: index, grid: grid)
+            kindMenu(index: index, grid: grid)
             Divider()
             Button("Supprimer la grille", role: .destructive) { controller.removeGrid(at: index) }
                 .disabled(controller.show.grids.count == 1)
+    }
+
+    /// Sous-menu « Type de grille » : sans perte, le changement s'applique tout de suite ; sinon une confirmation nomme les pads supprimés.
+    private func kindMenu(index: Int, grid: PadGrid) -> some View {
+        Menu("Type de grille : \(grid.kind.title)") {
+            ForEach([GridKind.standard, .appleMusic], id: \.self) { kind in
+                Button {
+                    let removed = controller.gridKindRemovedPads(at: index, to: kind)
+                    if removed.isEmpty {
+                        controller.setGridKind(at: index, to: kind)
+                    } else {
+                        pendingKind = PendingKind(grid: index, kind: kind, removed: removed)
+                    }
+                } label: {
+                    Text((grid.kind == kind ? "✓ " : "") + kind.title)
+                }
+                .disabled(grid.kind == kind)
+            }
+        }
     }
 
     /// Sous-menu « Canal LightKey » : les 16 canaux (ceux des autres grilles grisés, avec leur nom) et « Sans canal ».
@@ -364,4 +416,13 @@ struct GridTabsView: View {
         controller.renameGrid(at: index, to: draftName)
         renaming = nil
     }
+}
+
+extension GridKind {
+    /// Nom affiché d'un type de grille.
+    var title: String { self == .appleMusic ? "Apple Music" : "Sons et lumière" }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

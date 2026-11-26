@@ -38,7 +38,7 @@ public struct ConversionPlan: Equatable, Sendable {
             plan.record(pad, becoming: column.convertedPad(pad, to: kind))
         }
         plan.faderPairingForgotten = column.kind == .light && column.isFaderPaired
-        plan.filterReset = kind == .light && column.kind != .light && column.filter != 0
+        plan.filterReset = !kind.hasAudio && column.kind.hasAudio && column.filter != 0
         return plan
     }
 
@@ -68,8 +68,12 @@ extension Pad {
     ///
     /// Titre, sous-titre, teinte et intensité de LED sont toujours gardés.
     public func converted(to target: PadKind) -> Pad? {
+        // Un morceau d'Apple Music ne devient rien d'autre, et rien ne devient un morceau.
+        guard (music != nil) == (target == .music) else { return nil }
         var pad = self
         switch target {
+        case .music:
+            return pad
         case .audio:
             guard audio != nil else { return nil }
             pad.light = nil
@@ -94,7 +98,10 @@ extension Column {
     /// Vers « lumière », les pads son sont supprimés (alors qu'un pad changé de type tout seul reçoit une cue vierge) :
     /// convertir toute une colonne ne fabrique pas des cues vides.
     func convertedPad(_ pad: Pad, to kind: ColumnKind) -> Pad? {
+        guard (pad.kind == .music) == (kind == .music) else { return nil }  // un morceau ne quitte pas une colonne Music
         switch kind {
+        case .music:
+            return pad
         case .mixed:
             return pad
         case .audio:
@@ -104,6 +111,7 @@ extension Column {
             case .light: return pad
             case .audio: return nil
             case .mixed: return pad.converted(to: .light)
+            case .music: return nil
             }
         }
     }
@@ -115,13 +123,13 @@ extension Column {
         var column = self
         column.kind = kind
         column.slots = slots.map { $0.flatMap { convertedPad($0, to: kind) } }
-        if kind == .light {
-            column.filter = 0
+        if !kind.hasAudio {
+            column.filter = 0  // lumière ou Music : pas de filtre de Lalabob
             column.level = 1
-        } else if self.kind == .light {
+        } else if !self.kind.hasAudio {
             column.level = 0.8
-            column.isFaderPaired = false
         }
+        if self.kind == .light, kind != .light { column.isFaderPaired = false }
         return column
     }
 }

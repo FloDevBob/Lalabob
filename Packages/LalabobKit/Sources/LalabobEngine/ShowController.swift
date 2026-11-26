@@ -497,6 +497,8 @@ public final class ShowController {
     @discardableResult
     public func moveHardwareFader(column: Int, value: Double) -> Bool {
         guard (0..<PadGrid.size).contains(column), value.isFinite else { return false }
+        // Colonne Music : pas de fader (le volume est celui de Music, 9e fader). Le mouvement est ignoré.
+        guard currentGrid.columns[column].kind != .music else { return false }
         let value = Gain.faderLevel(value)
         let applied = faderPickup.move(column: column, to: value, screen: currentGrid.columns[column].level)
         if applied { applyColumnLevel(column, level: value) }
