@@ -8,6 +8,14 @@ public enum MediaVolumeStatus: Equatable, Sendable {
     case notRunning
     /// macOS a refusé à Lalabob le droit de la piloter (Réglages Système › Confidentialité › Automatisation).
     case notAuthorized
+    /// Music a répondu par une erreur (texte pour le diagnostic).
+    case failed(String)
+}
+
+/// Erreurs que `setVolume` peut signaler précisément.
+public enum MediaVolumeError: Error, Equatable, Sendable {
+    case notAuthorized
+    case failed(String)
 }
 
 /// Règle le volume d'une application de musique. Une seule implémentation réelle (`AppleMusicVolume`) ; les tests en fournissent une fausse.
@@ -15,6 +23,8 @@ public protocol MediaVolumeControlling: Sendable {
     func status() async -> MediaVolumeStatus
     /// Règle le volume (0 à 100). Ne doit jamais lancer l'application.
     func setVolume(percent: Int) async throws
+    /// Lit le volume actuel (0 à 100) sans rien changer ; `nil` si l'application n'est pas lancée. Sert au diagnostic.
+    func currentVolume() async throws -> Int?
 }
 
 /// Transforme les mouvements du 9e fader en réglages de volume, comme le faisait le script Python : `int(valeur / 127 × 100)`,
@@ -106,8 +116,12 @@ public actor MediaVolumeRelay {
             try await target.setVolume(percent: percent)
             lastSent = percent
             onUpdate(.running, percent)
-        } catch {
+        } catch MediaVolumeError.notAuthorized {
             onUpdate(.notAuthorized, nil)
+        } catch MediaVolumeError.failed(let message) {
+            onUpdate(.failed(message), nil)
+        } catch {
+            onUpdate(.failed(error.localizedDescription), nil)
         }
     }
 }

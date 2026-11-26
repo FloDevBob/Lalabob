@@ -41,6 +41,7 @@ public final class ControllerSession {
     public private(set) var musicStatus: MediaVolumeStatus = .notRunning
     static let musicVolumeKey = "musicVolumeEnabled"
     @ObservationIgnored private var volumeRelay: MediaVolumeRelay?
+    @ObservationIgnored private var mediaVolume: (any MediaVolumeControlling)?
     /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
@@ -108,6 +109,7 @@ public final class ControllerSession {
             }
         }
         bench.send = { [weak self] events in self?.sendToLightKey(events) }
+        self.mediaVolume = mediaVolume
         if let mediaVolume {
             self.volumeRelay = MediaVolumeRelay(target: mediaVolume, isEnabled: self.isMusicVolumeEnabled) { [weak self] status, percent in
                 Task { @MainActor in self?.musicUpdated(status: status, percent: percent) }
@@ -184,6 +186,20 @@ public final class ControllerSession {
         isMusicVolumeEnabled = enabled
         defaults.set(enabled, forKey: Self.musicVolumeKey)
         if let volumeRelay { Task { await volumeRelay.setEnabled(enabled) } }
+    }
+
+    /// Vérifie la connexion à Apple Music en lisant son volume (sans rien changer) : met à jour l'état et le volume affichés.
+    public func checkMusicConnection() async {
+        guard let mediaVolume else { return }
+        let status = await mediaVolume.status()
+        guard status == .running else { return musicUpdated(status: status, percent: nil) }
+        do {
+            musicUpdated(status: .running, percent: try await mediaVolume.currentVolume())
+        } catch MediaVolumeError.notAuthorized {
+            musicUpdated(status: .notAuthorized, percent: nil)
+        } catch {
+            musicUpdated(status: .failed((error as? MediaVolumeError).map { if case .failed(let m) = $0 { m } else { "" } } ?? error.localizedDescription), percent: nil)
+        }
     }
 
     private func musicUpdated(status: MediaVolumeStatus, percent: Int?) {

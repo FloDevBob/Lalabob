@@ -11,6 +11,8 @@ actor FakeMediaVolume: MediaVolumeControlling {
     func setState(_ new: MediaVolumeStatus) { state = new }
     func status() async -> MediaVolumeStatus { state }
     func setVolume(percent: Int) async throws { sent.append(percent) }
+    var volume = 42
+    func currentVolume() async throws -> Int? { state == .running ? volume : nil }
 }
 
 @Suite("Volume d'Apple Music", .serialized)
@@ -96,5 +98,18 @@ struct MediaVolumeSessionTests {
         try? await Task.sleep(for: .milliseconds(200))
         #expect(await fake.sent == [100])
         #expect(defaults.bool(forKey: ControllerSession.musicVolumeKey) == false)
+    }
+
+    @Test("Vérifier la connexion lit le volume de Music sans rien envoyer ; Music fermé : état « fermé »")
+    func checkConnection() async {
+        let fake = FakeMediaVolume()
+        let session = ControllerSession(transport: FakeMIDITransport(), defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, mediaVolume: fake)
+        await session.checkMusicConnection()
+        #expect(session.musicVolume == 42)
+        #expect(session.musicStatus == .running)
+        #expect(await fake.sent.isEmpty)
+        await fake.setState(.notRunning)
+        await session.checkMusicConnection()
+        #expect(session.musicStatus == .notRunning)
     }
 }

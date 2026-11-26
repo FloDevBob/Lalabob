@@ -10,12 +10,13 @@ struct MusicVolumePill: View {
 
     private static let pink = Color(red: 1, green: 0.35, blue: 0.55)
 
-    private var tint: Color { session.isMusicVolumeEnabled && session.musicStatus != .notAuthorized ? Self.pink : Surface.textTertiary }
+    private var tint: Color { session.isMusicVolumeEnabled && session.musicStatus.isHealthy ? Self.pink : Surface.textTertiary }
 
     private var summary: String {
         guard session.isMusicVolumeEnabled else { return "désactivé" }
         switch session.musicStatus {
         case .notAuthorized: return "à autoriser"
+        case .failed: return "erreur"
         case .notRunning: return session.musicVolume.map { "\($0) %" } ?? "fermé"
         case .running: return session.musicVolume.map { "\($0) %" } ?? "prêt"
         }
@@ -60,11 +61,15 @@ struct MusicVolumePopover: View {
             case .notAuthorized:
                 Text("macOS a refusé l'accès. Autorisez Lalabob à contrôler Music dans Réglages Système › Confidentialité et sécurité › Automatisation.")
                     .foregroundStyle(Surface.lightAccent)
+            case .failed(let message):
+                Text("Apple Music a répondu par une erreur : \(message)").foregroundStyle(Surface.lightAccent)
             case .notRunning:
                 Text("Apple Music n'est pas ouvert : rien n'est envoyé.").foregroundStyle(Surface.textSecondary)
             case .running:
                 EmptyView()
             }
+            Button("Vérifier la connexion") { Task { await session.checkMusicConnection() } }
+                .help("Lit le volume d'Apple Music sans rien changer, et affiche l'erreur exacte s'il y en a une")
             Text("Ne touche que le volume d'Apple Music. N'ouvre jamais Music. Désactivez ceci si un autre logiciel s'en charge déjà.")
                 .font(.system(size: 11.5))
                 .foregroundStyle(Surface.textTertiary)
@@ -73,5 +78,15 @@ struct MusicVolumePopover: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(14)
         .frame(width: 320)
+        .task { await session.checkMusicConnection() }
+    }
+}
+
+private extension MediaVolumeStatus {
+    var isHealthy: Bool {
+        switch self {
+        case .running, .notRunning: true
+        case .notAuthorized, .failed: false
+        }
     }
 }
