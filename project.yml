@@ -50,6 +50,9 @@ targets:
         # Le 9e fader de l'APC règle le volume d'Apple Music (Apple Events vers Music seulement, ADR 0009).
         com.apple.security.automation.apple-events: true
         com.apple.security.temporary-exception.apple-events: [com.apple.Music]
+        # Groupes d'accès déclarés par Music (com.apple.Music.sdef) : la voie prévue pour une app sandboxée.
+        com.apple.security.scripting-targets:
+          com.apple.Music: [com.apple.Music.playback, com.apple.Music.library.read, com.apple.Music.library.read-write]
     info:
       path: App/Info.plist
       properties:
