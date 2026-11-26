@@ -68,67 +68,80 @@ public actor AppleMusicLibrary: MusicLibraryReading {
 
     public func playlists() async throws -> [MusicPlaylist] {
         guard MusicScripting.isRunning else { return [] }
-        // Une boucle (et non `… of every user playlist`) : `parent` n'existe pas pour une playlist à la racine.
+        // Lectures groupées (`… of every user playlist` : une seule demande à Music chacune). Seul le dossier parent se lit
+        // playlist par playlist : `parent` n'existe pas pour une playlist à la racine (≈ 1,5 s pour 150 playlists).
+        // Variables préfixées « lb » : dans un `tell application "Music"`, un nom comme `hidden` ou `parent` désigne une
+        // propriété de Music, et `set hidden to …` tenterait de la modifier (erreur −10003, relevée le 27/11/2026).
         let script = """
-            set out to {}
-            repeat with p in (every user playlist)
-                set parentID to ""
+            set lbIDs to persistent ID of every user playlist
+            set lbNames to name of every user playlist
+            set lbClasses to class of every user playlist
+            set lbKinds to special kind of every user playlist
+            set lbFolders to persistent ID of every folder playlist
+            set lbParents to {}
+            repeat with lbList in (every user playlist)
                 try
-                    set parentID to persistent ID of parent of p
+                    set end of lbParents to persistent ID of parent of lbList
+                on error
+                    set end of lbParents to ""
                 end try
-                set isFolder to (class of p is folder playlist)
-                set hidden to false
-                try
-                    if (special kind of p is not none) and not isFolder then set hidden to true
-                end try
-                if not hidden then set end of out to {persistent ID of p, name of p, parentID, isFolder, count of tracks of p}
             end repeat
-            return out
+            return {lbIDs, lbNames, lbClasses, lbKinds, lbParents, lbFolders}
             """
-        return try await MainActor.run {
-            try MusicScripting.execute(script).listItems.compactMap { row -> MusicPlaylist? in
-                let f = row.listItems
-                guard f.count == 5, MusicTrackRef.isValidPersistentID(f[0].text) else { return nil }
-                let parent = f[2].text
-                return MusicPlaylist(
-                    id: f[0].text, name: f[1].text, parentID: parent.isEmpty ? nil : parent, isFolder: f[3].booleanValue,
-                    trackCount: Int(f[4].int32Value))
+        return try await MusicScripting.run(script) { result in
+            let columns = result.listItems.map(\.listItems)
+            guard columns.count == 6 else { return [] }
+            // Les dossiers se repèrent par leur propre liste : lue en groupe, `class` les donne pour de simples playlists
+            // (relevé du 27/11/2026).
+            let folders = Set(columns[5].map(\.text))
+            let count = columns[0..<5].map(\.count).min() ?? 0
+            return (0..<count).compactMap { i -> MusicPlaylist? in
+                let id = columns[0][i].text
+                let kind = columns[3][i].enumCodeValue
+                let isFolder = folders.contains(id) || columns[2][i].typeCodeValue == Self.folderClass
+                // Playlists spéciales (bibliothèque, Genius, Achats…) masquées ; « aucune » et « dossier » gardées.
+                guard MusicTrackRef.isValidPersistentID(id), kind == Self.kindNone || kind == Self.kindFolder || isFolder else { return nil }
+                let parent = columns[4][i].text
+                return MusicPlaylist(id: id, name: columns[1][i].text, parentID: parent.isEmpty ? nil : parent, isFolder: isFolder)
             }
         }
     }
 
+    private static let folderClass = OSType(0x6346_6F50)  // 'cFoP'
+    private static let kindNone = OSType(0x6B4E_6F6E)  // 'kNon'
+    private static let kindFolder = OSType(0x6B53_7046)  // 'kSpF'
+
     public func tracks(inPlaylist id: String) async throws -> [MusicTrack] {
         guard MusicScripting.isRunning, MusicTrackRef.isValidPersistentID(id) else { return [] }
         let script = """
-            set p to first user playlist whose persistent ID is "\(id)"
-            set t to every track of p
-            if t is {} then return {}
-            return {persistent ID of every track of p, name of every track of p, artist of every track of p, ¬
-                album of every track of p, duration of every track of p, class of every track of p}
+            set lbList to first user playlist whose persistent ID is "\(id)"
+            if (count of tracks of lbList) is 0 then return {}
+            return {persistent ID of every track of lbList, name of every track of lbList, artist of every track of lbList, ¬
+                album of every track of lbList, duration of every track of lbList, class of every track of lbList}
             """
-        return try await MainActor.run { Self.parseColumns(try MusicScripting.execute(script)) }
+        return try await MusicScripting.run(script) { Self.parseColumns($0) }
     }
 
     public func search(_ text: String, limit: Int) async throws -> [MusicTrack] {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard MusicScripting.isRunning, !query.isEmpty else { return [] }
         let script = """
-            set found to search library playlist 1 for \(MusicScripting.quoted(String(query.prefix(100))))
-            set out to {{}, {}, {}, {}, {}, {}}
-            set n to 0
-            repeat with t in found
-                set n to n + 1
-                if n > \(max(1, limit)) then exit repeat
-                set end of item 1 of out to persistent ID of t
-                set end of item 2 of out to name of t
-                set end of item 3 of out to artist of t
-                set end of item 4 of out to album of t
-                set end of item 5 of out to duration of t
-                set end of item 6 of out to class of t
+            set lbFound to search library playlist 1 for \(MusicScripting.quoted(String(query.prefix(100))))
+            set lbOut to {{}, {}, {}, {}, {}, {}}
+            set lbCount to 0
+            repeat with lbTrack in lbFound
+                set lbCount to lbCount + 1
+                if lbCount > \(max(1, limit)) then exit repeat
+                set end of item 1 of lbOut to persistent ID of lbTrack
+                set end of item 2 of lbOut to name of lbTrack
+                set end of item 3 of lbOut to artist of lbTrack
+                set end of item 4 of lbOut to album of lbTrack
+                set end of item 5 of lbOut to duration of lbTrack
+                set end of item 6 of lbOut to class of lbTrack
             end repeat
-            return out
+            return lbOut
             """
-        return try await MainActor.run { Self.parseColumns(try MusicScripting.execute(script)) }
+        return try await MusicScripting.run(script) { Self.parseColumns($0) }
     }
 
     public func download(tracks ids: [String], inPlaylist playlist: String) async throws {
@@ -136,14 +149,14 @@ public actor AppleMusicLibrary: MusicLibraryReading {
         guard MusicScripting.isRunning, MusicTrackRef.isValidPersistentID(playlist), !ids.isEmpty else { return }
         let list = ids.map { "\"\($0)\"" }.joined(separator: ", ")
         let script = """
-            set p to first user playlist whose persistent ID is "\(playlist)"
-            repeat with wanted in {\(list)}
+            set lbList to first user playlist whose persistent ID is "\(playlist)"
+            repeat with lbWanted in {\(list)}
                 try
-                    download (first track of p whose persistent ID is wanted)
+                    download (first track of lbList whose persistent ID is (lbWanted as text))
                 end try
             end repeat
             """
-        try await MainActor.run { _ = try MusicScripting.execute(script) }
+        _ = try await MusicScripting.run(script) { _ in 0 }
     }
 
     public func openMusic() async {
@@ -154,7 +167,6 @@ public actor AppleMusicLibrary: MusicLibraryReading {
     }
 
     /// Six listes parallèles (identifiants, titres, artistes, albums, durées, classes) → morceaux.
-    @MainActor
     private static func parseColumns(_ result: NSAppleEventDescriptor) -> [MusicTrack] {
         let columns = result.listItems.map(\.listItems)
         guard columns.count == 6 else { return [] }
@@ -169,7 +181,8 @@ public actor AppleMusicLibrary: MusicLibraryReading {
         }
     }
 
-    /// `file track` (cFlT) = fichier sur ce Mac ; `shared track` (cShT) ou `URL track` (cURT) = dans le nuage.
+    /// `file track` (cFlT) = fichier sur ce Mac ; `shared track` (cShT) ou `URL track` (cURT) = dans le nuage. Vérifié sur une
+    /// vraie bibliothèque (27/11/2026) : les morceaux d'abonnement téléchargés sont des `file track` avec un emplacement.
     private static func isLocal(trackClass code: OSType) -> Bool? {
         switch code {
         case OSType(0x6346_6C54): true  // 'cFlT'

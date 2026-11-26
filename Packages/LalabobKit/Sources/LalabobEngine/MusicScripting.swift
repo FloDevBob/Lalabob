@@ -9,10 +9,22 @@ enum MusicScripting {
     /// Music tourne-t-il ? Vérifié avant chaque commande : `tell application` seul le lancerait, ce qu'on ne fait jamais.
     static var isRunning: Bool { !NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).isEmpty }
 
-    /// Exécute `body` à l'intérieur de `tell application id "com.apple.Music"` (fil principal, où vit `NSAppleScript`).
+    /// Une seule file pour tous les scripts : `NSAppleScript` n'est pas fait pour plusieurs fils à la fois, et une lecture de
+    /// la bibliothèque peut durer plus d'une seconde : jamais sur le fil principal (l'interface ne gèle pas).
+    private static let queue = DispatchQueue(label: "fr.lalabob.music-scripting", qos: .userInitiated)
+
+    /// Exécute `body` dans Music sur la file des scripts et en tire une valeur (`parse`, sur la même file).
+    static func run<T: Sendable>(_ body: String, parse: @escaping @Sendable (NSAppleEventDescriptor) -> T) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async {
+                do { continuation.resume(returning: parse(try execute(body))) } catch { continuation.resume(throwing: error) }
+            }
+        }
+    }
+
+    /// Exécute `body` à l'intérieur de `tell application id "com.apple.Music"`. À n'appeler que depuis `run` (sa file).
     /// −1743 (refus de macOS) → `.notAuthorized` ; toute autre erreur → `.failed` avec le message et le numéro.
-    @MainActor
-    static func execute(_ body: String) throws -> NSAppleEventDescriptor {
+    private static func execute(_ body: String) throws -> NSAppleEventDescriptor {
         let source = "tell application id \"\(bundleIdentifier)\"\n\(body)\nend tell"
         var info: NSDictionary?
         let result = NSAppleScript(source: source)?.executeAndReturnError(&info)

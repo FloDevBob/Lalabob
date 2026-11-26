@@ -21,11 +21,11 @@ public actor AppleMusicVolume: MediaVolumeControlling {
     public func setVolume(percent: Int) async throws {
         guard MusicScripting.isRunning else { return }
         let value = max(0, min(percent, 100))
-        try await MainActor.run { _ = try MusicScripting.execute("set sound volume to \(value)") }
+        _ = try await MusicScripting.run("set sound volume to \(value)") { _ in 0 }
     }
 
     public func currentVolume() async throws -> Int? {
         guard MusicScripting.isRunning else { return nil }
-        return try await MainActor.run { Int(try MusicScripting.execute("get sound volume").int32Value) }
+        return try await MusicScripting.run("get sound volume") { Int($0.int32Value) }
     }
 }

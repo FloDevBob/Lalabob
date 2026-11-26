@@ -116,7 +116,7 @@ struct MusicLibraryView: View {
                 }
                 Text(playlist.name).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
-                if !playlist.isFolder {
+                if !playlist.isFolder, playlist.trackCount > 0 {
                     Text("\(playlist.trackCount)").font(Typography.mono).foregroundStyle(Surface.textTertiary)
                 }
             }
