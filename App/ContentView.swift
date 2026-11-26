@@ -74,8 +74,10 @@ struct ContentView: View {
                 if libraryIsVisible {
                     // Un seul bloc (bibliothèque + filet) : il glisse depuis la gauche en entrant et en sortant.
                     HStack(spacing: 0) {
-                        LibraryView()
-                            .frame(width: 272)
+                        Group {
+                            if controller.currentGrid.kind == .appleMusic { MusicLibraryView() } else { LibraryView() }
+                        }
+                        .frame(width: 272)
                         Divider().overlay(Color.white.opacity(0.06))
                     }
                     .transition(.move(edge: .leading).combined(with: .opacity))

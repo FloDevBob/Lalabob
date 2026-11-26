@@ -97,6 +97,10 @@ public final class ShowController {
     public internal(set) var draggedPosition: GridPosition?
     /// Cases où tomberait le groupe pendant un glisser de plusieurs pads (`nil` : pas de glisser de groupe).
     public internal(set) var dragPreview: DropPreview?
+    /// Glisser de morceaux depuis le panneau Apple Music : combien on en glisse (0 = aucun glisser en cours) et les cases où
+    /// ils tomberaient, dans l'ordre (aperçu numéroté).
+    public internal(set) var musicDragCount = 0
+    public internal(set) var musicDropPreview: [GridPosition] = []
 
     /// Aperçu d'un glisser de groupe : les cases visées et si le dépôt serait accepté.
     public struct DropPreview: Equatable, Sendable {

@@ -608,7 +608,23 @@ struct PadView: View {
     /// Glisser un groupe de pads : chaque case où il tomberait est teintée (blanc) ; en rouge si le dépôt serait refusé.
     @ViewBuilder
     private var groupDropOverlay: some View {
-        if let preview = controller.dragPreview, preview.positions.contains(position) {
+        if let index = controller.musicDropPreview.firstIndex(of: position) {
+            RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(Color.white.opacity(0.75), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                )
+                .overlay {
+                    Text("\(index + 1)")
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 22, height: 22)
+                        .background(Surface.musicAccent, in: .circle)
+                        .foregroundStyle(Surface.window)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        } else if let preview = controller.dragPreview, preview.positions.contains(position) {
             let color: Color = preview.isAllowed ? .white : .red
             RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                 .fill(color.opacity(0.14))
@@ -998,7 +1014,12 @@ struct PadDropDelegate: DropDelegate {
     }
 
     /// Un groupe de pads qu'on glisse : toutes les cases d'arrivée sont montrées (pas pour un fichier venu du Finder).
+    /// Des morceaux venus du panneau Apple Music : les cases d'arrivée, numérotées.
     private func updateGroupPreview(_ info: DropInfo) {
+        if controller.draggedPosition == nil, controller.musicDragCount > 0, !info.hasItemsConforming(to: [.fileURL]) {
+            controller.updateMusicDropPreview(at: position)
+            return
+        }
         guard isPadDrag(info), let source = controller.draggedPosition else {
             controller.clearDragPreview()
             return
@@ -1017,6 +1038,7 @@ struct PadDropDelegate: DropDelegate {
     func dropExited(info: DropInfo) {
         highlight = nil
         controller.clearDragPreview()
+        controller.clearMusicDropPreview()
     }
 
     func performDrop(info: DropInfo) -> Bool {
@@ -1046,6 +1068,12 @@ struct PadDropDelegate: DropDelegate {
                     return
                 }
                 Task { @MainActor in
+                    if let tracks = MusicDragToken.parse(text) {
+                        controller.endMusicDrag()
+                        let placed = controller.dropMusicTracks(tracks, at: target)
+                        Self.log.info("Glisser : \(placed) morceau(x) Apple Music déposé(s) sur \(target.description, privacy: .public)")
+                        return
+                    }
                     guard let token = PadDragToken.parse(text), token.grid == controller.currentGrid.id else {
                         Self.log.error("Glisser : jeton refusé « \(text, privacy: .public) »")
                         return

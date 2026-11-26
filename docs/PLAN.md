@@ -475,3 +475,12 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   Grilles › Nouvelle grille Apple Music (⌥⌘T), clic droit sur l'onglet › Type de grille (confirmation qui nomme les pads supprimés), note rose
   sur l'onglet, types de colonne proposés selon la grille, carte « Volume : 9e fader » sous une colonne Music. 19 tests (`MusicGridTests`,
   `MusicGridEditingTests`). **Pas encore** : panneau des playlists, lecture (étapes 2 et 3). Interface compilée, pas regardée à l'œil.
+- **Étape 2 — panneau des playlists et dépôt (27/11/2026, branche `j11/grilles-apple-music-playlists`)** ✅ code. `MusicScripting` (une seule
+  façon d'adresser Music, texte échappé), `AppleMusicLibrary` (dossiers et playlists, morceaux, recherche dans la bibliothèque, téléchargement,
+  « Ouvrir Music » ; ne lance jamais Music tout seul), `MusicLibraryController` (arbre des dossiers, recherche, sélection Maj / ⌘, nuage,
+  « Téléchargés seulement »). Dépôt : `musicDropPositions` (case visée vers le bas, cases occupées sautées, puis colonne Music suivante),
+  `dropMusicTracks` (une annulation, teinte stable par morceau, reste signalé), aperçu numéroté pendant le glisser, jeton validé (`MusicDragToken`).
+  Interface : `MusicLibraryView` à la place de la bibliothèque sur une grille Apple Music ; panneau du bas d'un pad Music (morceau d'origine,
+  playlist, vignette, ce qui n'est pas disponible). 13 tests (fausse bibliothèque). **Rien n'a été essayé avec la vraie app Music** :
+  les scripts AppleScript (`AppleMusicLibrary`) n'ont pas de test automatique. **Pas encore** : lecture (étape 3), onglet Internet,
+  extraits, vraies pochettes (étape 4).

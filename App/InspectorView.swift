@@ -50,6 +50,11 @@ struct InspectorView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 12)
                     .task(id: clip.fileName) { waveform = await controller.waveform(for: clip) }
+                } else if let track = pad.music {
+                    MusicHeader(position: position, pad: pad, track: track)
+                        .frame(height: Self.headerHeight)
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    MusicDetails(pad: pad, track: track)
                 } else {
                     LightHeader(position: position, pad: pad)
                         .frame(height: Self.headerHeight)
@@ -128,6 +133,62 @@ private struct TintSwatch: View {
 }
 
 /// Pad lumière : titre | (espace) Tester + note envoyée | couleur, actions.
+/// Pad Apple Music : titre et sous-titre, morceau d'origine, couleur et actions (la lecture arrive à l'étape 3).
+private struct MusicHeader: View {
+    let position: GridPosition
+    let pad: Pad
+    let track: MusicTrackRef
+
+    var body: some View {
+        HStack(spacing: 12) {
+            TitleFields(position: position, pad: pad)
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text([track.title, track.artist, track.album].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .lineLimit(1).truncationMode(.middle)
+                if let playlist = track.playlistName {
+                    Text("Playlist « \(playlist) »").lineLimit(1)
+                }
+            }
+            .font(.system(size: 11.5))
+            .foregroundStyle(Surface.textTertiary)
+            .layoutPriority(-1)
+            HeaderDivider()
+            ColorPopoverButton(position: position, pad: pad)
+            PadActionsMenu(position: position, hasPad: true)
+        }
+        .padding(.horizontal, 14)
+    }
+}
+
+/// Bande du bas d'un pad Apple Music : pochette (vignette à la teinte du pad en attendant la vraie), durée, et ce qui
+/// n'existe pas pour un morceau protégé.
+private struct MusicDetails: View {
+    let pad: Pad
+    let track: MusicTrackRef
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(pad.tint.surfaceColor)
+                .overlay { Icon.music.view(size: 34).foregroundStyle(pad.tint.labelColor.opacity(0.8)) }
+                .frame(width: 116, height: 116)
+                .accessibilityLabel("Pochette de \(track.album.isEmpty ? track.title : track.album)")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Durée : \(AudioLibrary.formatDuration(track.duration))")
+                    .font(Typography.mono)
+                    .foregroundStyle(Surface.textSecondary)
+                IconLabel("Fondus, élagage et volume du pad : non disponibles pour un morceau Apple Music. Volume général : 9e fader.", icon: .warning, size: 13)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Surface.textTertiary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+    }
+}
+
 private struct LightHeader: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
