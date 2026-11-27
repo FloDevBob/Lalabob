@@ -651,3 +651,31 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   d'une mesure (bascule « 1 mesure » parfois décalée d'un temps).
   **À essayer** : ☐ un pad Alternance sur un morceau rythmé : bascules sur les temps ☐ régler l'avance à l'œil ☐ deux sons rythmés : le dernier
   lancé mène ☐ son arrêté : tempo de repli.
+- **Étape 4 — interface (27/11/2026, branche `j14/interface-dmx`, empilée sur `j14/tempo-sons`)** ✅ code, en 5 commits (4a à 4e), **aucune vue n'a été regardée à l'œil**
+  (compilée seulement : `make build`). Tests : tout le package vert sauf la cible `LalabobAudioTests`, qui ne se termine pas sous `swift test` dans cet
+  environnement (non touchée ; à lancer par Xcode, voir la note outillage du J1) : 464 Engine, 178 Modèle, 57 pilotes, 28 DMX.
+  - **4a Réglages** : Spectacle › Réglages du spectacle… (déverrouillé) = deux grands choix « Logiciel lumière » / « Projecteurs pilotés par Lalabob » ; en mode
+    Projecteurs : adresse (1…498, rappel « MENU → 15Ch → d 050 »), boîtier de ce Mac et son état, fondu du noir, avance de la lumière, « En quittant Lalabob »,
+    « Essayer : 4 projecteurs en blanc » (`DMXSession.testWhite`), Noir, Banc d'essai DMX. Pastille « Projecteurs » dans l'en-tête (mode DMX) ; bouton Relier masqué
+    en DMX ; **cadenas compact** (bouton carré, icône seule). **Bug corrigé** : `setDMXRig` perdait `lightLead`.
+  - **4b Pads** : repère de 4 points (couleur et intensité, gris si éteint), ⇄ alternance, ϟ strobo, arc-en-ciel + P3 / MIC ; sous-titre par défaut (« Ensemble · 2 et 3 »,
+    « ⇄ 124 BPM · son en cours »…) quand le pad n'en a pas. `LightLook.summary` (modèle pur, testé). Pas de repère sur un pad plus bas que 44 pt ni sur un pad son et lumière.
+  - **4c Panneau du bas** (`App/LookEditor.swift`) : bande du haut (Essayer, titre, aperçu, fondu − / +, nouvel appui, couleur du pad) ; bande du bas : type (Couleurs ·
+    Alternance · Programme · Sur le son), Chacun / Ensemble, cartes de projecteurs, strobo (arrêté par défaut), alternance (A, B, bascule, fondu, tempo de repli), programme 1–12,
+    micro ; **roue des couleurs** (teinte + saturation, curseurs, couleurs du spectacle). `ShowController.setLook` / `setLookStyle` / `effectiveLook` / `toggleFavoriteColor` (⌘Z,
+    refusés verrouillé, état injouable refusé), `LightLook.converted(to:)` (garde ce qui se garde). Un glissé est un brouillon, une seule annulation au relâchement.
+    « Nouvel appui » d'un pad lumière seul accepté (`setLightRetrigger`).
+  - **4d Carte de jeu** : clic droit sur la carte d'un fader lumière = **rôle** (Général, Couleurs, Strobo, Aucun) ; `Column.faderRole` (**format 4** dès qu'un rôle est choisi,
+    sinon inchangé ; une colonne qui quitte la lumière l'oublie) ; deux colonnes au même rôle règlent la même chose ; une colonne qui prend un rôle reprend son niveau (la lumière
+    ne bouge pas). La carte **Général** porte la mini-barre : 4 projecteurs aux couleurs réelles de la barre (fondus compris), clic = couper / rallumer en fondu, bouton **Noir**,
+    tempo « ⇄ 124 » avec un point qui bat. `DMXFaderRole` est passé dans `LalabobModel`.
+  - **4e Aperçu en direct** : interrupteur « Aperçu » du panneau (mémorisé sur ce Mac, actif par défaut) ; chaque réglage, même un glissé, s'applique à la barre **sans fondu** et
+    sans désigner le pad comme joué ; en quittant le pad, retour **en fondu de 0,5 s** à la lumière d'avant ; un appui ou un Noir pendant l'aperçu l'emporte ; jamais verrouillé ni
+    en mode LightKey ; **régler (ou annuler par ⌘Z) le pad qui éclaire met la barre à jour**.
+  - **Pas fait** : pas de planche « Réglages » à l'identique de la maquette (mise en page libre) ; pas de commandes de la barre sans colonne Général (menu Lumière et panneau de repos,
+    « à maqueter ») ; la couleur des pads lumière n'est pas ambrée en DMX (contour à la teinte du pad) ; pas d'astuce DMX dans `Tips.swift` ; documentation (`GUIDE.md`, aide, `LEXIQUE.md`)
+    = étape 5. Un état modifié pendant un glissé revient à la valeur enregistrée si autre chose relance la console au même moment (rare).
+  - **À regarder à l'œil, puis à essayer sur la barre** : ☐ Réglages du spectacle : lisible, adresse, boîtier, « 4 projecteurs en blanc » ☐ pastille « Projecteurs » et cadenas carré dans
+    l'en-tête (largeur minimale 1320 pt) ☐ pad lumière d'un spectacle DMX : points, sous-titre ☐ panneau du bas à la largeur minimale (4 types, Chacun et Ensemble, roue) : rien de coupé,
+    hauteur ≤ 196 pt ☐ glisser un curseur : la barre suit sans fondu, ⌘Z revient d'un seul pas ☐ quitter le pad : retour en fondu ☐ régler le pad qui joue ☐ clic droit sur la carte d'un fader :
+    rôles ; fader 7 / 8 sur l'APC suivent le rôle choisi ☐ mini-barre : couper un projecteur, Noir ☐ tempo ⇄ sur un son rythmé ☐ **ouvrir un vrai spectacle (copie !) puis ⌘S : rien ne change**.

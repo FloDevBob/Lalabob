@@ -1,6 +1,6 @@
 # Plan — Lumière autonome en DMX (J14, à l'étude)
 
-État : **en cours** (étapes 0 à 3b codées le 27/11/2026), maquette faite. Les questions ouvertes sont en fin de page.
+État : **en cours** (étapes 0 à 4 codées le 27/11/2026), maquette faite. Les questions ouvertes sont en fin de page.
 Maquette (27/11/2026) : https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT — planches :
 - [Colonnes lumière + carte de jeu](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-Main) · [Tous les types de pads](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-TypesDePads)
 - Panneau du bas : [Couleurs, chacun](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-Inspecteur) · [Couleurs, ensemble](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-InspEnsemble) ·
@@ -248,6 +248,8 @@ Respecte `docs/adr/0001-architecture.md` : un module par responsabilité, pas de
    **Code fait le 27/11/2026** (sans interface ; relevé sur la banque de la troupe dans `docs/PLAN.md`, J14).
 4. **Interface** (`j14/interface-dmx`) — réglages, en-tête, carte de jeu, repère des projecteurs sur les pads, panneau du bas
    (4 types, Chacun / Ensemble, roue des couleurs), aperçu en direct, d'après la maquette (planches ci-dessus).
+   **Code fait le 27/11/2026** (4a à 4e, voir `docs/PLAN.md`, J14) ; à regarder à l'œil et à essayer sur la barre. Écart : `Column.faderRole`
+   (rôle du fader, format 4) ; commandes de la barre sans colonne Général : pas encore.
 5. **Documentation et essai** — `GUIDE.md`, aide intégrée, `LEXIQUE.md`, `DESIGN.md`, check-list sur la vraie barre.
 
 Estimation grossière : l'étape 0 est courte et lève l'essentiel du risque ; 1 à 3 forment le gros du travail ; 4 dépend
