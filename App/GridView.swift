@@ -147,13 +147,17 @@ struct ColumnView: View {
                 ) {
                     LevelMeter(column: index).frame(width: 14)
                 }
-                // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
-                RotaryKnob(
-                    name: column.name,
-                    accent: accentColor(of: column),
-                    value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
-                    onReset: { controller.resetColumnFilter(index) }
-                )
+                // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne. Il prend
+                // la place qui reste, centré, et grandit avec la carte.
+                FaderCompanion { space in
+                    RotaryKnob(
+                        name: column.name,
+                        accent: accentColor(of: column),
+                        value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
+                        onReset: { controller.resetColumnFilter(index) },
+                        size: clampSize(min(space.width - 8, space.height - 30), 28, 84)
+                    )
+                }
             }
         } else {
             lightContent(column, role: role)
@@ -170,9 +174,11 @@ struct ColumnView: View {
             HStack(alignment: .top, spacing: 6) {
                 VerticalFader(name: column.name, level: level, valueText: lightValueText(column), defaultLevel: 1,
                     hardwareMarker: controller.waitingFaders[index]) { EmptyView() }
-                VStack(alignment: .leading, spacing: 8) {
-                    DMXHeadsBar()
-                    DMXTempo()
+                FaderCompanion { space in
+                    VStack(spacing: 8) {
+                        DMXHeadsBar(lampSize: clampSize((space.width - 14) / 4.6, 12, 28))
+                        DMXTempo()
+                    }
                 }
             }
         case .colors?:
@@ -181,20 +187,21 @@ struct ColumnView: View {
             HStack(alignment: .top, spacing: 6) {
                 VerticalFader(name: column.name, level: level, valueText: info.value, defaultLevel: 1,
                     hardwareMarker: controller.waitingFaders[index], trackStyle: AnyShapeStyle(info.track), handleColor: info.current) { EmptyView() }
-                VStack(spacing: 5) {
-                    Circle()
-                        .fill(info.current)
-                        .overlay { Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 2) }
-                        .shadow(color: info.current.opacity(0.7), radius: 6)
-                        .frame(width: 26, height: 26)
-                    Text(info.caption)
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(Surface.textPrimary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
+                FaderCompanion { space in
+                    let diameter = clampSize(min(space.width - 12, space.height - 36), 24, 64)
+                    VStack(spacing: 5) {
+                        Circle()
+                            .fill(info.current)
+                            .overlay { Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 2) }
+                            .shadow(color: info.current.opacity(0.7), radius: diameter / 4)
+                            .frame(width: diameter, height: diameter)
+                        Text(info.caption)
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(Surface.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                    }
                 }
-                .padding(.top, 18)
-                .frame(width: 46)
             }
         default:
             // Strobo, sans rôle, ou mode LightKey : le fader et un repère qui suit le niveau.
@@ -1448,18 +1455,20 @@ private nonisolated struct MicGlyph: Shape {
 /// des pads le reflète.
 struct DMXHeadsBar: View {
     @Environment(DMXSession.self) private var dmx
+    /// Diamètre d'un projecteur : la barre grandit avec la carte.
+    var lampSize: CGFloat = 13
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
             let colors = dmx.console?.headColors(at: DMXClock.now()) ?? []
-            HStack(spacing: 2) {
+            HStack(spacing: max(2, lampSize * 0.2)) {
                 ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
                     head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
                 }
             }
-            .padding(3)
-            .background(Color(red: 0.15, green: 0.16, blue: 0.18), in: RoundedRectangle(cornerRadius: 6))
-            .overlay { RoundedRectangle(cornerRadius: 6).stroke(Color(red: 0.23, green: 0.24, blue: 0.27), lineWidth: 1) }
+            .padding(max(3, lampSize * 0.25))
+            .background(Color(red: 0.15, green: 0.16, blue: 0.18), in: RoundedRectangle(cornerRadius: lampSize * 0.5))
+            .overlay { RoundedRectangle(cornerRadius: lampSize * 0.5).stroke(Color(red: 0.23, green: 0.24, blue: 0.27), lineWidth: 1) }
         }
     }
 
@@ -1469,9 +1478,10 @@ struct DMXHeadsBar: View {
         return Button { dmx.toggleHead(index) } label: {
             Circle()
                 .fill(Color(red: 0.07, green: 0.08, blue: 0.09))
-                .overlay { Circle().fill(fill).padding(2.5) }
+                .overlay { Circle().fill(fill).padding(lampSize * 0.18) }
                 .overlay { Circle().stroke(Color(red: 0.29, green: 0.3, blue: 0.33), lineWidth: 1) }
-                .frame(width: 13, height: 13)
+                .shadow(color: fill.opacity(0.6), radius: lampSize * 0.2)
+                .frame(width: lampSize, height: lampSize)
                 .opacity(isOn ? 1 : 0.45)
         }
         .buttonStyle(.plain)
@@ -1504,3 +1514,27 @@ struct DMXTempo: View {
         }
     }
 }
+
+
+/// La place à droite du fader dans le caisson d'une carte : ce qui accompagne le fader (potard, projecteurs, couleur) y est
+/// **centré** et **grandit** avec la place disponible (fenêtre plus large ou plus haute). Le bas de la piste reste libre pour
+/// le bouton Stop / Noir du coin.
+struct FaderCompanion<Content: View>: View {
+    @Environment(\.gridDensity) private var density
+    @ViewBuilder let content: (CGSize) -> Content
+
+    /// Ce qui reste libre en bas de la piste, au-dessus du bouton du coin.
+    static var cornerReserve: CGFloat { 14 }
+
+    var body: some View {
+        GeometryReader { geometry in
+            content(geometry.size)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: max(density.faderTrackHeight - Self.cornerReserve, 40))
+    }
+}
+
+/// Une taille bornée (les éléments des cartes de fader grandissent avec la place, sans excès).
+func clampSize(_ value: CGFloat, _ low: CGFloat, _ high: CGFloat) -> CGFloat { min(max(value, low), high) }

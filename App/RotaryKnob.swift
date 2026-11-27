@@ -16,6 +16,8 @@ struct RotaryKnob: View {
     let accent: Color
     @Binding var value: Double
     let onReset: () -> Void
+    /// Diamètre imposé par la carte (il suit la place disponible) ; `nil` = taille d'après la hauteur de la piste.
+    var size: CGFloat? = nil
 
     @Environment(\.gridDensity) private var density
     @State private var dragStart: Double?
@@ -29,7 +31,7 @@ struct RotaryKnob: View {
 
     /// Plus petit quand la piste des faders rétrécit (pads de hauteur minimale) : l'étiquette ne passe pas sous le
     /// bouton stop de la colonne.
-    private var diameter: CGFloat { density.faderTrackHeight < 90 ? 28 : 36 }
+    private var diameter: CGFloat { size ?? (density.faderTrackHeight < 90 ? 28 : 36) }
 
     private var position: Double { FilterCurve.clamped(value) }
     private var mode: FilterCurve.Mode { FilterCurve.mode(for: position) }
@@ -55,7 +57,7 @@ struct RotaryKnob: View {
                 .help("Filtre de \(name) : glisser vers le haut (coupe les basses) ou vers le bas (coupe les aigus) · double-clic : neutre")
             caption
         }
-        .frame(width: 42)
+        .frame(width: max(42, diameter + 6))
         .focusable()
         .onKeyPress(keys: [.leftArrow, .downArrow]) { _ in nudge(-Self.step) }
         .onKeyPress(keys: [.rightArrow, .upArrow]) { _ in nudge(Self.step) }
