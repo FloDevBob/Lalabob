@@ -86,12 +86,20 @@ extension PadGrid {
 }
 
 extension Show {
-    /// Version de format nécessaire pour écrire ce spectacle : 3 seulement s'il contient une grille Apple Music ou un pad
-    /// Music, pour qu'un spectacle sans Apple Music reste lisible par l'app de la version 2.
+    /// Version de format nécessaire pour écrire ce spectacle : la plus petite qui le contient, pour qu'un spectacle sans
+    /// fonction récente reste lisible par une app plus ancienne. 4 s'il sert au DMX (mode, appareil réglé ou état lumineux),
+    /// 3 s'il contient une grille Apple Music ou un pad Music, sinon 2.
     public var requiredFormatVersion: Int {
+        let usesDMX = lighting != LightingSettings() || allPads.contains { $0.light?.look != nil }
+        if usesDMX { return 4 }
         let usesMusic = grids.contains { grid in
             grid.kind == .appleMusic || grid.columns.contains { $0.kind == .music }
         }
         return usesMusic ? 3 : 2
+    }
+
+    /// Tous les pads du spectacle, colonnes mises de côté comprises.
+    var allPads: [Pad] {
+        grids.flatMap { ($0.columns + $0.parkedColumns.map(\.column)).flatMap(\.slots).compactMap { $0 } }
     }
 }

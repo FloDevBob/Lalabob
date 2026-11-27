@@ -27,6 +27,11 @@ extension Show {
         guard !grids.isEmpty else { throw .noGrid }
         guard grids.count <= Show.maximumGridCount else { throw .tooManyGrids(grids.count) }
 
+        try lighting.rig.validate()
+        for pad in allPads {
+            if let look = pad.light?.look { try look.validate(for: lighting.rig.profile) }
+        }
+
         var lightChannels: Set<Int> = []
         if let sharedLight {
             guard Show.lightChannels.contains(sharedLight.channel) else { throw .valueOutOfRange("canal LightKey") }

@@ -27,13 +27,16 @@ public struct Show: Codable, Sendable, Equatable {
     /// Les fichiers de version 1 se lisent et se réécrivent en version 2 ; une ancienne version de l'app ne lit pas la 2.
     /// 3 : grilles Apple Music (`PadGrid.kind`, `ColumnKind.music`, `Pad.music`) ; écrite seulement si le spectacle s'en sert
     /// (`requiredFormatVersion`).
-    public static let currentFormatVersion = 3
+    /// 4 : lumière autonome en DMX (`Show.lighting`, `LightCue.look`, ADR 0012) ; écrite seulement si le spectacle s'en sert.
+    public static let currentFormatVersion = 4
 
     public var formatVersion: Int
     public var name: String
     public var grids: [PadGrid]
     /// Option « Colonnes lumière communes à toutes les grilles » (`nil` = désactivée). Voir `SharedLight`.
     public var sharedLight: SharedLight?
+    /// Qui pilote la lumière (LightKey ou projecteurs en DMX) et l'appareil DMX. Absent des fichiers = LightKey.
+    public var lighting = LightingSettings()
 
     /// Un spectacle construit en mémoire (nouveau, tests) : chaque grille sans canal LightKey en reçoit un, dans l'ordre.
     public init(name: String, grids: [PadGrid]) {
@@ -47,6 +50,28 @@ public struct Show: Codable, Sendable, Equatable {
     /// Un spectacle neuf avec une grille vide.
     public static func new(name: String = "Nouveau spectacle") -> Show {
         Show(name: name, grids: [.empty(name: "Grille 1")])
+    }
+
+    private enum CodingKeys: String, CodingKey { case formatVersion, name, grids, sharedLight, lighting }
+
+    /// Les spectacles d'avant le DMX n'ont pas `lighting` : ils s'ouvrent en mode LightKey.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        name = try container.decode(String.self, forKey: .name)
+        grids = try container.decode([PadGrid].self, forKey: .grids)
+        sharedLight = try container.decodeIfPresent(SharedLight.self, forKey: .sharedLight)
+        lighting = try container.decodeIfPresent(LightingSettings.self, forKey: .lighting) ?? LightingSettings()
+    }
+
+    /// `lighting` n'est écrit que s'il diffère des valeurs par défaut : un spectacle sans DMX ne change pas d'un octet.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(formatVersion, forKey: .formatVersion)
+        try container.encode(name, forKey: .name)
+        try container.encode(grids, forKey: .grids)
+        try container.encodeIfPresent(sharedLight, forKey: .sharedLight)
+        if lighting != LightingSettings() { try container.encode(lighting, forKey: .lighting) }
     }
 }
 
@@ -465,15 +490,24 @@ public struct LightCue: Codable, Sendable, Equatable {
     /// La cue a été appairée à une cue de LightKey (mode « Appairage lumière », ADR 0006). Sert à repérer, en mode
     /// d'appairage, les cases libres ; LightKey seul sait vraiment ce qu'il y a derrière la note.
     public var isPaired: Bool
+    /// L'état lumineux joué en mode « Projecteurs pilotés par Lalabob » (DMX, ADR 0012). Une cue garde sa note MIDI et son
+    /// état : chaque mode lit sa partie, et changer de mode ne perd rien. Absent des anciens fichiers.
+    public var look: LightLook?
 
-    public init(output: MIDIMessageSpec, behavior: LightBehavior = .impulse, ledFeedback: Bool = true, isPaired: Bool = false) {
+    /// `output` vaut `MIDIMessageSpec.unassigned` pour une cue créée en mode DMX : elle n'est jamais envoyée à LightKey
+    /// tant qu'elle n'est pas appairée.
+    public init(
+        output: MIDIMessageSpec = .unassigned, behavior: LightBehavior = .impulse, ledFeedback: Bool = true,
+        isPaired: Bool = false, look: LightLook? = nil
+    ) {
         self.output = output
         self.behavior = behavior
         self.ledFeedback = ledFeedback
         self.isPaired = isPaired
+        self.look = look
     }
 
-    private enum CodingKeys: String, CodingKey { case output, behavior, ledFeedback, isPaired }
+    private enum CodingKeys: String, CodingKey { case output, behavior, ledFeedback, isPaired, look }
 
     /// Les spectacles enregistrés avant l'appairage n'ont pas `isPaired` : ils s'ouvrent comme non appairés.
     public init(from decoder: any Decoder) throws {
@@ -482,6 +516,7 @@ public struct LightCue: Codable, Sendable, Equatable {
         behavior = try container.decode(LightBehavior.self, forKey: .behavior)
         ledFeedback = try container.decode(Bool.self, forKey: .ledFeedback)
         isPaired = try container.decodeIfPresent(Bool.self, forKey: .isPaired) ?? false
+        look = try container.decodeIfPresent(LightLook.self, forKey: .look)
     }
 }
 
@@ -514,4 +549,7 @@ public struct MIDIMessageSpec: Codable, Sendable, Equatable {
         self.number = number
         self.value = value
     }
+
+    /// Note neutre d'une cue qui n'a pas (encore) de note LightKey.
+    public static let unassigned = MIDIMessageSpec(kind: .note, channel: 0, number: 0)
 }

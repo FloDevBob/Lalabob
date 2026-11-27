@@ -585,3 +585,19 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   ☐ régularité à l'œil (pas de scintillement) avec l'interface chargée.
   **Note outillage** : `make test` utilise `swift test` ; avec les outils en ligne de commande sélectionnés (`xcode-select`), le module Testing
   manque. Lancer `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer make test` (idem pour `make build`).
+- **Étape 2 — modèle DMX (27/11/2026, branche `j14/modele-dmx`, empilée sur `j14/module-dmx`)** ✅ code, aucun changement visible dans l'app.
+  `LalabobModel/Lighting.swift` : `LightingMode` (LightKey / DMX) et `LightingSettings` (mode + appareil, **gardés tous les deux** : revenir
+  en LightKey ne perd rien), `LightColor` (teinte 0–360° + saturation, jamais un RVB ; `rgb` = roue HSV), `FixtureProfile` (**données** :
+  canaux avec rôle et projecteur, strobo lent→rapide, programmes, « sur le son », gamma ; profil intégré `chauvet4BarLTBT`), `DMXRig`
+  (profil, adresse 1…498, fondu du noir 1,5 s, `onQuit` fondu au noir / laisser, couleurs favorites ≤ 16), `LightLook` (fondu d'entrée +
+  `colors` / `alternate` / `fixtureProgram` / `soundActive`), `HeadLook`, `ColorsLook` (Chacun / Ensemble, strobo `nil` par défaut),
+  `AlternateLook`. `LightCue.look` : une cue garde **sa note MIDI et son état** (chaque mode lit sa partie) ; `MIDIMessageSpec.unassigned`
+  pour une cue créée en DMX. `Show.lighting`. **Format version 4**, écrite seulement si le spectacle sert au DMX (mode, appareil réglé ou
+  un état lumineux) : `requiredFormatVersion` 4 / 3 / 2 ; un spectacle sans DMX ne change pas d'un octet (`lighting` non écrit).
+  Validation de tout ce qui vient d'un fichier (adresse, profil cohérent, nombres finis et bornés, projecteurs de l'état = ceux du profil,
+  états des colonnes mises de côté compris). 28 tests (`DMXModelTests`) ; deux anciens tests « version inconnue » passent de 4 à 5.
+  Tout le package vert, app compilée. **Écarts avec le plan** : `Show.lighting` est une structure (mode + appareil) et non un `.dmx(DMXRig)`
+  (pour ne rien perdre en changeant de mode) ; la correction des couleurs est un simple gamma du profil. ⚠︎ **Les valeurs des 12 programmes
+  de la barre (10 → 249 réparties à égalité) et de « sur le son » (250) sont déduites du manuel** : à confirmer au banc d'essai DMX avant
+  l'étape 4. **Une ancienne version de l'app ne lit pas la version 4** (mettre les deux Mac à jour ensemble avant d'enregistrer un spectacle DMX).
+  **À essayer** : ☐ ouvrir un vrai spectacle (copie !), ⌘S, rouvrir : rien ne change, `show.json` toujours en version 2 ou 3.

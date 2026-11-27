@@ -67,10 +67,10 @@ struct MusicGridTests {
         #expect(musicJSON.contains("\"formatVersion\" : 3"))
     }
 
-    @Test("Une version 4 (inconnue) est refusée")
+    @Test("Une version 5 (inconnue) est refusée")
     func unknownVersion() throws {
         var json = String(decoding: try ShowPackage.encode(musicShow()), as: UTF8.self)
-        json = json.replacingOccurrences(of: "\"formatVersion\" : 3", with: "\"formatVersion\" : 4")
+        json = json.replacingOccurrences(of: "\"formatVersion\" : 3", with: "\"formatVersion\" : 5")
         #expect(throws: ShowPackageError.self) { try ShowPackage.decode(Data(json.utf8)) }
     }
 

@@ -237,7 +237,7 @@ Respecte `docs/adr/0001-architecture.md` : un module par responsabilité, pas de
 1. **Module `LalabobDMX`** (`j14/module-dmx`) — trames, transports, détection, rebranchement, fil à 30 Hz. Tests avec un faux
    port (octets attendus enregistrés). **Code fait le 27/11/2026** (avec la fenêtre « Banc d'essai DMX ») ; essai sur la barre à faire,
    voir `docs/PLAN.md` (J14). Écart : rebranchement par essai chaque seconde plutôt que par notifications IOKit.
-2. **Modèle** (`j14/modele-dmx`) — `LightingMode`, `DMXRig`, `FixtureProfile` (profil de la barre), `LightLook` (4 types), couleurs
+2. **Modèle** (`j14/modele-dmx`, **code fait le 27/11/2026**, voir `docs/PLAN.md`) — `LightingMode`, `DMXRig`, `FixtureProfile` (profil de la barre), `LightLook` (4 types), couleurs
    teinte + saturation et favoris du spectacle, format v4 + migration, validation. Tests d'abord.
 3. **Console et moteur** (`j14/console-dmx`) — `LightConsole` (fondus, boutons en direct, Noir, strobo), branchement
    `ShowController` et contrôleur, LED. Tests hors ligne (trames à t = 0, mi-fondu, fin).
