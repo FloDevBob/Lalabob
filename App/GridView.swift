@@ -823,13 +823,8 @@ struct PadView: View {
         return HStack(spacing: Self.contentSpacing) {
             VStack(alignment: .leading, spacing: 1) {
                 InlinePadText(position: position, field: .title, text: pad.title, font: Typography.padTitle, editing: $editingField)
-                if pad.subtitle.isEmpty, let summary = lookSummary(pad) {
-                    // Pas de sous-titre : en mode Projecteurs, l'état lumineux se résume (« Ensemble · 2 et 3 »).
-                    Text(summary.subtitle).font(Typography.padSubtitle).lineLimit(1).opacity(0.88)
-                } else {
-                    InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
-                        .opacity(0.88)
-                }
+                InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
+                    .opacity(0.88)
             }
             Spacer(minLength: 0)
             if case .paused = event?.state { Icon.pauseFill.view(size: 14) }

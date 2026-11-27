@@ -49,6 +49,28 @@ struct DMXLookEditingTests {
         #expect(rig.controller.pad(at: red0)?.tint == .rouge)
     }
 
+    @Test("Libellé automatique : titre d'ambiance et couleur en sous-titre, sans écraser un texte tapé")
+    func autoLabel() {
+        let (rig, undo) = makeRig()
+        rig.controller.updatePad(at: red0, title: LightLook.blankTitle, subtitle: "")
+        let green = LightLook.uniform(color: LightColor(hue: 120, saturation: 1), intensity: 1, headCount: 4)
+        #expect(rig.controller.setLook(at: red0, to: green))
+        #expect(rig.controller.pad(at: red0)?.title == "Forêt")
+        #expect(rig.controller.pad(at: red0)?.subtitle == "Vert")
+        // Le libellé suit la couleur tant qu'on n'y touche pas.
+        #expect(rig.controller.setLook(at: red0, to: LightLook.uniform(color: LightColor(hue: 225, saturation: 1), intensity: 1, headCount: 4)))
+        #expect(rig.controller.pad(at: red0)?.title == "Nuit")
+        // Un titre tapé à la main reste ; le sous-titre automatique, lui, continue de suivre.
+        rig.controller.updatePad(at: red0, title: "Entrée du roi")
+        #expect(rig.controller.setLook(at: red0, to: LightLook.uniform(color: LightColor(hue: 0, saturation: 1), intensity: 1, headCount: 4)))
+        #expect(rig.controller.pad(at: red0)?.title == "Entrée du roi")
+        #expect(rig.controller.pad(at: red0)?.subtitle == "Rouge")
+        // Un seul ⌘Z défait couleur, teinte et libellé ensemble.
+        undo.undo()
+        #expect(rig.controller.pad(at: red0)?.title == "Entrée du roi")
+        #expect(rig.controller.pad(at: red0)?.subtitle == "Bleu")
+    }
+
     @Test("setLook refuse un état injouable (3 projecteurs) et ne change rien")
     func setLookRejectsInvalid() {
         let (rig, _) = makeRig()

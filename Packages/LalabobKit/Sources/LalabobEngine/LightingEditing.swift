@@ -50,8 +50,13 @@ extension ShowController {
             guard position.isValid, var pad = show.grids[grid][position], var cue = pad.light, cue.look != look else { return false }
             // La couleur du pad suit la couleur choisie dans la roue (seulement quand celle-ci change : un autre réglage, comme
             // le fondu, ne défait pas une teinte choisie à la main).
-            let before = (cue.look ?? DMXSession.fallbackLook(for: pad, headCount: profile.headCount)).representativeColor
-            if let after = look.representativeColor, after != before { pad.tint = Tint.nearest(to: after) }
+            let previous = cue.look ?? DMXSession.fallbackLook(for: pad, headCount: profile.headCount)
+            if let after = look.representativeColor, after != previous.representativeColor { pad.tint = Tint.nearest(to: after) }
+            // Libellé automatique : titre d'ambiance et nom de la couleur en sous-titre. On ne touche qu'à ce qui est encore
+            // celui d'origine (lumière neuve, ou libellé posé automatiquement pour l'état précédent) : un texte tapé reste.
+            let before = previous.autoLabel, after = look.autoLabel
+            if pad.title == LightLook.blankTitle || pad.title == before.title { pad.title = after.title }
+            if pad.subtitle.isEmpty || pad.subtitle == before.subtitle { pad.subtitle = after.subtitle }
             cue.look = look
             pad.light = cue
             show.grids[grid][position] = pad
