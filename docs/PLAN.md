@@ -499,3 +499,8 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   pour un morceau de la bibliothèque, l'extrait est cherché d'après le titre et l'artiste), **pochette** dans le panneau du bas (celle de Music par
   AppleScript, vérifié : JPEG ; sinon celle du catalogue). Autorisation réseau (`network.client`). 7 tests (faux catalogue, réponse JSON réelle
   reproduite). **Limite** : l'extrait d'un morceau de la bibliothèque peut être celui d'une autre version du même titre.
+- **Étape 5 — vumètre d'Apple Music, essai (27/11/2026, branche `j11/grilles-apple-music-finitions`)** ✅ code, **non essayé**. `ProcessAudioMeter`
+  (LalabobAudio) : capture du son de Music par `CATapDescription` (son non modifié), agrégat privé, crête par bloc sur le fil audio (sans verrou ni
+  allocation) ; activé par l'interrupteur « Vumètre d'Apple Music (essai) » du panneau ; le vumètre apparaît sous la colonne du morceau en cours.
+  À vérifier : autorisation d'enregistrement audio dans le bac à sable, et **si un morceau protégé est capté ou donne du silence**.
+- **Étape 6 — documentation** : `docs/GUIDE.md` (grilles Apple Music, dépannage), aide intégrée (rubrique « Grilles Apple Music »), ADR 0010.

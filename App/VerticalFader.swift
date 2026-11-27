@@ -86,6 +86,8 @@ struct VerticalFader<Accessory: View>: View {
 struct LevelMeter: View {
     @Environment(ShowController.self) private var controller
     let column: Int
+    /// Une autre source de crêtes (le son d'Apple Music capté) ; `nil` = le moteur de Lalabob.
+    var source: ColumnMeters? = nil
     @State private var smoothing = MeterSmoothing()
 
     private static let gradient = Gradient(stops: [
@@ -97,7 +99,7 @@ struct LevelMeter: View {
     ])
 
     var body: some View {
-        let meters = controller.meters
+        let meters = source ?? controller.meters
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
             let levels = smoothing.update(
                 at: timeline.date.timeIntervalSinceReferenceDate,

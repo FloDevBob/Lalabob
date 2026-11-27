@@ -49,7 +49,7 @@ struct HelpTopic: Identifiable, Equatable {
 }
 
 enum HelpContent {
-    static let topics: [HelpTopic] = [start, hardware, play, prepare, lighting, shortcuts, troubleshooting]
+    static let topics: [HelpTopic] = [start, hardware, play, prepare, appleMusic, lighting, shortcuts, troubleshooting]
 
     static func topics(matching query: String) -> [HelpTopic] { topics.filter { $0.matches(query) } }
 
@@ -117,6 +117,24 @@ enum HelpContent {
                 "**Grilles** : le bouton + (ou ⌘T) ajoute une grille ; double-clic sur un onglet pour le renommer, glisser pour réordonner.",
                 "**Pré-écoute** : double-clic sur un son de la bibliothèque (sur la sortie choisie, indisponible une fois verrouillé).",
                 "**Enregistrer** : ⌘S ; l'enregistrement automatique est aussi actif. Un son qu'aucun pad n'utilise quitte le fichier.",
+            ]),
+        ])
+
+    static let appleMusic = HelpTopic(
+        id: "apple-music", title: "Grilles Apple Music", symbol: .music,
+        blocks: [
+            .paragraph("Une **grille Apple Music** joue des morceaux de vos playlists dans l'app Music, un à la fois. Music doit être ouvert sur ce Mac."),
+            .steps([
+                "**Créer** : bouton + des onglets › Apple Music (⌥⌘T). Une note rose marque l'onglet.",
+                "**Remplir** : déverrouillé, choisissez une playlist à gauche, sélectionnez des morceaux (Maj-clic, ⌘-clic) et glissez-les sur une colonne Music.",
+                "**Écouter avant** : ▶ joue un extrait de 30 s sans toucher à Music. L'onglet **Internet** cherche dans tout Apple Music ; « Ajouter… » ouvre le morceau dans Music pour l'ajouter.",
+                "**Jouer** : un appui lance le morceau, un autre le met en pause, encore un le reprend. Un autre pad enchaîne en fondu. ■ sous la colonne arrête en fondu, Échap arrête tout.",
+            ]),
+            .bullets([
+                "**Volume** : celui de Music, réglé par le 9e fader de l'APC. Pas de volume par pad, pas de fondus ni d'élagage (morceaux protégés).",
+                "**☁ sur un pad** : le morceau est dans le nuage, Internet est nécessaire. Téléchargez-le avant la représentation (« Télécharger » dans le panneau).",
+                "**Introuvable** : le morceau n'est plus dans votre bibliothèque ; glissez-en un autre sur le pad.",
+                "**Vumètre d'Apple Music (essai)** : à activer dans le panneau ; macOS demande l'autorisation d'enregistrement audio. Le son de Music n'est pas modifié.",
             ]),
         ])
 

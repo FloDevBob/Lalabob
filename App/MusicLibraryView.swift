@@ -9,6 +9,7 @@ struct MusicLibraryView: View {
     @Environment(MusicLibraryController.self) private var library
     @Environment(ShowController.self) private var controller
     @Environment(PreviewController.self) private var preview
+    @Environment(MusicPlaybackCoordinator.self) private var musicPlayer
     @State private var query = ""
     @State private var internetQuery = ""
     /// Le morceau dont l'extrait joue (ou se télécharge), et son fichier.
@@ -41,6 +42,17 @@ struct MusicLibraryView: View {
                 tracksSection
             } else {
                 Spacer(minLength: 0)
+            }
+            Toggle(
+                "Vumètre d'Apple Music (essai)",
+                isOn: Binding(get: { musicPlayer.isMeterEnabled }, set: { musicPlayer.setMeterEnabled($0) })
+            )
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .font(.system(size: 11.5))
+            .help("Capte le son de Music pendant un morceau pour afficher un vumètre sous sa colonne (macOS demande l'autorisation d'enregistrement audio). Le son de Music n'est pas touché.")
+            if let problem = musicPlayer.meterProblem {
+                Text(problem).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)
             }
             if let error = library.networkError {
                 Text(error).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)

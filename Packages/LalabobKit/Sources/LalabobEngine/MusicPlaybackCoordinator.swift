@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import LalabobAudio
 import LalabobModel
@@ -30,6 +31,18 @@ public final class MusicPlaybackCoordinator {
     /// Intervalle entre deux pas de volume pendant un fondu.
     public var rampStep: TimeInterval = 0.05
 
+    /// Vumètre d'Apple Music (essai) : capture du son de Music pendant qu'un morceau joue. Désactivé par défaut (macOS demande
+    /// l'autorisation « enregistrement audio »). Mémorisé sur ce Mac.
+    public private(set) var isMeterEnabled: Bool
+    /// `nil` : pas de mesure en cours ; sinon pourquoi elle a échoué, ou rien (`""`) si elle tourne.
+    public private(set) var meterProblem: String?
+    public private(set) var isMetering = false
+    @ObservationIgnored private let meter = ProcessAudioMeter()
+    @ObservationIgnored private let defaults: UserDefaults
+    static let meterDefaultsKey = "musicMeterEnabled"
+    /// Crêtes du son de Music (colonne 0), pour le vumètre de la colonne du morceau en cours.
+    public nonisolated var meters: ColumnMeters { meter.meters }
+
     public private(set) var currentPad: Pad.ID?
     public private(set) var state: MusicPlayerState = .stopped
     public private(set) var isFading = false
@@ -47,8 +60,40 @@ public final class MusicPlaybackCoordinator {
     /// Chaque geste invalide les gestes précédents encore en cours (un appui rapide après un autre gagne).
     @ObservationIgnored private var generation = 0
 
-    public init(player: any MusicPlayerControlling) {
+    public init(player: any MusicPlayerControlling, defaults: UserDefaults = .standard) {
         self.player = player
+        self.defaults = defaults
+        self.isMeterEnabled = defaults.bool(forKey: Self.meterDefaultsKey)
+    }
+
+    /// Active ou coupe le vumètre d'Apple Music (essai).
+    public func setMeterEnabled(_ enabled: Bool) {
+        isMeterEnabled = enabled
+        defaults.set(enabled, forKey: Self.meterDefaultsKey)
+        meterProblem = nil
+        if enabled, state != .stopped { startMeter() } else { stopMeter() }
+    }
+
+    private func startMeter() {
+        guard isMeterEnabled, !isMetering,
+            let pid = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").first?.processIdentifier
+        else { return }
+        isMetering = true
+        Task {
+            do {
+                try await meter.start(pid: pid)
+                meterProblem = nil
+            } catch {
+                isMetering = false
+                meterProblem = "Vumètre indisponible : autorisez l'enregistrement audio (Réglages Système › Confidentialité et sécurité)."
+            }
+        }
+    }
+
+    private func stopMeter() {
+        guard isMetering else { return }
+        isMetering = false
+        Task { await meter.stop() }
     }
 
     // MARK: Gestes
@@ -137,6 +182,7 @@ public final class MusicPlaybackCoordinator {
             self.owner = owner
             publish()
             startPolling()
+            startMeter()
             if wasPlaying { await ramp(to: { [weak self] in self?.faderTarget ?? full }, over: crossfadeDuration / 2, gen) }
         }
     }
@@ -247,6 +293,7 @@ public final class MusicPlaybackCoordinator {
     }
 
     private func clear(publishing: Bool) {
+        stopMeter()
         if publishing, let pad = currentPad { owner?.applyMusicPlayback(PlaybackEvent(pad: pad, state: .idle, duration: 0)) }
         polling?.cancel()
         polling = nil

@@ -141,6 +141,9 @@ struct ColumnContextMenu: View {
         if column.kind.hasAudio {
             Button("Arrêter les sons de la colonne", icon: .stop) { controller.stopColumn(index) }
         }
+        if column.kind == .music {
+            Button("Arrêter le morceau de la colonne", icon: .stop) { controller.stopColumn(index) }
+        }
         if !controller.isLocked {
             Button("Vider la colonne…", icon: .trash) { prompter.requestClearColumn(index, controller: controller) }
                 .disabled(column.slots.allSatisfy { $0 == nil })
