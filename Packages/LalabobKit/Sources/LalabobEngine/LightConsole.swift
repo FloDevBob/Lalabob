@@ -95,6 +95,32 @@ public struct LightConsole: DMXFrameSource, Equatable {
 
     // MARK: - Gestes
 
+    /// Ce que la console joue, pour y revenir après un aperçu (étape 4e).
+    public struct Snapshot: Equatable, Sendable {
+        fileprivate let scene: Scene
+        fileprivate let colorReference: Double
+    }
+
+    public var snapshot: Snapshot { Snapshot(scene: scene, colorReference: colorReference) }
+
+    /// Revient à une lumière mémorisée, en fondu de `fade` secondes depuis la lumière en cours.
+    public mutating func restore(_ snapshot: Snapshot, fade: Double, at time: Double) {
+        startTransition(duration: fade, at: time)
+        scene = snapshot.scene
+        colorReference = snapshot.colorReference
+    }
+
+    /// L'état lumineux joué (`nil` : noir).
+    public var activeLook: LightLook? {
+        if case .look(let look, _, _) = scene { look } else { nil }
+    }
+
+    /// Remplace l'état joué sans fondu (le pad a été réglé pendant qu'il éclaire) ; l'alternance garde sa phase.
+    public mutating func replaceActiveLook(_ look: LightLook) {
+        guard case .look(_, let pad, let start) = scene else { return }
+        scene = .look(look, pad: pad, start: start)
+    }
+
     /// Le pad dont l'état est joué (`nil` : noir).
     public var activePad: UUID? {
         if case .look(_, let pad, _) = scene { pad } else { nil }

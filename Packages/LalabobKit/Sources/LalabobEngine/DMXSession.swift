@@ -27,6 +27,19 @@ public final class DMXSession {
     /// Le banc d'essai DMX est ouvert : il a pris le boîtier, la sortie du spectacle attend (la console continue).
     public private(set) var isSuspendedForBench = false
 
+    /// Interrupteur « Aperçu sur la barre » du panneau du bas : chaque réglage d'un pad lumière se voit tout de suite sur la
+    /// barre. Mémorisé sur ce Mac, actif par défaut. Jamais verrouillé.
+    public var isLivePreviewEnabled: Bool {
+        didSet {
+            defaults.set(isLivePreviewEnabled, forKey: Self.livePreviewKey)
+            if !isLivePreviewEnabled { endPreview() }
+        }
+    }
+    static let livePreviewKey = "dmxLivePreview"
+
+    /// Lumière à rendre quand l'aperçu se termine, et le pad réglé (pour que ⌘Z et les modifications suivent).
+    @ObservationIgnored private var previewBase: LightConsole.Snapshot?
+    @ObservationIgnored private var previewPad: Pad.ID?
     @ObservationIgnored public private(set) weak var attachedController: ShowController?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let now: @MainActor () -> Double
@@ -44,6 +57,7 @@ public final class DMXSession {
         makeTransport: @escaping @MainActor () -> any DMXTransport = { DMXOutput() }
     ) {
         self.defaults = defaults
+        self.isLivePreviewEnabled = defaults.object(forKey: Self.livePreviewKey) as? Bool ?? true
         self.now = now
         self.uptime = uptime
         self.makeTransport = makeTransport
@@ -69,6 +83,7 @@ public final class DMXSession {
     }
 
     private func release(_ controller: ShowController) {
+        cancelPreview()
         controller.dmxHandler = nil
         controller.lightingChangeHandler = nil
         controller.setDMXActivePad(nil)
@@ -122,10 +137,21 @@ public final class DMXSession {
     }
 
     private func handle(_ request: ShowController.DMXRequest) {
+        if case .endPreview = request { return endPreview() }
         guard var console else { return }
         let time = now()
         switch request {
+        case .preview(let padID, let look):
+            guard isLivePreviewEnabled else { return }
+            if previewBase == nil { previewBase = console.snapshot }
+            previewPad = padID
+            var shown = look
+            shown.fadeIn = 0  // on règle à l'œil : pas de fondu
+            console.play(shown, pad: nil, at: time)
+        case .endPreview:
+            return
         case .press(let pad, let force):
+            cancelPreview()  // un appui ou un Noir pendant l'aperçu l'emporte
             let look = pad.light?.look ?? Self.fallbackLook(for: pad, headCount: console.rig.profile.headCount)
             if !force, console.activePad == pad.id {
                 // Nouvel appui sur l'état en cours : « laisse allumé » ne fait rien, « allume ou éteint » éteint en fondu.
@@ -135,9 +161,41 @@ public final class DMXSession {
                 console.play(look, pad: pad.id, at: time)
             }
         case .blackout:
+            cancelPreview()
             console.blackout(at: time)
         }
         publish(console)
+    }
+
+    /// L'aperçu est terminé (on quitte le pad) : retour en fondu à la lumière d'avant, avec les réglages faits entre-temps.
+    private func endPreview() {
+        guard var console, let base = previewBase else { return }
+        cancelPreview()
+        console.restore(base, fade: Self.previewReturnFade, at: now())
+        syncLooks(&console)
+        publish(console)
+    }
+
+    private func cancelPreview() {
+        previewBase = nil
+        previewPad = nil
+    }
+
+    /// Fondu du retour à la lumière d'avant, à la fin d'un aperçu.
+    static let previewReturnFade = 0.5
+
+    /// L'état joué suit le spectacle : un pad réglé (ou annulé par ⌘Z) pendant qu'il éclaire — ou pendant son aperçu — met la barre à jour.
+    private func syncLooks(_ console: inout LightConsole) {
+        guard let controller = attachedController else { return }
+        if previewBase != nil {
+            guard let id = previewPad, var committed = controller.committedLook(ofPad: id) else { return }
+            committed.fadeIn = 0
+            if console.activeLook != committed { console.replaceActiveLook(committed) }
+        } else if let id = console.activePad, let committed = controller.committedLook(ofPad: id),
+            console.activeLook != committed
+        {
+            console.replaceActiveLook(committed)
+        }
     }
 
     /// Une cue sans état lumineux (créée pour LightKey) : les projecteurs à la couleur de son pad, en fondu par défaut.
@@ -170,6 +228,7 @@ public final class DMXSession {
         updated.beatClock = controller.tempoSource(atUptime: soundNow).map {
             LightConsole.BeatClock(bpm: $0.bpm, origin: $0.beatUptime + (now() - soundNow))
         }
+        syncLooks(&updated)
         publish(updated)
         startOutputIfNeeded()
     }

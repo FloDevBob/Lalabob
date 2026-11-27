@@ -160,6 +160,9 @@ public final class ShowController {
 
     /// Une demande à la console DMX.
     enum DMXRequest: Equatable {
+        /// Aperçu d'un réglage du pad (panneau du bas), sans fondu ; `endPreview` rend la lumière d'avant.
+        case preview(Pad.ID, LightLook)
+        case endPreview
         /// Jouer l'état lumineux du pad ; `force` : même s'il est déjà joué (bouton Essayer), sans tenir compte de
         /// « nouvel appui ».
         case press(Pad, force: Bool)

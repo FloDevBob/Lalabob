@@ -46,13 +46,43 @@ extension ShowController {
     public func setLook(at position: GridPosition, to look: LightLook) -> Bool {
         let profile = show.lighting.rig.profile
         guard look.isValid(for: profile) else { return false }
-        return commit("Modifier la lumière") { show, grid in
+        let changed = commit("Modifier la lumière") { show, grid in
             guard position.isValid, var pad = show.grids[grid][position], var cue = pad.light, cue.look != look else { return false }
             cue.look = look
             pad.light = cue
             show.grids[grid][position] = pad
             return true
         }
+        if changed { previewLook(at: position, look) }  // le réglage se voit tout de suite sur la barre
+        return changed
+    }
+
+    /// Aperçu en direct (étape 4e) : applique cet état à la barre tout de suite, sans fondu et sans le désigner comme joué ;
+    /// `endLookPreview()` rend la lumière d'avant. Jamais verrouillé ni en mode LightKey ; sans effet si l'état n'est pas jouable.
+    public func previewLook(at position: GridPosition, _ look: LightLook) {
+        guard isDMXLighting, !isLocked, position.isValid, look.isValid(for: show.lighting.rig.profile),
+            let pad = pad(at: position), pad.light != nil
+        else { return }
+        dmxHandler?(.preview(pad.id, look))
+    }
+
+    /// Fin de l'aperçu (on quitte le pad) : la barre revient en fondu à la lumière qui était en cours.
+    public func endLookPreview() {
+        dmxHandler?(.endPreview)
+    }
+
+    /// L'état lumineux que jouerait ce pad aujourd'hui (le sien, ou la couleur de son pad), où qu'il soit dans le spectacle.
+    func committedLook(ofPad id: Pad.ID) -> LightLook? {
+        let headCount = show.lighting.rig.profile.headCount
+        for grid in show.grids {
+            for column in grid.columns {
+                for case let pad? in column.slots where pad.id == id {
+                    guard let cue = pad.light else { return nil }
+                    return cue.look ?? DMXSession.fallbackLook(for: pad, headCount: headCount)
+                }
+            }
+        }
+        return nil
     }
 
     /// Change le type de l'état (Couleurs · Alternance · Programme · Sur le son) en gardant ce qui se garde.

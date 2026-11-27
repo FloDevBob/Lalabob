@@ -19,6 +19,7 @@ extension Color {
 
 struct DMXLightHeader: View {
     @Environment(ShowController.self) private var controller
+    @Environment(DMXSession.self) private var dmx
     let position: GridPosition
     let pad: Pad
 
@@ -33,6 +34,7 @@ struct DMXLightHeader: View {
                 .controlSize(.small)
                 .help("Joue cet état sur les projecteurs, comme un appui sur le pad")
             HeaderDivider()
+            previewToggle
             fadeStepper
             retriggerMenu
             HeaderDivider()
@@ -40,6 +42,21 @@ struct DMXLightHeader: View {
             PadActionsMenu(position: position, hasPad: true)
         }
         .padding(.horizontal, 14)
+    }
+
+    /// « Aperçu sur la barre » : chaque réglage se voit tout de suite sur les projecteurs (jamais verrouillé).
+    private var previewToggle: some View {
+        @Bindable var dmx = dmx
+        return HStack(spacing: 5) {
+            Text("Aperçu").font(.system(size: 10)).foregroundStyle(Surface.textTertiary)
+            Toggle("Aperçu sur la barre", isOn: $dmx.isLivePreviewEnabled)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+        }
+        .help("Aperçu sur la barre : chaque réglage s'applique tout de suite aux projecteurs, sans fondu. En quittant le pad, la barre revient à la lumière d'avant.")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Aperçu sur la barre")
     }
 
     private var fadeIn: Double { controller.effectiveLook(at: position)?.fadeIn ?? LightLook.defaultFadeIn }
@@ -127,6 +144,7 @@ struct DMXLookPanel: View {
         .disabled(controller.isLocked)
         .id(pad.id)
         .onChange(of: pad.id) { draft = nil }
+        .onDisappear { controller.endLookPreview() }  // on quitte le pad : la barre revient à la lumière d'avant
     }
 
     // MARK: Modifications
@@ -140,6 +158,7 @@ struct DMXLookPanel: View {
             controller.setLook(at: position, to: updated)
         } else {
             draft = updated
+            controller.previewLook(at: position, updated)  // le glissé se voit tout de suite sur la barre
         }
     }
 
