@@ -149,6 +149,8 @@ public final class ShowController {
         case output(String?)
         case padGain(Pad.ID, Double)
         case seek(Pad.ID, TimeInterval)
+        case attachExternal(AudioRingBuffer, Double, Int)
+        case detachExternal
     }
 
     public init(
@@ -185,6 +187,8 @@ public final class ShowController {
                     case .output(let uid): try await audio.setOutputDevice(uid: uid)
                     case .padGain(let id, let db): await audio.setPadGain(id, gainDB: db)
                     case .seek(let id, let elapsed): await audio.seek(id, to: elapsed)
+                    case .attachExternal(let ring, let rate, let column): await audio.attachExternal(ring, sampleRate: rate, column: column)
+                    case .detachExternal: await audio.detachExternal()
                     }
                 } catch {
                     log.error("Commande audio échouée : \(error.localizedDescription)")
@@ -431,6 +435,17 @@ public final class ShowController {
         if event.state == .idle { playback[event.pad] = nil } else { playback[event.pad] = event }
     }
 
+    /// Pont audio : le son de Music joue dans la colonne de ce pad (grille où il se trouve), dans le moteur de cette fenêtre.
+    func attachMusicBridge(_ ring: AudioRingBuffer, sampleRate: Double, pad: Pad.ID) {
+        guard let column = show.grids.lazy.compactMap({ grid in grid.columns.firstIndex { $0.slots.contains { $0?.id == pad } } }).first
+        else { return }
+        commands.yield(.attachExternal(ring, sampleRate, column))
+    }
+
+    func detachMusicBridge() {
+        commands.yield(.detachExternal)
+    }
+
     /// Un message court à l'écran (bandeau), pour la lecture Apple Music (Music fermé, morceau introuvable…).
     func showMusicNotice(_ text: String) {
         lockNotice = text
@@ -549,8 +564,8 @@ public final class ShowController {
     @discardableResult
     public func moveHardwareFader(column: Int, value: Double) -> Bool {
         guard (0..<PadGrid.size).contains(column), value.isFinite else { return false }
-        // Colonne Music : pas de fader (le volume est celui de Music, 9e fader). Le mouvement est ignoré.
-        guard currentGrid.columns[column].kind != .music else { return false }
+        // Colonne Music : un fader seulement quand le son de Music passe par Lalabob (pont audio) ; sinon le mouvement est ignoré.
+        guard currentGrid.columns[column].kind != .music || musicPlayer?.isBridgeEnabled == true else { return false }
         let value = Gain.faderLevel(value)
         let applied = faderPickup.move(column: column, to: value, screen: currentGrid.columns[column].level)
         if applied { applyColumnLevel(column, level: value) }
@@ -570,7 +585,7 @@ public final class ShowController {
         show.grids[selectedGridIndex].columns[column].level = level
         if show.isSharedLightColumn(column) { show.propagateSharedLight(from: selectedGridIndex) }
         onShowChange?(show)
-        if show.grids[selectedGridIndex].columns[column].kind.hasAudio {
+        if show.grids[selectedGridIndex].columns[column].kind != .light {  // son, mixte, ou Music (pont audio)
             commands.yield(.level(column: column, level: level))
         }
     }
@@ -579,7 +594,7 @@ public final class ShowController {
     /// passe-haut (`FilterCurve`). Borné, et aimanté au neutre tout près du centre. Comme le volume, il se règle en jouant
     /// (actif cadenas fermé) et ne passe pas par ⌘Z ; il est enregistré avec le spectacle. Sans effet sur une colonne lumière.
     public func setColumnFilter(_ column: Int, value: Double) {
-        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind.hasAudio else { return }
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind != .light else { return }
         let value = FilterCurve.snapped(value)
         guard show.grids[selectedGridIndex].columns[column].filter != value else { return }
         show.grids[selectedGridIndex].columns[column].filter = value
@@ -717,7 +732,7 @@ public final class ShowController {
 
     /// Niveaux et filtres de la grille affichée vers le moteur (ouverture, changement d'onglet, annulation).
     private func syncColumnLevels() {
-        for (index, column) in currentGrid.columns.enumerated() where column.kind.hasAudio {
+        for (index, column) in currentGrid.columns.enumerated() where column.kind != .light {
             commands.yield(.level(column: index, level: column.level))
             commands.yield(.filter(column: index, value: column.filter))
         }

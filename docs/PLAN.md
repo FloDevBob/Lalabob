@@ -504,3 +504,12 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   allocation) ; activé par l'interrupteur « Vumètre d'Apple Music (essai) » du panneau ; le vumètre apparaît sous la colonne du morceau en cours.
   À vérifier : autorisation d'enregistrement audio dans le bac à sable, et **si un morceau protégé est capté ou donne du silence**.
 - **Étape 6 — documentation** : `docs/GUIDE.md` (grilles Apple Music, dépannage), aide intégrée (rubrique « Grilles Apple Music »), ADR 0010.
+- **Pont audio (27/11/2026, branche `j11/pont-audio-apple-music`, ADR 0011)** ✅ code, **non essayé**. Option « Son de Music par Lalabob » :
+  `ProcessAudioBridge` capte Music (`CATapDescription`, `mutedWhenTapped` : Music muet pendant la capture, audible de nouveau si Lalabob s'arrête),
+  `AudioRingBuffer` (un écrivain, un lecteur, ~40 ms d'avance, rattrapage de dérive, gain lissé ; seule exception `@unchecked Sendable`, ADR 0011),
+  `attachExternal` (nœud source branché sur le mélangeur de la colonne du morceau, suit un changement de sortie). Le coordinateur fait ses fondus
+  dans Lalabob, branche le son sur la colonne du pad joué, et défait le pont si la capture s'arrête ou reste muette (morceau protégé ?).
+  Colonnes Music avec pont : fader, vumètre et filtre comme une colonne son (fader physique de l'APC aussi). Le prototype de vumètre seul est
+  remplacé. 15 tests (tampon, rendu hors ligne du moteur, coordinateur avec fausse capture). **À essayer** : ☐ autorisation demandée ☐ un morceau
+  d'abonnement passe-t-il (ou silence → option coupée) ? ☐ fader et filtre de la colonne ☐ fondu enchaîné à l'oreille ☐ changer de sortie en jouant
+  ☐ quitter Lalabob en plein morceau : Music redevient audible ☐ décalage audible ?

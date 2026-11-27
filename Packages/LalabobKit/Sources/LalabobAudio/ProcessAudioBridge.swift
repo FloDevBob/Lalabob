@@ -1,21 +1,14 @@
-import Accelerate
 import AudioToolbox
 import CoreAudio
 import Foundation
 
-/// Mesure le niveau du son d'une autre app (Apple Music) par la capture audio de macOS (« process tap », macOS 14.2+),
-/// pour le vumètre des colonnes Music. **Prototype** (spec « Grilles Apple Music », étape 5) :
+/// Le **pont audio** (ADR 0011) : capte le son d'une autre app (Apple Music) par la capture audio de macOS (« process tap »,
+/// macOS 14.2+), **rend l'app muette pendant la capture** (`mutedWhenTapped` : si Lalabob s'arrête, elle redevient audible toute
+/// seule) et écrit ce son dans un `AudioRingBuffer`, que le moteur de Lalabob joue dans une colonne.
 ///
-/// - le son de l'app n'est **ni coupé ni modifié** (`CATapUnmuted`) : on ne fait que l'écouter ;
-/// - macOS demande l'autorisation « enregistrement audio » la première fois ; refusée, `start` échoue et la carte reste
-///   condamnée ;
-/// - sur le fil audio : crête du bloc (`vDSP_maxmgv`) écrite dans `ColumnMeters` (atomique), sans verrou ni allocation.
-///
-/// Non vérifié sur un vrai Mac : la capture d'un morceau protégé (DRM) peut donner du silence.
-public actor ProcessAudioMeter {
-    /// Crêtes gauche / droite du son capté (colonne 0 de `ColumnMeters`).
-    public nonisolated let meters = ColumnMeters(columns: 1)
-
+/// Fil de capture : copie dans le tampon, ni verrou ni allocation. macOS demande l'autorisation « enregistrement audio » la première
+/// fois ; refusée, `start` échoue. Non vérifié sur un vrai Mac : un morceau protégé (DRM) peut être capté en silence.
+public actor ProcessAudioBridge {
     public enum Failure: Error, Equatable, Sendable {
         case processNotFound
         case tapRefused(OSStatus)
@@ -30,22 +23,23 @@ public actor ProcessAudioMeter {
 
     public var isRunning: Bool { procID != nil }
 
-    /// Commence à mesurer le son de l'app de ce numéro de processus. Sans effet si une mesure tourne déjà.
-    public func start(pid: pid_t) throws(Failure) {
-        guard procID == nil else { return }
+    /// Capte le son de l'app de ce numéro de processus dans `ring` ; renvoie la fréquence d'échantillonnage du son capté.
+    public func start(pid: pid_t, into ring: AudioRingBuffer) throws(Failure) -> Double {
+        if procID != nil { stop() }
         let process = try Self.processObject(for: pid)
 
         let description = CATapDescription(stereoMixdownOfProcesses: [process])
         description.uuid = UUID()
-        description.muteBehavior = .unmuted
+        description.muteBehavior = .mutedWhenTapped
         description.isPrivate = true
         var tap = AudioObjectID(kAudioObjectUnknown)
         let tapStatus = AudioHardwareCreateProcessTap(description, &tap)
         guard tapStatus == noErr else { throw .tapRefused(tapStatus) }
         tapID = tap
+        let sampleRate = Self.sampleRate(ofTap: tap) ?? 48_000
 
         var aggregateDescription: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "Lalabob · mesure d'Apple Music",
+            kAudioAggregateDeviceNameKey: "Lalabob · pont Apple Music",
             kAudioAggregateDeviceUIDKey: UUID().uuidString,
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceTapAutoStartKey: true,
@@ -63,27 +57,19 @@ public actor ProcessAudioMeter {
         }
         aggregateID = aggregate
 
-        let meters = self.meters
         var proc: AudioDeviceIOProcID?
         let procStatus = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, input, _, _, _ in
-            // Fil audio : lecture seule, aucun verrou, aucune allocation.
+            // Fil de capture : copie dans le tampon circulaire, aucun verrou, aucune allocation.
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
-            var peaks: (Float, Float) = (0, 0)
-            for (index, buffer) in buffers.enumerated() {
-                guard let data = buffer.mData?.assumingMemoryBound(to: Float.self) else { continue }
-                let channels = Int(max(buffer.mNumberChannels, 1))
-                let frames = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size / channels
-                guard frames > 0 else { continue }
-                for channel in 0..<min(channels, 2) {
-                    var peak: Float = 0
-                    vDSP_maxmgv(data + channel, vDSP_Stride(channels), &peak, vDSP_Length(frames))
-                    // Entrelacé : canal 0 / 1 du même tampon ; non entrelacé : un tampon par canal.
-                    let target = channels > 1 ? channel : index
-                    if target == 0 { peaks.0 = max(peaks.0, peak) } else { peaks.1 = max(peaks.1, peak) }
-                }
+            guard let first = buffers.first, let firstData = first.mData?.assumingMemoryBound(to: Float.self) else { return }
+            if buffers.count >= 2, let secondData = buffers[1].mData?.assumingMemoryBound(to: Float.self) {
+                let frames = Int(first.mDataByteSize) / MemoryLayout<Float>.size
+                ring.write(left: firstData, right: secondData, frames: frames)  // non entrelacé : un tampon par canal
+            } else {
+                let channels = Int(max(first.mNumberChannels, 1))
+                let frames = Int(first.mDataByteSize) / MemoryLayout<Float>.size / channels
+                ring.write(left: firstData, right: firstData + (channels > 1 ? 1 : 0), frames: frames, stride: channels)
             }
-            meters.record(column: 0, channel: 0, peak: peaks.0)
-            meters.record(column: 0, channel: 1, peak: buffers.count == 1 && buffers[0].mNumberChannels == 1 ? peaks.0 : peaks.1)
         }
         guard procStatus == noErr, let proc else {
             stop()
@@ -95,9 +81,10 @@ public actor ProcessAudioMeter {
             stop()
             throw .deviceFailed(startStatus)
         }
+        return sampleRate
     }
 
-    /// Arrête la mesure et défait tout (crêtes remises à zéro). Sans effet sur le son de l'app mesurée.
+    /// Arrête la capture et défait tout : l'app captée redevient audible.
     public func stop() {
         if let procID, aggregateID != kAudioObjectUnknown {
             AudioDeviceStop(aggregateID, procID)
@@ -108,8 +95,15 @@ public actor ProcessAudioMeter {
         aggregateID = AudioObjectID(kAudioObjectUnknown)
         if tapID != kAudioObjectUnknown { AudioHardwareDestroyProcessTap(tapID) }
         tapID = AudioObjectID(kAudioObjectUnknown)
-        meters.record(column: 0, channel: 0, peak: 0)
-        meters.record(column: 0, channel: 1, peak: 0)
+    }
+
+    private static func sampleRate(ofTap tap: AudioObjectID) -> Double? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioTapPropertyFormat, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var format = AudioStreamBasicDescription()
+        var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        guard AudioObjectGetPropertyData(tap, &address, 0, nil, &size, &format) == noErr, format.mSampleRate > 0 else { return nil }
+        return format.mSampleRate
     }
 
     private static func processObject(for pid: pid_t) throws(Failure) -> AudioObjectID {

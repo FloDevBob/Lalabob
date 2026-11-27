@@ -39,6 +39,9 @@ Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien :
   fondu de sortie ; Échap arrête tout. **Un seul morceau à la fois.** Volume : 9e fader de l'APC (volume général de Music).
 - **Avant la représentation** : **télécharger** les morceaux (☁ sur un pad = Internet nécessaire ; « Télécharger les N » dans le panneau).
   « Introuvable » = le morceau n'est plus dans la bibliothèque : en glisser un autre.
+- **Son de Music par Lalabob** (interrupteur du panneau, autorisation « enregistrement audio » la première fois) : le morceau sort par Lalabob,
+  dans sa colonne : **fader, filtre, vumètre, sortie choisie dans Lalabob**, fondus sans à-coups. Si la capture s'arrête, Music redevient audible
+  tout seul (et un message le dit). Un morceau protégé capté en silence désactive l'option.
 - Droits : l'abonnement Apple Music est personnel ; une diffusion publique relève des droits de la troupe (SACEM).
 
 ## Appairer la lumière (déverrouillé)

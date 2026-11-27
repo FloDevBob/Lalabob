@@ -60,9 +60,16 @@ public protocol AudioEngineControlling: Sendable {
 
     /// Choisit la sortie audio (`nil` = sortie par défaut du système). Les sons en cours reprennent là où ils en étaient.
     func setOutputDevice(uid: String?) async throws
+
+    /// Pont audio (ADR 0011) : joue le son de `ring` (stéréo, `sampleRate`) dans le mélangeur de `column` (fader, filtre, vumètre).
+    /// Rappeler avec le même tampon et une autre colonne y déplace le son.
+    func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) async
+    /// Retire la source du pont audio.
+    func detachExternal() async
 }
 
 extension AudioEngineControlling {
+
     /// Un moteur qui ne mesure rien n'allume aucun vumètre.
     public var meters: ColumnMeters { .idle }
 }

@@ -187,16 +187,7 @@ struct ColumnView: View {
             // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
             // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
             Group {
-                if column.kind == .music, let music = controller.musicPlayer, music.isMetering,
-                    column.slots.contains(where: { $0?.id == music.currentPad })
-                {
-                    // Le morceau en cours vient de cette colonne et le vumètre d'Apple Music (essai) tourne : le son réel de Music.
-                    HStack(alignment: .bottom, spacing: 8) {
-                        LevelMeter(column: 0, source: music.meters).frame(width: 14, height: density.faderTrackHeight)
-                        Text("Apple Music\n9e fader").font(.system(size: 10.5)).foregroundStyle(Surface.textTertiary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight)
-                } else if column.kind == .music {
+                if column.kind == .music, controller.musicPlayer?.isBridgeEnabled != true {
                     // Colonne Music : pas de fader (le volume est celui de Music, réglé par le 9e fader de l'APC).
                     VStack(alignment: .leading, spacing: 6) {
                         IconLabel("Volume", icon: .volume, size: 12)
@@ -211,7 +202,7 @@ struct ColumnView: View {
                     .padding(.horizontal, 10)
                     .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight, alignment: .topLeading)
                     .accessibilityElement(children: .combine)
-                } else if column.kind.hasAudio {
+                } else if column.kind.hasAudio || column.kind == .music {  // son, mixte, ou Music par le pont audio
                     HStack(alignment: .top, spacing: 8) {
                         VerticalFader(
                             name: column.name,

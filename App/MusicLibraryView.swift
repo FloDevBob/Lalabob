@@ -44,14 +44,17 @@ struct MusicLibraryView: View {
                 Spacer(minLength: 0)
             }
             Toggle(
-                "Vumètre d'Apple Music (essai)",
-                isOn: Binding(get: { musicPlayer.isMeterEnabled }, set: { musicPlayer.setMeterEnabled($0) })
+                "Son de Music par Lalabob",
+                isOn: Binding(get: { musicPlayer.isBridgeEnabled }, set: { musicPlayer.setBridgeEnabled($0) })
             )
             .toggleStyle(.switch)
             .controlSize(.mini)
             .font(.system(size: 11.5))
-            .help("Capte le son de Music pendant un morceau pour afficher un vumètre sous sa colonne (macOS demande l'autorisation d'enregistrement audio). Le son de Music n'est pas touché.")
-            if let problem = musicPlayer.meterProblem {
+            .help("Le son de Music passe par Lalabob : fader, filtre et vumètre de la colonne, sortie choisie dans Lalabob, fondus sans à-coups. macOS demande l'autorisation d'enregistrement audio. Si la capture s'arrête, Music redevient audible tout seul.")
+            if musicPlayer.isBridging {
+                Text("Le son de Music passe par Lalabob (colonne du morceau).").font(.system(size: 11)).foregroundStyle(Surface.textTertiary)
+            }
+            if let problem = musicPlayer.bridgeProblem {
                 Text(problem).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)
             }
             if let error = library.networkError {

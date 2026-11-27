@@ -259,7 +259,11 @@ private struct MusicDetails: View {
                 .accessibilityElement()
                 .accessibilityLabel("Position dans le morceau")
                 .accessibilityValue("\(AudioLibrary.formatDuration(Self.elapsed(event))) sur \(AudioLibrary.formatDuration(track.duration))")
-                IconLabel("Fondus, élagage et volume du pad : non disponibles pour un morceau Apple Music. Volume général : 9e fader.", icon: .warning, size: 13)
+                IconLabel(
+                    controller.musicPlayer?.isBridgeEnabled == true
+                        ? "Le son passe par Lalabob : fader, filtre et vumètre de la colonne. Volume général : 9e fader."
+                        : "Fondus, élagage et volume du pad : non disponibles pour un morceau Apple Music. Volume général : 9e fader.",
+                    icon: .warning, size: 13)
                     .font(.system(size: 11.5))
                     .foregroundStyle(Surface.textTertiary)
             }

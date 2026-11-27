@@ -1,4 +1,5 @@
 import Foundation
+import LalabobAudio
 import LalabobModel
 
 /// État du lecteur de l'app Music.
@@ -102,3 +103,13 @@ public actor AppleMusicPlayer: MusicPlayerControlling {
         _ = try await MusicScripting.run(command) { _ in 0 }
     }
 }
+
+/// Capter le son de Music dans un tampon (le pont audio, ADR 0011) ; un faux dans les tests.
+public protocol MusicAudioCapturing: Sendable {
+    /// Démarre la capture (Music devient muet) ; renvoie la fréquence d'échantillonnage du son capté.
+    func start(pid: pid_t, into ring: AudioRingBuffer) async throws -> Double
+    /// Arrête la capture : Music redevient audible.
+    func stop() async
+}
+
+extension ProcessAudioBridge: MusicAudioCapturing {}

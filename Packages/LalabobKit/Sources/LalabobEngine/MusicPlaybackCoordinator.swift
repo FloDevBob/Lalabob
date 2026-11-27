@@ -31,17 +31,25 @@ public final class MusicPlaybackCoordinator {
     /// Intervalle entre deux pas de volume pendant un fondu.
     public var rampStep: TimeInterval = 0.05
 
-    /// Vumètre d'Apple Music (essai) : capture du son de Music pendant qu'un morceau joue. Désactivé par défaut (macOS demande
-    /// l'autorisation « enregistrement audio »). Mémorisé sur ce Mac.
-    public private(set) var isMeterEnabled: Bool
-    /// `nil` : pas de mesure en cours ; sinon pourquoi elle a échoué, ou rien (`""`) si elle tourne.
-    public private(set) var meterProblem: String?
-    public private(set) var isMetering = false
-    @ObservationIgnored private let meter = ProcessAudioMeter()
+    /// **Pont audio** (ADR 0011) : le son de Music est capté (Music devient muet) et joué par Lalabob dans la colonne du morceau
+    /// (fader, filtre, vumètre, sortie de Lalabob ; fondus lissés). Désactivé par défaut ; mémorisé sur ce Mac.
+    public private(set) var isBridgeEnabled: Bool
+    /// La capture tourne : le son du morceau passe par Lalabob.
+    public private(set) var isBridging = false
+    /// Pourquoi le pont n'a pas pu servir (affiché dans le panneau) ; `nil` si tout va bien.
+    public private(set) var bridgeProblem: String?
+    /// Le tampon entre la capture et le moteur.
+    @ObservationIgnored public let ring = AudioRingBuffer()
+    @ObservationIgnored private let capture: any MusicAudioCapturing
+    @ObservationIgnored private let musicPID: @MainActor () -> pid_t?
     @ObservationIgnored private let defaults: UserDefaults
-    static let meterDefaultsKey = "musicMeterEnabled"
-    /// Crêtes du son de Music (colonne 0), pour le vumètre de la colonne du morceau en cours.
-    public nonisolated var meters: ColumnMeters { meter.meters }
+    @ObservationIgnored private var bridgeRate: Double = 48_000
+    @ObservationIgnored private var bridgeStartedAt: TimeInterval = 0
+    static let bridgeDefaultsKey = "musicBridgeEnabled"
+    /// Délais de sécurité du pont : grâce au démarrage, capture muette (plus rien d'écrit), son resté silencieux.
+    public var bridgeGrace: TimeInterval = 2
+    public var bridgeStaleLimit: TimeInterval = 1.5
+    public var bridgeSilenceLimit: TimeInterval = 4
 
     public private(set) var currentPad: Pad.ID?
     public private(set) var state: MusicPlayerState = .stopped
@@ -60,40 +68,68 @@ public final class MusicPlaybackCoordinator {
     /// Chaque geste invalide les gestes précédents encore en cours (un appui rapide après un autre gagne).
     @ObservationIgnored private var generation = 0
 
-    public init(player: any MusicPlayerControlling, defaults: UserDefaults = .standard) {
+    public init(
+        player: any MusicPlayerControlling, capture: any MusicAudioCapturing = ProcessAudioBridge(), defaults: UserDefaults = .standard,
+        musicPID: @escaping @MainActor () -> pid_t? = {
+            NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").first?.processIdentifier
+        }
+    ) {
         self.player = player
+        self.capture = capture
         self.defaults = defaults
-        self.isMeterEnabled = defaults.bool(forKey: Self.meterDefaultsKey)
+        self.musicPID = musicPID
+        self.isBridgeEnabled = defaults.bool(forKey: Self.bridgeDefaultsKey)
     }
 
-    /// Active ou coupe le vumètre d'Apple Music (essai).
-    public func setMeterEnabled(_ enabled: Bool) {
-        isMeterEnabled = enabled
-        defaults.set(enabled, forKey: Self.meterDefaultsKey)
-        meterProblem = nil
-        if enabled, state != .stopped { startMeter() } else { stopMeter() }
-    }
+    // MARK: Pont audio
 
-    private func startMeter() {
-        guard isMeterEnabled, !isMetering,
-            let pid = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").first?.processIdentifier
-        else { return }
-        isMetering = true
+    /// Active ou coupe le pont audio. Activé pendant un morceau : le son bascule tout de suite dans sa colonne.
+    public func setBridgeEnabled(_ enabled: Bool) {
+        isBridgeEnabled = enabled
+        defaults.set(enabled, forKey: Self.bridgeDefaultsKey)
+        bridgeProblem = nil
         Task {
-            do {
-                try await meter.start(pid: pid)
-                meterProblem = nil
-            } catch {
-                isMetering = false
-                meterProblem = "Vumètre indisponible : autorisez l'enregistrement audio (Réglages Système › Confidentialité et sécurité)."
+            if enabled {
+                if await startBridge(), let pad = currentPad {
+                    ring.setGain(1, overFrames: 0)
+                    owner?.attachMusicBridge(ring, sampleRate: bridgeRate, pad: pad)
+                }
+            } else {
+                await stopBridge()
             }
         }
     }
 
-    private func stopMeter() {
-        guard isMetering else { return }
-        isMetering = false
-        Task { await meter.stop() }
+    /// Démarre la capture si l'option est active ; `true` si le son passe par Lalabob. Refusée : Music joue directement.
+    private func startBridge() async -> Bool {
+        guard isBridgeEnabled else { return false }
+        if isBridging { return true }
+        guard let pid = musicPID() else { return false }
+        do {
+            bridgeRate = try await capture.start(pid: pid, into: ring)
+            isBridging = true
+            bridgeStartedAt = ProcessInfo.processInfo.systemUptime
+            bridgeProblem = nil
+            return true
+        } catch {
+            bridgeProblem = "Le son de Music ne peut pas passer par Lalabob : autorisez l'enregistrement audio (Réglages Système › Confidentialité et sécurité). Music joue directement."
+            return false
+        }
+    }
+
+    /// Défait la capture : Music redevient audible tout seul (sa sortie n'est plus coupée).
+    private func stopBridge(reason: String? = nil) async {
+        guard isBridging else { return }
+        isBridging = false
+        await capture.stop()
+        owner?.detachMusicBridge()
+        if let reason { bridgeProblem = reason }
+    }
+
+    /// Fondu fait dans Lalabob (pont actif) : le gain du tampon glisse échantillon par échantillon, sans à-coup.
+    private func bridgeFade(to gain: Float, over duration: TimeInterval) async {
+        ring.setGain(gain, overFrames: Int(max(0, duration) * bridgeRate))
+        if duration > 0 { try? await Task.sleep(for: .seconds(duration)) }
     }
 
     // MARK: Gestes
@@ -156,8 +192,12 @@ public final class MusicPlaybackCoordinator {
                 return
             }
             let full = await fullVolume()
-            if wasPlaying { await ramp(to: { 0 }, over: crossfadeDuration / 2, gen) }
+            let bridged = await startBridge()
+            if wasPlaying {
+                if bridged { await bridgeFade(to: 0, over: crossfadeDuration / 2) } else { await ramp(to: { 0 }, over: crossfadeDuration / 2, gen) }
+            }
             guard gen == generation else { return }
+            if bridged, !wasPlaying { ring.setGain(1, overFrames: 0) }
             // L'ancien pad s'éteint à l'écran et sur le contrôleur.
             if let previousPad { previousOwner?.applyMusicPlayback(PlaybackEvent(pad: previousPad, state: .idle, duration: 0)) }
             clear(publishing: false)
@@ -180,10 +220,16 @@ public final class MusicPlaybackCoordinator {
             position = 0
             state = .playing
             self.owner = owner
+            if bridged { owner.attachMusicBridge(ring, sampleRate: bridgeRate, pad: padID) }  // le son va dans la colonne de ce pad
             publish()
             startPolling()
-            startMeter()
-            if wasPlaying { await ramp(to: { [weak self] in self?.faderTarget ?? full }, over: crossfadeDuration / 2, gen) }
+            if wasPlaying {
+                if bridged {
+                    await bridgeFade(to: 1, over: crossfadeDuration / 2)
+                } else {
+                    await ramp(to: { [weak self] in self?.faderTarget ?? full }, over: crossfadeDuration / 2, gen)
+                }
+            }
         }
     }
 
@@ -214,7 +260,9 @@ public final class MusicPlaybackCoordinator {
         let wasPlaying = state == .playing
         transition = Task {
             let full = await fullVolume()
-            if wasPlaying, fade > 0 { await ramp(to: { 0 }, over: fade, gen) }
+            if wasPlaying, fade > 0 {
+                if isBridging { await bridgeFade(to: 0, over: fade) } else { await ramp(to: { 0 }, over: fade, gen) }
+            }
             guard gen == generation else { return }
             try? await player.stop()
             try? await player.setVolume(faderTarget ?? full)  // Music garde son volume pour la suite
@@ -268,11 +316,25 @@ public final class MusicPlaybackCoordinator {
             if snapshot.state == .stopped || !snapshot.trackID.isEmpty { clear(publishing: true) }
             return
         }
+        await checkBridgeHealth(position: snapshot.position, playing: snapshot.state == .playing)
         let drift = abs(snapshot.position - expectedPosition)
         let changed = snapshot.state != state
         position = snapshot.position
         state = snapshot.state
         if changed || drift > 0.5 { publish() }
+    }
+
+    /// Sécurité en scène (ADR 0011) : si la capture ne fournit plus rien, ou seulement du silence (morceau protégé ?), le pont est
+    /// défait et Music redevient audible.
+    private func checkBridgeHealth(position: TimeInterval, playing: Bool) async {
+        guard isBridging, playing, ProcessInfo.processInfo.systemUptime - bridgeStartedAt > bridgeGrace else { return }
+        if ring.secondsSinceLastWrite > bridgeStaleLimit {
+            await stopBridge(reason: "La capture du son de Music s'est arrêtée : Music joue directement.")
+        } else if position > bridgeSilenceLimit, ring.secondsSinceLastSound > bridgeSilenceLimit {
+            await stopBridge(reason: "Le son de Music arrive muet dans Lalabob (morceau protégé ?) : Music joue directement. Option désactivée.")
+            isBridgeEnabled = false
+            defaults.set(false, forKey: Self.bridgeDefaultsKey)
+        }
     }
 
     /// La position que l'écran affiche en ce moment (d'après le dernier état publié).
@@ -293,7 +355,6 @@ public final class MusicPlaybackCoordinator {
     }
 
     private func clear(publishing: Bool) {
-        stopMeter()
         if publishing, let pad = currentPad { owner?.applyMusicPlayback(PlaybackEvent(pad: pad, state: .idle, duration: 0)) }
         polling?.cancel()
         polling = nil

@@ -64,7 +64,7 @@ targets:
         LSApplicationCategoryType: public.app-category.music
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: "© 2026 Lalabob"
-        NSAudioCaptureUsageDescription: Lalabob mesure le son d'Apple Music pour afficher un vumètre sous la colonne du morceau en cours (le son n'est ni enregistré ni modifié).
+        NSAudioCaptureUsageDescription: "Lalabob fait passer le son d'Apple Music par ses colonnes (volume, filtre, vumètre, sortie choisie). Rien n'est enregistré."
         NSAppleEventsUsageDescription: Lalabob règle le volume d'Apple Music avec le 9e fader de l'APC mini mk2.
         # Document .lalabob : un paquet (dossier) avec show.json et Audio/.
         UTExportedTypeDeclarations:

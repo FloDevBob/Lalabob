@@ -134,7 +134,7 @@ enum HelpContent {
                 "**Volume** : celui de Music, réglé par le 9e fader de l'APC. Pas de volume par pad, pas de fondus ni d'élagage (morceaux protégés).",
                 "**☁ sur un pad** : le morceau est dans le nuage, Internet est nécessaire. Téléchargez-le avant la représentation (« Télécharger » dans le panneau).",
                 "**Introuvable** : le morceau n'est plus dans votre bibliothèque ; glissez-en un autre sur le pad.",
-                "**Vumètre d'Apple Music (essai)** : à activer dans le panneau ; macOS demande l'autorisation d'enregistrement audio. Le son de Music n'est pas modifié.",
+                "**Son de Music par Lalabob** : interrupteur du panneau. Le morceau sort par Lalabob, dans sa colonne (fader, filtre, vumètre, sortie choisie). macOS demande l'autorisation d'enregistrement audio. Si la capture s'arrête, Music redevient audible tout seul.",
             ]),
         ])
 
