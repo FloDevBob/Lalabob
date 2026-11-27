@@ -59,7 +59,7 @@ public enum Typography {
 
 /// Hauteurs de la grille qui s'adaptent à la fenêtre. Les **pads** absorbent toute la hauteur disponible : plus hauts
 /// quand la fenêtre l'est (jusqu'à `maximumPadHeight`), plus bas quand elle l'est moins. La **piste des faders** garde
-/// sa taille (120 pt) ; elle ne rétrécit qu'en dernier recours, quand les pads ont atteint leur minimum lisible
+/// sa taille (108 pt) ; elle ne rétrécit qu'en dernier recours, quand les pads ont atteint leur minimum lisible
 /// (petite fenêtre, plein écran d'un portable). Sous ce minimum, la zone défile. Pure, donc testable.
 public struct GridDensity: Equatable, Sendable {
     public var padHeight: CGFloat
@@ -71,7 +71,7 @@ public struct GridDensity: Equatable, Sendable {
     }
 
     /// Les dimensions de la maquette (valeur par défaut avant la mesure de la fenêtre).
-    public static let regular = GridDensity(padHeight: Metrics.padHeight, faderTrackHeight: 120)
+    public static let regular = GridDensity(padHeight: Metrics.padHeight, faderTrackHeight: 108)
 
     /// En dessous, le titre et le sous-titre d'un pad ne tiennent plus.
     public static let minimumPadHeight: CGFloat = 38
