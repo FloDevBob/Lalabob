@@ -55,6 +55,12 @@ struct InspectorView: View {
                         .frame(height: Self.headerHeight)
                     Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
                     MusicDetails(position: position, pad: pad, track: track)
+                } else if controller.isDMXLighting, pad.light != nil {
+                    // Mode Projecteurs : l'état lumineux se règle ici (types, couleurs, roue).
+                    DMXLightHeader(position: position, pad: pad)
+                        .frame(height: Self.headerHeight)
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    DMXLookPanel(position: position, pad: pad)
                 } else {
                     LightHeader(position: position, pad: pad)
                         .frame(height: Self.headerHeight)
@@ -448,7 +454,7 @@ private struct PadKindControl: View {
 }
 
 /// Filet vertical entre deux groupes sans rapport.
-private struct HeaderDivider: View {
+struct HeaderDivider: View {
     var body: some View {
         Rectangle().fill(Color.white.opacity(0.1)).frame(width: 1, height: 22).accessibilityHidden(true)
     }
@@ -456,7 +462,7 @@ private struct HeaderDivider: View {
 
 // MARK: - Titre et sous-titre (double-clic pour modifier)
 
-private struct TitleFields: View {
+struct TitleFields: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad
@@ -656,7 +662,7 @@ private struct RetriggerControl: View {
 
 // MARK: - Couleur (popover) : un seul bouton, la pastille de la teinte en cours (sans son nom)
 
-private struct ColorPopoverButton: View {
+struct ColorPopoverButton: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad

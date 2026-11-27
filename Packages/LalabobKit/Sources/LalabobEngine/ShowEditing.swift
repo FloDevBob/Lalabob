@@ -443,12 +443,11 @@ extension ShowController {
     }
 
     /// « Nouvel appui » de la cue d'un pad son et lumière : n'envoyer la note que si LightKey dit la cue éteinte (`turnOnOnly`), ou à
-    /// chaque appui (`toggle`). Une annulation ; refusé verrouillé ; sans effet sur un pad sans son ou sans cue.
+    /// chaque appui (`toggle`). Une annulation ; refusé verrouillé ; sans effet sur un pad sans cue. En mode Projecteurs, un pad lumière seul s'en sert aussi (« laisse allumé » / « allume ou éteint »).
     @discardableResult
     public func setLightRetrigger(at position: GridPosition, to value: LightRetrigger) -> Bool {
         commit("Nouvel appui de la lumière") { show, grid in
-            guard position.isValid, var pad = show.grids[grid][position], pad.audio != nil, pad.light != nil,
-                pad.lightRetrigger != value
+            guard position.isValid, var pad = show.grids[grid][position], pad.light != nil, pad.lightRetrigger != value
             else { return false }
             pad.lightRetrigger = value
             show.grids[grid][position] = pad
