@@ -704,16 +704,64 @@ public final class ShowController {
     /// (actif cadenas fermé) et ne passe pas par ⌘Z ; il est enregistré avec le spectacle. Sans effet sur une colonne lumière.
     public func setColumnFilter(_ column: Int, value: Double) {
         guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind != .light else { return }
-        let value = FilterCurve.snapped(value)
-        guard show.grids[selectedGridIndex].columns[column].filter != value else { return }
-        show.grids[selectedGridIndex].columns[column].filter = value
-        onShowChange?(show)
-        commands.yield(.filter(column: column, value: value))
+        filterGlides.removeValue(forKey: FilterGlideKey(grid: currentGrid.id, column: column))?.cancel()  // la main reprend
+        applyColumnFilter(column, value: value, inGrid: currentGrid.id)
     }
 
-    /// « Tout remettre au neutre » d'un filtre (double-clic sur le potard).
+    /// Durée du retour au neutre d'un filtre (double-clic sur le potard). 0 = tout de suite.
+    public var filterResetDuration: TimeInterval = 1.5
+
+    /// Remet le filtre au neutre (double-clic sur le potard) **en glissant** pendant `filterResetDuration` : le son s'ouvre
+    /// doucement et l'aiguille du potard suit. Toucher le potard pendant le glissé l'interrompt. Changer de grille ne l'arrête
+    /// pas : la grille de départ finit au neutre.
     public func resetColumnFilter(_ column: Int) {
-        setColumnFilter(column, value: 0)
+        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind != .light else { return }
+        let grid = currentGrid.id
+        let key = FilterGlideKey(grid: grid, column: column)
+        filterGlides.removeValue(forKey: key)?.cancel()
+        let start = currentGrid.columns[column].filter
+        guard start != 0 else { return }
+        guard filterResetDuration > 0 else {
+            applyColumnFilter(column, value: 0, inGrid: grid)
+            return
+        }
+        let duration = filterResetDuration
+        filterGlides[key] = Task { [weak self] in
+            let began = ContinuousClock.now
+            while !Task.isCancelled {
+                let elapsed = ContinuousClock.now - began
+                let t = min(1, Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18) / duration
+                let progress = min(1, t)
+                // Courbe en cosinus : départ et arrivée en douceur.
+                let value = start * (1 + cos(Double.pi * progress)) / 2
+                guard let self else { return }
+                self.applyColumnFilter(column, value: progress >= 1 ? 0 : value, inGrid: grid)
+                if progress >= 1 { break }
+                try? await Task.sleep(for: .milliseconds(30))  // ~33 pas par seconde, comme un glisser à la souris
+            }
+            if !Task.isCancelled { self?.filterGlides[key] = nil }
+        }
+    }
+
+    private struct FilterGlideKey: Hashable {
+        let grid: PadGrid.ID
+        let column: Int
+    }
+
+    /// Un retour au neutre en cours par colonne et par grille.
+    @ObservationIgnored private var filterGlides: [FilterGlideKey: Task<Void, Never>] = [:]
+
+    /// Écrit le filtre d'une colonne de la grille `gridID` ; le moteur ne le reçoit que si c'est la grille affichée (les autres
+    /// lui sont renvoyées au changement d'onglet).
+    private func applyColumnFilter(_ column: Int, value: Double, inGrid gridID: PadGrid.ID) {
+        guard let index = show.grids.firstIndex(where: { $0.id == gridID }),
+            show.grids[index].columns[column].kind != .light
+        else { return }
+        let value = FilterCurve.snapped(value)
+        guard show.grids[index].columns[column].filter != value else { return }
+        show.grids[index].columns[column].filter = value
+        onShowChange?(show)
+        if index == selectedGridIndex { commands.yield(.filter(column: column, value: value)) }
     }
 
     /// Les niveaux affichés ont pu changer : un fader physique n'est accroché que s'il y est encore.
