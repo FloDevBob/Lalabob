@@ -513,3 +513,8 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   remplacé. 15 tests (tampon, rendu hors ligne du moteur, coordinateur avec fausse capture). **À essayer** : ☐ autorisation demandée ☐ un morceau
   d'abonnement passe-t-il (ou silence → option coupée) ? ☐ fader et filtre de la colonne ☐ fondu enchaîné à l'oreille ☐ changer de sortie en jouant
   ☐ quitter Lalabob en plein morceau : Music redevient audible ☐ décalage audible ?
+- **Pont audio, retour d'essai (27/11/2026)** : le son passe (un morceau protégé **est** capté) mais **grésille**. Corrections : la capture suit
+  l'horloge de la **sortie choisie dans Lalabob** avec la compensation de dérive de macOS (`kAudioSubTapDriftCompensationKey`), fréquence réelle de
+  l'agrégat (et non celle annoncée par la capture), entrées de la sortie (ex. MOTU M2) sautées avant le son capté, lecture du tampon à **vitesse
+  ajustée** (±1 %, interpolation) au lieu de sauts, avance de ≈ 65 ms, capture relancée au changement de sortie ; **diagnostic** dans le panneau
+  (fréquences, coupures, sauts). 3 tests de plus. À réessayer.

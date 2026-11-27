@@ -87,19 +87,36 @@ public final class AudioRingBuffer: @unchecked Sendable {
 
     // MARK: Lecteur (fil de rendu)
 
-    /// Remplit `frames` trames (silence si rien à lire), gain appliqué.
+    /// Fraction de trame entre deux échantillons (lecture à vitesse ajustée) : lue et écrite par le lecteur seul.
+    private var fraction: Double = 0
+    private let underrunCount = Atomic<Int>(0)
+    private let skipCount = Atomic<Int>(0)
+
+    /// Coupures (le tampon s'est vidé) et sauts (trop d'avance rattrapée d'un coup) depuis la création : chacun s'entend.
+    public var underruns: Int { underrunCount.load(ordering: .relaxed) }
+    public var skips: Int { skipCount.load(ordering: .relaxed) }
+
+    /// Remplit `frames` trames, gain appliqué. Pour rattraper la dérive entre l'horloge de la capture et celle de la sortie, la
+    /// lecture va un tout petit peu plus vite quand le tampon se remplit, plus lentement quand il se vide (au plus ±1 %,
+    /// interpolation linéaire) : pas de saut, donc pas de clic. Saut franc seulement au-delà de 4 × l'avance voulue.
     public func read(left destination: UnsafeMutablePointer<Float>, right destinationRight: UnsafeMutablePointer<Float>, frames: Int) {
         var read = readIndex.load(ordering: .relaxed)
         let write = writeIndex.load(ordering: .acquiring)
         var available = write - read
         if !primed { primed = available >= latencyFrames }
-        if primed, available > 3 * latencyFrames {
-            read = write - latencyFrames  // trop d'avance : on rattrape (petit saut plutôt qu'un retard qui grandit)
+        if primed, available > 4 * latencyFrames {
+            read = write - latencyFrames
             available = latencyFrames
+            fraction = 0
+            skipCount.add(1, ordering: .relaxed)
         }
+        // Vitesse de lecture : 1 quand l'avance est juste, jusqu'à ±1 % quand elle s'en écarte.
+        let error = Double(available - latencyFrames) / Double(max(latencyFrames, 1))
+        let ratio = 1 + max(-0.01, min(0.01, error * 0.01))
         let target = Float(bitPattern: targetGainBits.load(ordering: .relaxed))
         var rampLeft = rampFramesLeft.load(ordering: .acquiring)
-        let count = primed ? min(frames, available) : 0
+        var position = fraction  // relative à `read`
+        var ranDry = false
         for i in 0..<frames {
             if rampLeft > 0 {
                 currentGain += (target - currentGain) / Float(rampLeft)
@@ -107,17 +124,35 @@ public final class AudioRingBuffer: @unchecked Sendable {
             } else {
                 currentGain = target
             }
-            if i < count {
-                let slot = (read + i) % capacity
-                destination[i] = left[slot] * currentGain
-                destinationRight[i] = right[slot] * currentGain
-            } else {
+            let whole = Int(position)
+            let frac = Float(position - Double(whole))
+            // Il faut l'échantillon courant, et le suivant s'il y a une fraction à interpoler.
+            guard primed, whole + (frac > 0 ? 1 : 0) < available else {
                 destination[i] = 0
                 destinationRight[i] = 0
+                ranDry = primed
+                continue
             }
+            let slot = (read + whole) % capacity
+            var l = left[slot]
+            var r = right[slot]
+            if frac > 0 {
+                let next = (slot + 1) % capacity
+                l += (left[next] - l) * frac
+                r += (right[next] - r) * frac
+            }
+            destination[i] = l * currentGain
+            destinationRight[i] = r * currentGain
+            position += ratio
         }
         rampFramesLeft.store(rampLeft, ordering: .relaxed)
-        if primed, count < frames { primed = available > 0 }  // tampon vide : on se réamorce
-        readIndex.store(read + count, ordering: .releasing)
+        let consumed = min(Int(position), available)
+        fraction = position - Double(consumed)
+        if ranDry {
+            underrunCount.add(1, ordering: .relaxed)
+            primed = false  // tampon vide : on attend de nouveau l'avance voulue
+            fraction = 0
+        }
+        readIndex.store(read + consumed, ordering: .releasing)
     }
 }

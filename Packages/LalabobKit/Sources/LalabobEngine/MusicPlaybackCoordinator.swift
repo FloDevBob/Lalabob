@@ -39,12 +39,18 @@ public final class MusicPlaybackCoordinator {
     /// Pourquoi le pont n'a pas pu servir (affiché dans le panneau) ; `nil` si tout va bien.
     public private(set) var bridgeProblem: String?
     /// Le tampon entre la capture et le moteur.
-    @ObservationIgnored public let ring = AudioRingBuffer()
+    @ObservationIgnored public let ring = AudioRingBuffer(capacity: 32_768, latencyFrames: 3_072)  // ≈ 65 ms d'avance
     @ObservationIgnored private let capture: any MusicAudioCapturing
     @ObservationIgnored private let musicPID: @MainActor () -> pid_t?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var bridgeRate: Double = 48_000
     @ObservationIgnored private var bridgeStartedAt: TimeInterval = 0
+    /// Ce que la capture a trouvé (fréquences, entrées sautées) : affiché pour le diagnostic.
+    public private(set) var bridgeInfo: ProcessAudioBridge.Info?
+    /// La sortie du spectacle qui va jouer (avant que `owner` soit posé, au premier appui).
+    @ObservationIgnored private var pendingOwnerOutput: String?
+    /// Coupures et sauts du tampon depuis le démarrage du pont : chacun s'entend (diagnostic).
+    public var bridgeGlitches: (underruns: Int, skips: Int) { (ring.underruns, ring.skips) }
     static let bridgeDefaultsKey = "musicBridgeEnabled"
     /// Délais de sécurité du pont : grâce au démarrage, capture muette (plus rien d'écrit), son resté silencieux.
     public var bridgeGrace: TimeInterval = 2
@@ -106,7 +112,9 @@ public final class MusicPlaybackCoordinator {
         if isBridging { return true }
         guard let pid = musicPID() else { return false }
         do {
-            bridgeRate = try await capture.start(pid: pid, into: ring)
+            let info = try await capture.start(pid: pid, outputUID: pendingOwnerOutput ?? owner?.selectedOutputUID, into: ring)
+            bridgeRate = info.sampleRate
+            bridgeInfo = info
             isBridging = true
             bridgeStartedAt = ProcessInfo.processInfo.systemUptime
             bridgeProblem = nil
@@ -124,6 +132,18 @@ public final class MusicPlaybackCoordinator {
         await capture.stop()
         owner?.detachMusicBridge()
         if let reason { bridgeProblem = reason }
+    }
+
+    /// La sortie du spectacle qui joue a changé : la capture redémarre sur l'horloge de la nouvelle sortie.
+    public func outputChanged(to uid: String?, owner changed: ShowController) {
+        guard isBridging, owner === changed else { return }
+        pendingOwnerOutput = uid
+        Task {
+            isBridging = false
+            await capture.stop()
+            ring.setGain(1, overFrames: 0)
+            if await startBridge(), let pad = currentPad { owner?.attachMusicBridge(ring, sampleRate: bridgeRate, pad: pad) }
+        }
     }
 
     /// Fondu fait dans Lalabob (pont actif) : le gain du tampon glisse échantillon par échantillon, sans à-coup.
@@ -186,6 +206,7 @@ public final class MusicPlaybackCoordinator {
         let previousPad = currentPad
         let previousOwner = self.owner
         let wasPlaying = state == .playing
+        pendingOwnerOutput = owner.selectedOutputUID
         transition = Task {
             guard await player.isRunning() else {
                 owner.showMusicNotice("Apple Music est fermé : ouvrez Music sur ce Mac pour jouer ce morceau.")

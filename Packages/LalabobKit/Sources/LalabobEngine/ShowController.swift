@@ -658,6 +658,7 @@ public final class ShowController {
         selectedOutputUID = uid
         defaults.set(uid, forKey: Self.outputDefaultsKey)
         commands.yield(.output(uid))
+        musicPlayer?.outputChanged(to: uid, owner: self)  // pont audio : la capture suit l'horloge de la nouvelle sortie
     }
 
     public func refreshOutputDevices() {

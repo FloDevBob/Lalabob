@@ -10,6 +10,11 @@ struct AudioRingBufferTests {
         values.withUnsafeBufferPointer { left in ring.write(left: left.baseAddress!, right: left.baseAddress!, frames: values.count) }
     }
 
+    /// Égalité à 0,1 près : la lecture à vitesse ajustée interpole un peu entre les échantillons.
+    private func close(_ a: [Float], _ b: [Float]) -> Bool {
+        a.count == b.count && zip(a, b).allSatisfy { abs($0 - $1) < 0.1 }
+    }
+
     private func read(_ ring: AudioRingBuffer, _ frames: Int) -> [Float] {
         var left = [Float](repeating: -1, count: frames)
         var right = [Float](repeating: -1, count: frames)
@@ -26,7 +31,7 @@ struct AudioRingBufferTests {
         #expect(read(ring, 4) == [0, 0, 0, 0])
         write(ring, [5, 6, 7, 8])
         #expect(read(ring, 4) == [1, 2, 3, 4])
-        #expect(read(ring, 4) == [5, 6, 7, 8])
+        #expect(close(read(ring, 4), [5, 6, 7, 8]))
     }
 
     @Test("Manque de son : silence, jamais de vieux échantillons")
@@ -44,23 +49,42 @@ struct AudioRingBufferTests {
         #expect(read(ring, 4) == [17, 18, 19, 20])
     }
 
-    @Test("Tampon plein : ce qui ne tient pas est abandonné")
+    @Test("Tampon plein : ce qui ne tient pas est abandonné, le lecteur rattrape d'un saut (compté)")
     func overflow() {
-        let ring = AudioRingBuffer(capacity: 16, latencyFrames: 4)
+        let ring = AudioRingBuffer(capacity: 16, latencyFrames: 2)
         write(ring, (1...20).map(Float.init))
-        // 16 tiennent ; le lecteur, très en retard, rattrape vers la fin de ce qui est écrit.
-        #expect(read(ring, 4) == [13, 14, 15, 16])
+        #expect(read(ring, 2) == [15, 16])
+        #expect(ring.skips == 1)
+    }
+
+    @Test("Avance un peu trop grande : lecture à peine plus rapide (≤ 1 %), sans saut ni clic")
+    func gentleDrift() {
+        let ring = AudioRingBuffer(capacity: 4096, latencyFrames: 256)
+        let ramp = (0..<600).map { Float($0) / 600 }
+        write(ring, ramp)
+        let out = read(ring, 512)
+        let steps = zip(out, out.dropFirst()).map { $1 - $0 }
+        #expect(steps.allSatisfy { $0 > 0 && $0 < 1.0 / 600 * 1.011 })  // continu, jamais plus de 1 % plus vite
+        #expect(ring.skips == 0 && ring.underruns == 0)
+    }
+
+    @Test("Coupure comptée quand le tampon se vide")
+    func underrunCounted() {
+        let ring = AudioRingBuffer(capacity: 64, latencyFrames: 4)
+        write(ring, [1, 2, 3, 4])
+        _ = read(ring, 8)
+        #expect(ring.underruns == 1)
     }
 
     @Test("Entrelacé : un canal sur deux")
     func interleaved() {
-        let ring = AudioRingBuffer(capacity: 64, latencyFrames: 2)
+        let ring = AudioRingBuffer(capacity: 64, latencyFrames: 3)
         let data: [Float] = [1, -1, 2, -2, 3, -3]
         data.withUnsafeBufferPointer { p in ring.write(left: p.baseAddress!, right: p.baseAddress! + 1, frames: 3, stride: 2) }
         var left = [Float](repeating: 0, count: 3)
         var right = [Float](repeating: 0, count: 3)
         left.withUnsafeMutableBufferPointer { l in right.withUnsafeMutableBufferPointer { r in ring.read(left: l.baseAddress!, right: r.baseAddress!, frames: 3) } }
-        #expect(left == [1, 2, 3] && right == [-1, -2, -3])
+        #expect(close(left, [1, 2, 3]) && close(right, [-1, -2, -3]))
     }
 
     @Test("Fondu : le gain glisse sans saut jusqu'à la cible")

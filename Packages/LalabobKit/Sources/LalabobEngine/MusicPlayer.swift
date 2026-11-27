@@ -106,8 +106,8 @@ public actor AppleMusicPlayer: MusicPlayerControlling {
 
 /// Capter le son de Music dans un tampon (le pont audio, ADR 0011) ; un faux dans les tests.
 public protocol MusicAudioCapturing: Sendable {
-    /// Démarre la capture (Music devient muet) ; renvoie la fréquence d'échantillonnage du son capté.
-    func start(pid: pid_t, into ring: AudioRingBuffer) async throws -> Double
+    /// Démarre la capture (Music devient muet) en suivant l'horloge de la sortie `outputUID` ; dit ce qu'elle a trouvé.
+    func start(pid: pid_t, outputUID: String?, into ring: AudioRingBuffer) async throws -> ProcessAudioBridge.Info
     /// Arrête la capture : Music redevient audible.
     func stop() async
 }

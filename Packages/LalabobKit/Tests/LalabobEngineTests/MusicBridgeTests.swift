@@ -11,10 +11,10 @@ actor FakeCapture: MusicAudioCapturing {
     private(set) var starts = 0
     private(set) var stops = 0
     func refuse() { refuses = true }
-    func start(pid: pid_t, into ring: AudioRingBuffer) async throws -> Double {
+    func start(pid: pid_t, outputUID: String?, into ring: AudioRingBuffer) async throws -> ProcessAudioBridge.Info {
         if refuses { throw ProcessAudioBridge.Failure.tapRefused(-1) }
         starts += 1
-        return 48_000
+        return ProcessAudioBridge.Info(sampleRate: 48_000, tapSampleRate: 48_000, skippedBuffers: 0)
     }
     func stop() async { stops += 1 }
 }

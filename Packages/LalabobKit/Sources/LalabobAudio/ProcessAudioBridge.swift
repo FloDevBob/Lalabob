@@ -19,12 +19,30 @@ public actor ProcessAudioBridge {
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
 
+    /// Ce que la capture a trouvé en démarrant (diagnostic affiché dans le panneau).
+    public struct Info: Equatable, Sendable {
+        /// Fréquence à laquelle l'appareil de capture tourne vraiment : celle des échantillons écrits dans le tampon.
+        public var sampleRate: Double
+        /// Fréquence annoncée par la capture elle-même.
+        public var tapSampleRate: Double
+        /// Tampons d'entrée de la sortie audio (micro, entrées de la carte son) sautés avant ceux de la capture.
+        public var skippedBuffers: Int
+
+        public init(sampleRate: Double, tapSampleRate: Double, skippedBuffers: Int) {
+            self.sampleRate = sampleRate
+            self.tapSampleRate = tapSampleRate
+            self.skippedBuffers = skippedBuffers
+        }
+    }
+
     public init() {}
 
     public var isRunning: Bool { procID != nil }
 
-    /// Capte le son de l'app de ce numéro de processus dans `ring` ; renvoie la fréquence d'échantillonnage du son capté.
-    public func start(pid: pid_t, into ring: AudioRingBuffer) throws(Failure) -> Double {
+    /// Capte le son de l'app de ce numéro de processus dans `ring`. `outputUID` : la sortie où Lalabob joue (`nil` = sortie par
+    /// défaut) : la capture suit **son horloge**, avec la compensation de dérive de macOS, pour que capture et lecture avancent au
+    /// même pas (sinon le tampon se vide ou déborde : grésillement).
+    public func start(pid: pid_t, outputUID: String?, into ring: AudioRingBuffer) throws(Failure) -> Info {
         if procID != nil { stop() }
         let process = try Self.processObject(for: pid)
 
@@ -36,16 +54,17 @@ public actor ProcessAudioBridge {
         let tapStatus = AudioHardwareCreateProcessTap(description, &tap)
         guard tapStatus == noErr else { throw .tapRefused(tapStatus) }
         tapID = tap
-        let sampleRate = Self.sampleRate(ofTap: tap) ?? 48_000
+        let tapSampleRate = Self.sampleRate(ofTap: tap) ?? 48_000
+        let clockUID = outputUID ?? Self.defaultOutputUID()
 
         var aggregateDescription: [String: Any] = [
             kAudioAggregateDeviceNameKey: "Lalabob · pont Apple Music",
             kAudioAggregateDeviceUIDKey: UUID().uuidString,
             kAudioAggregateDeviceIsPrivateKey: true,
             kAudioAggregateDeviceTapAutoStartKey: true,
-            kAudioAggregateDeviceTapListKey: [[kAudioSubTapUIDKey: description.uuid.uuidString]],
+            kAudioAggregateDeviceTapListKey: [[kAudioSubTapUIDKey: description.uuid.uuidString, kAudioSubTapDriftCompensationKey: true]],
         ]
-        if let output = Self.defaultOutputUID() {
+        if let output = clockUID {
             aggregateDescription[kAudioAggregateDeviceMainSubDeviceKey] = output
             aggregateDescription[kAudioAggregateDeviceSubDeviceListKey] = [[kAudioSubDeviceUIDKey: output]]
         }
@@ -56,13 +75,20 @@ public actor ProcessAudioBridge {
             throw .deviceFailed(aggregateStatus)
         }
         aggregateID = aggregate
+        // La vraie fréquence de l'agrégat (celle de la sortie qui donne l'horloge), et les entrées de cette sortie, qui arrivent
+        // avant le son capté dans la liste de tampons.
+        let sampleRate = Self.nominalSampleRate(of: aggregate) ?? tapSampleRate
+        let skip = clockUID.flatMap(Self.deviceID(forUID:)).map(Self.inputBufferCount(of:)) ?? 0
 
         var proc: AudioDeviceIOProcID?
         let procStatus = AudioDeviceCreateIOProcIDWithBlock(&proc, aggregate, nil) { _, input, _, _, _ in
             // Fil de capture : copie dans le tampon circulaire, aucun verrou, aucune allocation.
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
-            guard let first = buffers.first, let firstData = first.mData?.assumingMemoryBound(to: Float.self) else { return }
-            if buffers.count >= 2, let secondData = buffers[1].mData?.assumingMemoryBound(to: Float.self) {
+            guard buffers.count > skip, let firstData = buffers[skip].mData?.assumingMemoryBound(to: Float.self) else { return }
+            let first = buffers[skip]
+            if buffers.count >= skip + 2, first.mNumberChannels == 1,
+                let secondData = buffers[skip + 1].mData?.assumingMemoryBound(to: Float.self)
+            {
                 let frames = Int(first.mDataByteSize) / MemoryLayout<Float>.size
                 ring.write(left: firstData, right: secondData, frames: frames)  // non entrelacé : un tampon par canal
             } else {
@@ -81,7 +107,7 @@ public actor ProcessAudioBridge {
             stop()
             throw .deviceFailed(startStatus)
         }
-        return sampleRate
+        return Info(sampleRate: sampleRate, tapSampleRate: tapSampleRate, skippedBuffers: skip)
     }
 
     /// Arrête la capture et défait tout : l'app captée redevient audible.
@@ -95,6 +121,43 @@ public actor ProcessAudioBridge {
         aggregateID = AudioObjectID(kAudioObjectUnknown)
         if tapID != kAudioObjectUnknown { AudioHardwareDestroyProcessTap(tapID) }
         tapID = AudioObjectID(kAudioObjectUnknown)
+    }
+
+    private static func nominalSampleRate(of device: AudioObjectID) -> Double? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var rate: Float64 = 0
+        var size = UInt32(MemoryLayout<Float64>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &rate) == noErr, rate > 0 else { return nil }
+        return rate
+    }
+
+    private static func deviceID(forUID uid: String) -> AudioObjectID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyTranslateUIDToDevice, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var cfUID = uid as CFString
+        var device = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        let status = withUnsafeMutablePointer(to: &cfUID) { pointer in
+            AudioObjectGetPropertyData(
+                AudioObjectID(kAudioObjectSystemObject), &address, UInt32(MemoryLayout<CFString>.size), pointer, &size, &device)
+        }
+        return status == noErr && device != kAudioObjectUnknown ? device : nil
+    }
+
+    /// Nombre de tampons d'entrée d'un appareil (0 pour une sortie sans entrée).
+    private static func inputBufferCount(of device: AudioObjectID) -> Int {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration, mScope: kAudioObjectPropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(device, &address, 0, nil, &size) == noErr, size > 0 else { return 0 }
+        let raw = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
+        defer { raw.deallocate() }
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, raw) == noErr else { return 0 }
+        return Int(raw.assumingMemoryBound(to: AudioBufferList.self).pointee.mNumberBuffers)
     }
 
     private static func sampleRate(ofTap tap: AudioObjectID) -> Double? {

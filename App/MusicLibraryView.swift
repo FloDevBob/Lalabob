@@ -52,7 +52,20 @@ struct MusicLibraryView: View {
             .font(.system(size: 11.5))
             .help("Le son de Music passe par Lalabob : fader, filtre et vumètre de la colonne, sortie choisie dans Lalabob, fondus sans à-coups. macOS demande l'autorisation d'enregistrement audio. Si la capture s'arrête, Music redevient audible tout seul.")
             if musicPlayer.isBridging {
-                Text("Le son de Music passe par Lalabob (colonne du morceau).").font(.system(size: 11)).foregroundStyle(Surface.textTertiary)
+                // Diagnostic du pont, relu chaque seconde : fréquence réelle, coupures et sauts (chacun s'entend).
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    let glitches = musicPlayer.bridgeGlitches
+                    let info = musicPlayer.bridgeInfo
+                    Text(
+                        "Le son de Music passe par Lalabob · "
+                            + (info.map { "\(Int($0.sampleRate)) Hz" + ($0.tapSampleRate != $0.sampleRate ? " (capture \(Int($0.tapSampleRate)) Hz)" : "") + ($0.skippedBuffers > 0 ? " · \($0.skippedBuffers) entrée(s) ignorée(s)" : "") } ?? "")
+                            + " · \(glitches.underruns) coupure(s), \(glitches.skips) saut(s)"
+                    )
+                    .font(.system(size: 11))
+                    .foregroundStyle(glitches.underruns + glitches.skips > 0 ? Surface.lightAccent : Surface.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                }
             }
             if let problem = musicPlayer.bridgeProblem {
                 Text(problem).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)
