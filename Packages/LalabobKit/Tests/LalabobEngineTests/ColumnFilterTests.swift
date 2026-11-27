@@ -196,4 +196,13 @@ struct ColumnFilterControllerTests {
         controller.setColumnFilter(2, value: controller.currentGrid.columns[2].filter)
         #expect(await waitUntil { await controller.currentGrid.columns[2].filter == 0 })
     }
+
+    @Test("Durée de plus d'une seconde (celle de l'app) : le retour va bien jusqu'au neutre")
+    func longGlideReachesNeutral() async {
+        let controller = makeController(RecordingAudioEngine())
+        controller.filterResetDuration = 1.2
+        controller.setColumnFilter(4, value: 0.9)
+        controller.resetColumnFilter(4)
+        #expect(await waitUntil(timeout: 3) { await controller.currentGrid.columns[4].filter == 0 })
+    }
 }

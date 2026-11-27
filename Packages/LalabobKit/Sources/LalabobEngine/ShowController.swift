@@ -732,8 +732,8 @@ public final class ShowController {
             let began = ContinuousClock.now
             while !Task.isCancelled {
                 let elapsed = ContinuousClock.now - began
-                let t = min(1, Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18) / duration
-                let progress = min(1, t)
+                let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
+                let progress = min(1, seconds / duration)
                 // Courbe en cosinus : départ et arrivée en douceur.
                 let value = start * (1 + cos(Double.pi * progress)) / 2
                 guard let self else { return }
