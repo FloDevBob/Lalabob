@@ -79,6 +79,24 @@ public struct LightColor: Codable, Sendable, Equatable, Hashable {
         func byte(_ v: Double) -> UInt8 { UInt8((min(max(v + m, 0), 1) * 255).rounded()) }
         return RGB(red: byte(r), green: byte(g), blue: byte(b))
     }
+
+    /// La couleur de la roue la plus proche d'un RVB, luminosité ignorée (l'intensité est un réglage à part). Sert à jouer
+    /// une cue sans état lumineux à la couleur de son pad (`TintSpec.vivid`). Un gris ou le noir donnent le blanc.
+    public init(approximating color: RGB) {
+        let r = Double(color.red) / 255, g = Double(color.green) / 255, b = Double(color.blue) / 255
+        let maximum = max(r, g, b), minimum = min(r, g, b)
+        let chroma = maximum - minimum
+        guard maximum > 0, chroma > 0 else {
+            self.init(hue: 0, saturation: 0)
+            return
+        }
+        let hue: Double =
+            if maximum == r { 60 * ((g - b) / chroma).truncatingRemainder(dividingBy: 6) }
+            else if maximum == g { 60 * ((b - r) / chroma + 2) }
+            else { 60 * ((r - g) / chroma + 4) }
+        // Ramené à pleine intensité : la saturation est la part de blanc retirée.
+        self.init(hue: hue, saturation: chroma / maximum)
+    }
 }
 
 // MARK: - Profil d'appareil

@@ -314,6 +314,7 @@ public final class ControllerSession {
                     if press.playsSound { attachedController?.pressFromController(at: position) }
                     if press.playsMusic { attachedController?.pressMusicFromController(at: position) }
                     if press.relaysLight { relayPad(position, pressed: true, driver: active.driver) }
+                    if press.playsLight { attachedController?.pressLightFromController(at: position) }
                     attachedController?.pairingPress(at: position)
                 case .padReleased(let position):
                     bench.setControllerPad(position, pressed: false)
@@ -402,6 +403,8 @@ public final class ControllerSession {
     /// Fader physique d'une colonne lumière : le même CC part vers LightKey, sur le canal de la grille (une valeur
     /// inchangée n'est pas répétée).
     private func relayFader(column: Int, value: Double, driver: any ControllerDriver) {
+        // Mode DMX : le fader règle la console (`moveHardwareFader`), rien ne part vers LightKey.
+        guard attachedController?.isDMXLighting != true else { return }
         guard isLightColumn(column), let channel = lightMIDIChannel(column: column),
             let event = driver.faderEvent(column: column, value: value).map({ Self.onChannel(channel, $0) }),
             lastLightFaderEvents[column] != event

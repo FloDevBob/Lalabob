@@ -601,3 +601,29 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   de la barre (10 → 249 réparties à égalité) et de « sur le son » (250) sont déduites du manuel** : à confirmer au banc d'essai DMX avant
   l'étape 4. **Une ancienne version de l'app ne lit pas la version 4** (mettre les deux Mac à jour ensemble avant d'enregistrer un spectacle DMX).
   **À essayer** : ☐ ouvrir un vrai spectacle (copie !), ⌘S, rouvrir : rien ne change, `show.json` toujours en version 2 ou 3.
+- **Étape 3 — console et moteur (27/11/2026, branche `j14/console-dmx`, empilée sur `j14/modele-dmx`)** ✅ code, **aucune interface encore**
+  (le mode Projecteurs se choisit à l'étape 4 ; d'ici là, seuls les tests et `ShowController.setLightingMode` le mettent en marche).
+  `LightConsole` (Engine, pure) : état joué → trame à un instant t. Fondu d'entrée **depuis la lumière en cours** (fondu interrompu
+  compris, sans saut), Noir en fondu (« Fondu du noir » du spectacle), général (gradateur, en direct), rotation des couleurs (le blanc
+  reste blanc), strobo de l'état ou réglé en direct, projecteurs coupés / rallumés à la main en fondu (0,4 s, sans changer le pad),
+  programmes de la barre et « sur le son » (sensibilité 11…255 ⚠︎ à confirmer comme les programmes), **alternance** au tempo de repli
+  (le tempo du son viendra à l'étape 3b : `tempoBPM`). Canaux qui ne se mélangent pas (programme, strobo) : changés au début du fondu,
+  sauf vers le noir (un programme s'éteint par le gradateur, puis pilotage direct). **La trame est recalculée par la sortie DMX à chaque
+  rafraîchissement, sur son fil** (`DMXFrameSource`, `DMXClock`, `DMXTransport.setSource`) : un fondu avance même si l'interface rame.
+  `DMXSession` (Engine) : une console pour l'app, rattachée à la fenêtre active comme la session MIDI ; démarre la sortie en mode
+  Projecteurs (boîtier mémorisé par le banc d'essai), l'arrête sans noir en mode LightKey ; à la fermeture, **fondu au noir d'1 s au plus**
+  puis trame noire répétée, ou lumière laissée (`DMXRig.onQuit`), en même temps que l'extinction du contrôleur.
+  `ShowController` : en mode DMX, double-clic / Retour / Espace / contrôleur jouent l'**état lumineux** du pad (rien ne part vers LightKey) ;
+  « nouvel appui » (laisse allumé / allume ou éteint) ; **Essayer** rejoue toujours ; une cue sans état lumineux joue les 4 projecteurs
+  à la **couleur du pad** (`LightColor(approximating:)`) ; état des pads **connu** (celui que joue la console = allumé, LED qui pulse) ;
+  `blackout()` (actif verrouillé) ; **bouton rond d'une colonne lumière (APC) = Noir**, LED rouge ; faders des colonnes lumière par **rôle**
+  (`DMXFaderRole` : 1re = Général, 2e = Couleurs ; à l'écran et à la main, rien vers LightKey) ; « Relier aux projecteurs » refusé ;
+  Échap ne touche pas la lumière. `setLightingMode`, `setDMXRig` (⌘Z). App : `DMXSession` créée au lancement, rattachée à chaque fenêtre active.
+  Tests : 19 (`LightConsoleTests` : trames à t = 0, mi-fondu, fin), 20 (`DMXSessionTests`), 3 (`DMXFrameSourceTests`), 2 (couleur d'une teinte) ;
+  tout le package vert (822), app compilée.
+  **Choix à confirmer** : rôles des faders fixes (le choix par colonne viendra avec l'interface) ; le général suit le fader **de la grille
+  affichée** (changer de grille peut le faire sauter si les niveaux diffèrent — sauf colonnes lumière communes) ; fader Couleurs : 0 et 100 %
+  donnent les couleurs d'origine (un tour complet), or les colonnes lumière démarrent à 100 % ; une seule sortie : le **banc d'essai DMX et
+  le mode Projecteurs se disputent le boîtier** (fermer le banc en jeu).
+  **À essayer** (après l'étape 4, ou plus tôt avec un spectacle préparé à la main) : ☐ fondus fluides sur la barre ☐ Noir au bouton rond de l'APC
+  ☐ fader 7 = général, fader 8 = couleurs ☐ ⌘Q : la barre s'éteint en fondu ☐ aucun son ne s'arrête.

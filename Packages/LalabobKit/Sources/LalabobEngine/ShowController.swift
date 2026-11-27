@@ -68,6 +68,7 @@ public final class ShowController {
     /// État des cues de la grille affichée : celles de son canal LightKey, et celles du canal commun pour les colonnes
     /// lumière communes.
     public var lightStates: [GridPosition: LightState] {
+        if isDMXLighting { return dmxLightStates }
         let own = currentLightChannel.flatMap { lightStatesByChannel[$0] } ?? [:]
         guard let sharedLight = show.sharedLight else { return own }
         let shared = Set(sharedLight.columnIndices)
@@ -137,6 +138,21 @@ public final class ShowController {
     @ObservationIgnored var lightFaderHandler: (@MainActor (_ column: Int, _ level: Double) -> Void)?
     /// Appelé après chaque changement du spectacle (le document en garde une copie pour l'enregistrer).
     @ObservationIgnored public var onShowChange: (@MainActor (Show) -> Void)?
+    /// Lumière en DMX : les demandes à la console (appui, Noir), traitées par `DMXSession` quand cette fenêtre est active.
+    @ObservationIgnored var dmxHandler: (@MainActor (DMXRequest) -> Void)?
+    /// Ce qui règle la console a pu changer (mode, appareil, faders lumière, grille affichée) : `DMXSession` relit tout.
+    @ObservationIgnored var lightingChangeHandler: (@MainActor () -> Void)?
+    /// Lumière en DMX : le pad dont l'état est joué par la console (`nil` : noir). Lalabob *est* la console, l'état est
+    /// connu ; la règle « jamais d'état allumé déduit d'un envoi » reste celle de LightKey.
+    public private(set) var dmxActivePad: Pad.ID?
+
+    /// Une demande à la console DMX.
+    enum DMXRequest: Equatable {
+        /// Jouer l'état lumineux du pad ; `force` : même s'il est déjà joué (bouton Essayer), sans tenir compte de
+        /// « nouvel appui ».
+        case press(Pad, force: Bool)
+        case blackout
+    }
 
     private enum AudioCommand: Sendable {
         case configure(Show)
@@ -202,6 +218,23 @@ public final class ShowController {
 
     public var currentGrid: PadGrid { show.grids[selectedGridIndex] }
 
+    /// La lumière est pilotée par Lalabob (projecteurs en DMX, ADR 0012) plutôt que par LightKey.
+    public var isDMXLighting: Bool { show.lighting.mode == .dmx }
+
+    /// État des pads lumière de la grille affichée en mode DMX : celui que joue la console est allumé, les autres éteints.
+    private var dmxLightStates: [GridPosition: LightState] {
+        var states: [GridPosition: LightState] = [:]
+        for position in GridPosition.all {
+            guard let pad = currentGrid[position], pad.light != nil else { continue }
+            states[position] = pad.id == dmxActivePad ? .on : .off
+        }
+        return states
+    }
+
+    func setDMXActivePad(_ id: Pad.ID?) {
+        if dmxActivePad != id { dmxActivePad = id }
+    }
+
     /// Canal LightKey (1 à 16) de la grille affichée ; `nil` = « Sans canal » : rien ne part vers LightKey.
     public var currentLightChannel: Int? { currentGrid.lightChannel }
 
@@ -221,6 +254,7 @@ public final class ShowController {
         selectedGridIndex = index
         syncColumnLevels()
         syncHardwareFaders()
+        lightingChangeHandler?()
     }
 
     public func pad(at position: GridPosition) -> Pad? {
@@ -322,7 +356,8 @@ public final class ShowController {
     /// « Tester la cue » (ampoule d'un pad, bouton Tester) : envoie la note de la cue à LightKey, **sans** jouer le son d'un pad son et
     /// lumière et sans tenir compte de « nouvel appui ». Marche aussi verrouillé (c'est du jeu).
     public func testCue(at position: GridPosition) {
-        guard position.isValid, currentGrid[position]?.light != nil else { return }
+        guard position.isValid, let pad = currentGrid[position], pad.light != nil else { return }
+        if isDMXLighting { return dmxHandler?(.press(pad, force: true)) ?? () }
         lightPressHandler?(position)
     }
 
@@ -341,6 +376,15 @@ public final class ShowController {
             if isLocked { selection = position }
         }
         if pad.light != nil, shouldSendLight(for: pad, at: position) {
+            sendLight(pad, at: position)
+        }
+    }
+
+    /// La lumière d'un pad part : vers la console DMX ou vers LightKey, selon le mode.
+    private func sendLight(_ pad: Pad, at position: GridPosition) {
+        if isDMXLighting {
+            dmxHandler?(.press(pad, force: false))
+        } else {
             lightPressHandler?(position)
         }
     }
@@ -361,6 +405,8 @@ public final class ShowController {
         var relaysLight: Bool
         /// Le morceau Apple Music du pad part (ou se met en pause, ou reprend).
         var playsMusic = false
+        /// L'état lumineux du pad part vers la console DMX (mode Projecteurs).
+        var playsLight = false
     }
 
     /// Routage d'un appui physique :
@@ -372,6 +418,14 @@ public final class ShowController {
     func controllerPress(at position: GridPosition) -> ControllerPress {
         guard position.isValid else { return ControllerPress(playsSound: false, relaysLight: false) }
         let kind = currentGrid.columns[position.column].kind
+        if isDMXLighting {
+            // Rien ne part vers LightKey : la lumière est jouée par la console, et une case vide ne fait rien.
+            guard let pad = currentGrid[position] else { return ControllerPress(playsSound: false, relaysLight: false) }
+            if pad.music != nil { return ControllerPress(playsSound: false, relaysLight: false, playsMusic: true) }
+            return ControllerPress(
+                playsSound: kind != .light && pad.audio != nil, relaysLight: false,
+                playsLight: shouldSendLight(for: pad, at: position))
+        }
         if kind == .light || (isPairingLights && !isLocked && kind == .mixed) {
             return ControllerPress(playsSound: false, relaysLight: true)
         }
@@ -458,6 +512,20 @@ public final class ShowController {
         if isLocked { selection = position }
     }
 
+    /// Appui sur un pad lumière du contrôleur en mode DMX : son état part vers la console, quel que soit le mode de l'écran.
+    func pressLightFromController(at position: GridPosition) {
+        guard isDMXLighting, let pad = pad(at: position), pad.light != nil else { return }
+        dmxHandler?(.press(pad, force: false))
+        if isLocked { selection = position }
+    }
+
+    /// Noir (bouton de la mini-barre, menu Lumière, bouton rond d'une colonne lumière) : toute la barre s'éteint en fondu
+    /// (« Fondu du noir » du spectacle). Mode DMX seulement ; marche verrouillé, c'est du jeu. Ne touche à aucun son.
+    public func blackout() {
+        guard isDMXLighting else { return }
+        dmxHandler?(.blackout)
+    }
+
     /// État d'une case lumière d'après LightKey (`.unknown` tant qu'il n'a rien dit).
     public func lightState(at position: GridPosition) -> LightState { lightStates[position] ?? .unknown }
 
@@ -531,6 +599,10 @@ public final class ShowController {
     /// Sans effet sur une colonne lumière ou une colonne sans son qui joue. Marche aussi verrouillé : c'est du jeu.
     public func stopColumn(_ column: Int) {
         guard (0..<PadGrid.size).contains(column) else { return }
+        if currentGrid.columns[column].kind == .light {
+            blackout()  // mode DMX : le bouton rond d'une colonne lumière est le Noir (sans effet avec LightKey)
+            return
+        }
         if currentGrid.columns[column].kind == .music {
             // Le morceau en cours, s'il vient de cette colonne : fondu de sortie.
             for case let pad? in currentGrid.columns[column].slots where pad.id == musicPlayer?.currentPad {
@@ -544,10 +616,16 @@ public final class ShowController {
         }
     }
 
-    /// Colonnes dont le bouton « stop » est actif : les colonnes son de la grille affichée (celles de lumière n'en ont pas).
+    /// Colonnes dont le bouton « stop » est actif : les colonnes son de la grille affichée ; en mode DMX, aussi les colonnes
+    /// lumière, dont le bouton fait le Noir (avec LightKey, elles n'en ont pas).
     /// Le bouton de l'interface et la LED rouge du contrôleur suivent cet ensemble.
     public var stopButtonColumns: Set<Int> {
-        Set(currentGrid.columns.indices.filter { currentGrid.columns[$0].kind.hasAudio || currentGrid.columns[$0].kind == .music })
+        let dmx = isDMXLighting
+        return Set(
+            currentGrid.columns.indices.filter {
+                let kind = currentGrid.columns[$0].kind
+                return kind.hasAudio || kind == .music || (dmx && kind == .light)
+            })
     }
 
     /// « Tout arrêter » (Échap).
@@ -591,6 +669,8 @@ public final class ShowController {
         onShowChange?(show)
         if show.grids[selectedGridIndex].columns[column].kind != .light {  // son, mixte, ou Music (pont audio)
             commands.yield(.level(column: column, level: level))
+        } else {
+            lightingChangeHandler?()  // mode DMX : le fader d'une colonne lumière règle la console (rôle de la colonne)
         }
     }
 
@@ -630,6 +710,7 @@ public final class ShowController {
         guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind == .light else { return }
         let level = Gain.faderLevel(level)
         setColumnLevel(column, level: level)
+        guard !isDMXLighting else { return }  // la console a suivi (`lightingChangeHandler`) ; rien ne part vers LightKey
         lightFaderHandler?(column, level)
         pairingFaderMoved(column: column)
     }
@@ -654,6 +735,7 @@ public final class ShowController {
         playback = [:]
         syncAudio()
         syncHardwareFaders()
+        lightingChangeHandler?()
     }
 
     // MARK: - Sortie audio
@@ -713,6 +795,7 @@ public final class ShowController {
         syncAudio()
         syncHardwareFaders()
         onShowChange?(show)
+        lightingChangeHandler?()
 
         guard let undoManager else { return }
         let isReplaying = undoManager.isUndoing || undoManager.isRedoing

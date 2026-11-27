@@ -4,7 +4,8 @@ import Synchronization
 /// Sortie DMX réelle : un fil dédié, à haute priorité, envoie la trame en continu (30 Hz par défaut).
 ///
 /// Hors `MainActor` et hors du fil audio : une interface qui rame ne fige pas la lumière, et la lumière ne touche
-/// jamais au son. Le moteur pose la trame voulue (`setFrame`) ; le fil en prend une copie à chaque rafraîchissement.
+/// jamais au son. Le moteur pose la trame voulue (`setFrame`) ou la console qui la calcule (`setSource`) ; le fil en
+/// prend une copie à chaque rafraîchissement.
 /// L'état partagé est sous un `Mutex`, tenu le temps d'une copie : jamais pendant un envoi.
 public final class DMXOutput: DMXTransport {
     public static let defaultRate = 30.0
@@ -15,6 +16,7 @@ public final class DMXOutput: DMXTransport {
 
     private struct Shared {
         var frame = DMXFrame()
+        var source: (any DMXFrameSource)?
         var preferredSerial: String?
         var reselect = false
         var status: DMXStatus = .stopped
@@ -57,7 +59,19 @@ public final class DMXOutput: DMXTransport {
         thread.start()
     }
 
-    public func setFrame(_ frame: DMXFrame) { shared.withLock { $0.frame = frame } }
+    public func setFrame(_ frame: DMXFrame) {
+        shared.withLock {
+            $0.frame = frame
+            $0.source = nil
+        }
+    }
+
+    public func setSource(_ source: (any DMXFrameSource)?) {
+        shared.withLock { s in
+            if source == nil, let old = s.source { s.frame = old.frame(at: DMXClock.now()) }
+            s.source = source
+        }
+    }
 
     public func selectPort(serialNumber: String?) {
         shared.withLock { s in
@@ -99,9 +113,11 @@ public final class DMXOutput: DMXTransport {
         while true {
             let snapshot = shared.withLock { s in
                 defer { s.reselect = false }
-                return (s.frame, s.preferredSerial, s.reselect, s.stopRequested, s.finalFrame)
+                return (s.frame, s.source, s.preferredSerial, s.reselect, s.stopRequested, s.finalFrame)
             }
-            let (frame, preferred, reselect, stop, finalFrame) = snapshot
+            let (fixedFrame, source, preferred, reselect, stop, finalFrame) = snapshot
+            // La source est calculée hors du verrou : le moteur peut poser un nouvel état pendant ce temps.
+            let frame = source?.frame(at: DMXClock.now()) ?? fixedFrame
             if stop {
                 if let finalFrame {
                     for _ in 0..<Self.finalFrameRepeats {

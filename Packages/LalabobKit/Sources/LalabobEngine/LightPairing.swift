@@ -13,6 +13,7 @@ extension ShowController {
     /// Entre dans le mode d'appairage ou en sort. Refusé verrouillé.
     public func setPairingLights(_ active: Bool) {
         if active, refuseWhileLocked() { return }
+        if active, isDMXLighting { return }  // en mode Projecteurs, il n'y a rien à relier (Lalabob est la console)
         isPairingLights = active
         pairingNaming = nil
         pairingFader = nil

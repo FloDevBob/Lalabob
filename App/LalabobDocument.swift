@@ -111,6 +111,7 @@ struct DocumentWindow: View {
     @Environment(\.midiSession) private var midiSession
     @Environment(\.appearsActive) private var appearsActive
     @Environment(MusicPlaybackCoordinator.self) private var musicPlayer
+    @Environment(DMXSession.self) private var dmxSession
     @State private var controller: ShowController?
     @State private var showsMissingAudio = false
     @State private var showsPairingReset = false
@@ -142,7 +143,10 @@ struct DocumentWindow: View {
         }
         .onChange(of: appearsActive) { attachIfActive() }
         .onDisappear {
-            if let controller { midiSession?.detach(controller) }
+            if let controller {
+                midiSession?.detach(controller)
+                dmxSession.detach(controller)
+            }
         }
         .alert("Sons manquants", isPresented: $showsMissingAudio) {
             Button("OK") { showsPairingReset = !document.lightPairingsReset.isEmpty }
@@ -169,5 +173,6 @@ struct DocumentWindow: View {
     private func attachIfActive() {
         guard appearsActive, let controller else { return }
         midiSession?.attach(controller)
+        dmxSession.attach(controller)
     }
 }

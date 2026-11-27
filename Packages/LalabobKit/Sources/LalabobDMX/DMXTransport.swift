@@ -27,8 +27,10 @@ public protocol DMXTransport: AnyObject, Sendable {
 
     /// Démarre l'envoi continu (sans effet si déjà démarré).
     func start()
-    /// Trame envoyée à partir du prochain rafraîchissement.
+    /// Trame fixe envoyée à partir du prochain rafraîchissement (remplace une source).
     func setFrame(_ frame: DMXFrame)
+    /// Trame recalculée à chaque rafraîchissement (fondus de la console) ; `nil` = garder la dernière trame calculée.
+    func setSource(_ source: (any DMXFrameSource)?)
     /// Boîtier choisi sur ce Mac (numéro de série), `nil` = le premier branché.
     func selectPort(serialNumber: String?)
     func availablePorts() -> [DMXPortInfo]
@@ -41,6 +43,7 @@ public final class SilentDMX: DMXTransport {
     private struct State {
         var status: DMXStatus = .stopped
         var frame = DMXFrame()
+        var source: (any DMXFrameSource)?
     }
     private let state = Mutex(State())
     public let statusUpdates: AsyncStream<DMXStatus>
@@ -51,10 +54,28 @@ public final class SilentDMX: DMXTransport {
     }
 
     public var status: DMXStatus { state.withLock { $0.status } }
-    public var lastFrame: DMXFrame { state.withLock { $0.frame } }
+    /// La trame qui partirait maintenant.
+    public var lastFrame: DMXFrame { frame(at: DMXClock.now()) }
+
+    /// La trame qui partirait à cet instant (secondes de `DMXClock`).
+    public func frame(at time: Double) -> DMXFrame {
+        let (frame, source) = state.withLock { ($0.frame, $0.source) }
+        return source?.frame(at: time) ?? frame
+    }
 
     public func start() { update(.noDevice) }
-    public func setFrame(_ frame: DMXFrame) { state.withLock { $0.frame = frame } }
+    public func setFrame(_ frame: DMXFrame) {
+        state.withLock {
+            $0.frame = frame
+            $0.source = nil
+        }
+    }
+    public func setSource(_ source: (any DMXFrameSource)?) {
+        state.withLock { s in
+            if source == nil, let old = s.source { s.frame = old.frame(at: DMXClock.now()) }
+            s.source = source
+        }
+    }
     public func selectPort(serialNumber: String?) {}
     public func availablePorts() -> [DMXPortInfo] { [] }
 

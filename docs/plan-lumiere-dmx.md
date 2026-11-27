@@ -1,6 +1,6 @@
 # Plan — Lumière autonome en DMX (J14, à l'étude)
 
-État : **proposition du 27/11/2026**, maquette faite, rien n'est codé. Les questions ouvertes sont en fin de page.
+État : **en cours** (étapes 0 à 3 codées le 27/11/2026), maquette faite. Les questions ouvertes sont en fin de page.
 Maquette (27/11/2026) : https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT — planches :
 - [Colonnes lumière + carte de jeu](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-Main) · [Tous les types de pads](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-TypesDePads)
 - Panneau du bas : [Couleurs, chacun](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-Inspecteur) · [Couleurs, ensemble](https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT#artboard-InspEnsemble) ·
@@ -241,6 +241,8 @@ Respecte `docs/adr/0001-architecture.md` : un module par responsabilité, pas de
    teinte + saturation et favoris du spectacle, format v4 + migration, validation. Tests d'abord.
 3. **Console et moteur** (`j14/console-dmx`) — `LightConsole` (fondus, boutons en direct, Noir, strobo), branchement
    `ShowController` et contrôleur, LED. Tests hors ligne (trames à t = 0, mi-fondu, fin).
+   **Code fait le 27/11/2026** (voir `docs/PLAN.md`, J14). Écarts : la trame est calculée par la sortie DMX à chaque rafraîchissement
+   (source de trames) plutôt que posée par le moteur ; rôles des faders fixes en attendant l'interface ; alternance au tempo de repli seulement.
 3b. **Tempo des sons** (`j14/tempo-sons`) — prototype d'analyse (BPM + grille de temps) essayé sur les vrais sons de la troupe,
    puis cache, correction à la main, effet « Alternance » calé sur le son en cours. Tests hors ligne (clics à 120 BPM, boucle de batterie).
 4. **Interface** (`j14/interface-dmx`) — réglages, en-tête, carte de jeu, repère des projecteurs sur les pads, panneau du bas

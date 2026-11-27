@@ -369,3 +369,23 @@ struct DMXModelTests {
         #expect(try ShowPackage.decode(data).lighting == LightingSettings())
     }
 }
+
+@Suite("Couleur d'une teinte de pad")
+struct LightColorFromRGBTests {
+    @Test("Rouge, vert, bleu, blanc et gris retrouvent leur teinte et leur saturation")
+    func roundTrip() {
+        #expect(LightColor(approximating: RGB(red: 255, green: 0, blue: 0)) == LightColor(hue: 0, saturation: 1))
+        #expect(LightColor(approximating: RGB(red: 0, green: 255, blue: 0)) == LightColor(hue: 120, saturation: 1))
+        #expect(LightColor(approximating: RGB(red: 0, green: 0, blue: 255)) == LightColor(hue: 240, saturation: 1))
+        #expect(LightColor(approximating: .white) == .white)
+        #expect(LightColor(approximating: RGB(red: 80, green: 80, blue: 80)).saturation == 0)
+        #expect(LightColor(approximating: RGB(red: 0, green: 0, blue: 0)) == .white)
+    }
+
+    @Test("Une teinte quelconque redonne à peu près sa couleur à pleine intensité")
+    func approximate() {
+        let orange = RGB(red: 255, green: 128, blue: 0)
+        let rgb = LightColor(approximating: orange).rgb
+        #expect(abs(Int(rgb.red) - 255) <= 1 && abs(Int(rgb.green) - 128) <= 1 && rgb.blue == 0)
+    }
+}
