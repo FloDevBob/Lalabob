@@ -10,10 +10,6 @@ struct AudioRingBufferTests {
         values.withUnsafeBufferPointer { left in ring.write(left: left.baseAddress!, right: left.baseAddress!, frames: values.count) }
     }
 
-    /// Égalité à 0,1 près : la lecture à vitesse ajustée interpole un peu entre les échantillons.
-    private func close(_ a: [Float], _ b: [Float]) -> Bool {
-        a.count == b.count && zip(a, b).allSatisfy { abs($0 - $1) < 0.1 }
-    }
 
     private func read(_ ring: AudioRingBuffer, _ frames: Int) -> [Float] {
         var left = [Float](repeating: -1, count: frames)
@@ -31,7 +27,7 @@ struct AudioRingBufferTests {
         #expect(read(ring, 4) == [0, 0, 0, 0])
         write(ring, [5, 6, 7, 8])
         #expect(read(ring, 4) == [1, 2, 3, 4])
-        #expect(close(read(ring, 4), [5, 6, 7, 8]))
+        #expect(read(ring, 4) == [5, 6, 7, 8])
     }
 
     @Test("Manque de son : silence, jamais de vieux échantillons")
@@ -57,14 +53,37 @@ struct AudioRingBufferTests {
         #expect(ring.skips == 1)
     }
 
-    @Test("Avance un peu trop grande : lecture à peine plus rapide (≤ 1 %), sans saut ni clic")
-    func gentleDrift() {
+    @Test("Avance plus grande que voulu : lecture à vitesse normale, échantillons intacts, sans saut")
+    func fixedSpeedAboveTarget() {
         let ring = AudioRingBuffer(capacity: 4096, latencyFrames: 256)
         let ramp = (0..<600).map { Float($0) / 600 }
         write(ring, ramp)
-        let out = read(ring, 512)
-        let steps = zip(out, out.dropFirst()).map { $1 - $0 }
-        #expect(steps.allSatisfy { $0 > 0 && $0 < 1.0 / 600 * 1.011 })  // continu, jamais plus de 1 % plus vite
+        #expect(read(ring, 512) == Array(ramp[0..<512]))  // aucune interpolation : chaque échantillon tel quel
+        #expect(ring.skips == 0 && ring.underruns == 0)
+    }
+
+    @Test("Fidélité : une sinusoïde écrite et lue par blocs de tailles différentes ressort identique")
+    func bitExactThroughMismatchedBlocks() {
+        let ring = AudioRingBuffer(capacity: 16_384, latencyFrames: 1_024)
+        let total = 48_000
+        let sine = (0..<total).map { Float(sin(2 * Double.pi * 7_919 * Double($0) / 48_000 + 0.3) * 0.8) }  // aigu : la moindre interpolation se verrait
+        var written = 0
+        var output: [Float] = []
+        // Capture par blocs de 512, rendu par blocs de 500 : comme deux fonctions de rappel qui ne tombent pas en même temps.
+        while output.count < total - 2_048 {
+            if written < total {
+                let count = min(512, total - written)
+                sine[written..<(written + count)].withUnsafeBufferPointer { p in
+                    ring.write(left: p.baseAddress!, right: p.baseAddress!, frames: count)
+                }
+                written += count
+            }
+            output += read(ring, 500)
+        }
+        let start = output.firstIndex { $0 != 0 } ?? 0
+        let played = Array(output[start...])
+        #expect(played.count > 40_000)
+        #expect(played == Array(sine[0..<played.count]))
         #expect(ring.skips == 0 && ring.underruns == 0)
     }
 
@@ -84,7 +103,7 @@ struct AudioRingBufferTests {
         var left = [Float](repeating: 0, count: 3)
         var right = [Float](repeating: 0, count: 3)
         left.withUnsafeMutableBufferPointer { l in right.withUnsafeMutableBufferPointer { r in ring.read(left: l.baseAddress!, right: r.baseAddress!, frames: 3) } }
-        #expect(close(left, [1, 2, 3]) && close(right, [-1, -2, -3]))
+        #expect(left == [1, 2, 3] && right == [-1, -2, -3])
     }
 
     @Test("Fondu : le gain glisse sans saut jusqu'à la cible")

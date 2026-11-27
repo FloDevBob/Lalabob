@@ -27,11 +27,17 @@ public actor ProcessAudioBridge {
         public var tapSampleRate: Double
         /// Tampons d'entrée de la sortie audio (micro, entrées de la carte son) sautés avant ceux de la capture.
         public var skippedBuffers: Int
+        /// Processus audio de l'app captés (et rendus muets) : plus d'un si l'app joue aussi par un processus auxiliaire.
+        public var tappedProcesses: Int
+        /// La capture suit l'app par son identifiant (macOS 26) : elle la retrouve si l'app est relancée.
+        public var followsBundleID: Bool
 
-        public init(sampleRate: Double, tapSampleRate: Double, skippedBuffers: Int) {
+        public init(sampleRate: Double, tapSampleRate: Double, skippedBuffers: Int, tappedProcesses: Int = 1, followsBundleID: Bool = false) {
             self.sampleRate = sampleRate
             self.tapSampleRate = tapSampleRate
             self.skippedBuffers = skippedBuffers
+            self.tappedProcesses = tappedProcesses
+            self.followsBundleID = followsBundleID
         }
     }
 
@@ -45,13 +51,32 @@ public actor ProcessAudioBridge {
     public func start(pid: pid_t, outputUID: String?, into ring: AudioRingBuffer) throws(Failure) -> Info {
         if procID != nil { stop() }
         let process = try Self.processObject(for: pid)
+        // Tout ce qui fait du son pour l'app : un son qui passerait par un processus auxiliaire ne serait ni capté ni rendu muet,
+        // et s'entendrait en plus de la copie de Lalabob, ~40 ms plus tôt (écho).
+        let bundleID = Self.bundleID(of: process)
+        let processes = Self.audioProcesses(pid: pid, bundleID: bundleID, main: process)
 
-        let description = CATapDescription(stereoMixdownOfProcesses: [process])
-        description.uuid = UUID()
-        description.muteBehavior = .mutedWhenTapped
-        description.isPrivate = true
+        func makeDescription(followingBundleID: Bool) -> CATapDescription {
+            let description = CATapDescription(stereoMixdownOfProcesses: processes)
+            description.uuid = UUID()
+            description.muteBehavior = .mutedWhenTapped
+            description.isPrivate = true
+            if followingBundleID, let bundleID {
+                description.bundleIDs = [bundleID]
+                description.isProcessRestoreEnabled = true
+            }
+            return description
+        }
+        var description = makeDescription(followingBundleID: bundleID != nil)
         var tap = AudioObjectID(kAudioObjectUnknown)
-        let tapStatus = AudioHardwareCreateProcessTap(description, &tap)
+        var tapStatus = AudioHardwareCreateProcessTap(description, &tap)
+        var followsBundleID = bundleID != nil
+        if tapStatus != noErr, followsBundleID {
+            // Repli : la description d'origine, par processus seulement.
+            description = makeDescription(followingBundleID: false)
+            followsBundleID = false
+            tapStatus = AudioHardwareCreateProcessTap(description, &tap)
+        }
         guard tapStatus == noErr else { throw .tapRefused(tapStatus) }
         tapID = tap
         let tapSampleRate = Self.sampleRate(ofTap: tap) ?? 48_000
@@ -107,7 +132,9 @@ public actor ProcessAudioBridge {
             stop()
             throw .deviceFailed(startStatus)
         }
-        return Info(sampleRate: sampleRate, tapSampleRate: tapSampleRate, skippedBuffers: skip)
+        return Info(
+            sampleRate: sampleRate, tapSampleRate: tapSampleRate, skippedBuffers: skip, tappedProcesses: processes.count,
+            followsBundleID: followsBundleID)
     }
 
     /// Arrête la capture et défait tout : l'app captée redevient audible.
@@ -180,6 +207,46 @@ public actor ProcessAudioBridge {
             AudioObjectID(kAudioObjectSystemObject), &address, UInt32(MemoryLayout<pid_t>.size), &pid, &size, &object)
         guard status == noErr, object != kAudioObjectUnknown else { throw .processNotFound }
         return object
+    }
+
+    /// Identifiant d'app (bundle ID) d'un objet processus de Core Audio.
+    private static func bundleID(of process: AudioObjectID) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioProcessPropertyBundleID, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(process, &address, 0, nil, &size, &value) == noErr, let value else { return nil }
+        let id = value.takeRetainedValue() as String
+        return id.isEmpty ? nil : id
+    }
+
+    private static func pid(of process: AudioObjectID) -> pid_t? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioProcessPropertyPID, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var pid: pid_t = -1
+        var size = UInt32(MemoryLayout<pid_t>.size)
+        guard AudioObjectGetPropertyData(process, &address, 0, nil, &size, &pid) == noErr, pid > 0 else { return nil }
+        return pid
+    }
+
+    /// Les processus audio de l'app : le processus principal, plus ceux qui ont le même identifiant d'app ou un identifiant
+    /// qui en dérive (« com.apple.Music.xxx »). Toujours au moins le processus principal.
+    private static func audioProcesses(pid: pid_t, bundleID: String?, main: AudioObjectID) -> [AudioObjectID] {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyProcessObjectList, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size) == noErr, size > 0 else { return [main] }
+        var all = [AudioObjectID](repeating: kAudioObjectUnknown, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+        guard AudioObjectGetPropertyData(system, &address, 0, nil, &size, &all) == noErr else { return [main] }
+        var result = [main]
+        for object in all where object != main && object != kAudioObjectUnknown {
+            let samePID = Self.pid(of: object) == pid
+            let sameApp = bundleID.map { app in Self.bundleID(of: object).map { $0 == app || $0.hasPrefix(app + ".") } ?? false } ?? false
+            if samePID || sameApp { result.append(object) }
+        }
+        return result
     }
 
     private static func defaultOutputUID() -> String? {

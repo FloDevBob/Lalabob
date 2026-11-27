@@ -527,6 +527,11 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   l'agrégat (et non celle annoncée par la capture), entrées de la sortie (ex. MOTU M2) sautées avant le son capté, lecture du tampon à **vitesse
   ajustée** (±1 %, interpolation) au lieu de sauts, avance de ≈ 65 ms, capture relancée au changement de sortie ; **diagnostic** dans le panneau
   (fréquences, coupures, sauts). 3 tests de plus. À réessayer.
+- **Pont audio, fidélité (28/11/2026, branche `j11/pont-audio-fidelite`, retour d'essai : écho et son « pas exactement le même »)** ✅ code, **non essayé à l'oreille**.
+  (1) Lecture du tampon **à vitesse fixe**, sans interpolation (la vitesse ajustée faisait onduler la hauteur et ternissait les aigus ; l'horloge est déjà suivie par la capture) ;
+  (2) **tous les processus audio de Music** captés et rendus muets + capture par identifiant d'app (`bundleIDs`, `isProcessRestoreEnabled`, repli par processus) ;
+  (3) avance 65 → ~43 ms. Tests : sinusoïde identique à la sortie du tampon, vitesse fixe. **À essayer** : ☐ plus d'écho ni de reverb ☐ comparer avec Music direct ☐ diagnostic « N processus captés » ☐ quitter / relancer Music en jouant
+  ☐ fader de colonne à fond bas : plus aucun son de Music (sinon, une fuite reste) ☐ coupures / sauts toujours à 0.
 - **Lecture : arrêt au ré-appui, bug de synchro (27/11/2026, branche `j11/lecture-arret-synchro`)** ✅ code. (1) **Bug** (retour d'essai : en enchaînant,
   un morceau lancé restait affiché arrêté alors que Music le jouait) : une lecture de l'état de Music partie avant un changement de morceau et revenue
   après éteignait le nouveau pad (et arrêtait le suivi) ; de même, juste après `play`, Music annonce un instant l'ancien morceau. Corrigé : réponse

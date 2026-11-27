@@ -39,7 +39,7 @@ public final class MusicPlaybackCoordinator {
     /// Pourquoi le pont n'a pas pu servir (affiché dans le panneau) ; `nil` si tout va bien.
     public private(set) var bridgeProblem: String?
     /// Le tampon entre la capture et le moteur.
-    @ObservationIgnored public let ring = AudioRingBuffer(capacity: 32_768, latencyFrames: 3_072)  // ≈ 65 ms d'avance
+    @ObservationIgnored public let ring = AudioRingBuffer(capacity: 32_768, latencyFrames: 2_048)  // ≈ 43 ms d’avance à 48 kHz
     @ObservationIgnored private let capture: any MusicAudioCapturing
     @ObservationIgnored private let musicPID: @MainActor () -> pid_t?
     @ObservationIgnored private let defaults: UserDefaults

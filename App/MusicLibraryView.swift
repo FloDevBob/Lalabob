@@ -58,7 +58,7 @@ struct MusicLibraryView: View {
                     let info = musicPlayer.bridgeInfo
                     Text(
                         "Le son de Music passe par Lalabob · "
-                            + (info.map { "\(Int($0.sampleRate)) Hz" + ($0.tapSampleRate != $0.sampleRate ? " (capture \(Int($0.tapSampleRate)) Hz)" : "") + ($0.skippedBuffers > 0 ? " · \($0.skippedBuffers) entrée(s) ignorée(s)" : "") } ?? "")
+                            + (info.map { "\(Int($0.sampleRate)) Hz" + ($0.tapSampleRate != $0.sampleRate ? " (capture \(Int($0.tapSampleRate)) Hz)" : "") + ($0.skippedBuffers > 0 ? " · \($0.skippedBuffers) entrée(s) ignorée(s)" : "") + ($0.tappedProcesses > 1 ? " · \($0.tappedProcesses) processus captés" : "") } ?? "")
                             + " · \(glitches.underruns) coupure(s), \(glitches.skips) saut(s)"
                     )
                     .font(.system(size: 11))
