@@ -49,7 +49,7 @@ struct HelpTopic: Identifiable, Equatable {
 }
 
 enum HelpContent {
-    static let topics: [HelpTopic] = [start, hardware, play, prepare, appleMusic, lighting, shortcuts, troubleshooting]
+    static let topics: [HelpTopic] = [start, hardware, play, prepare, appleMusic, lighting, dmxLighting, shortcuts, troubleshooting]
 
     static func topics(matching query: String) -> [HelpTopic] { topics.filter { $0.matches(query) } }
 
@@ -143,6 +143,7 @@ enum HelpContent {
         id: "lighting", title: "La lumière", symbol: .spotlight,
         blocks: [
             .paragraph("Les **2 colonnes de droite** commandent les **projecteurs** : chaque pad est une **lumière** (« Plein feu », « Douche bleue »). Un appui l'allume ou l'éteint ; le **fader** en dessous règle l'**intensité**. Sur la grille, une lumière **allumée** a un contour, un halo et une ampoule à la couleur du pad ; **éteinte**, l'ampoule est atténuée."),
+            .paragraph("Ce qui suit vaut pour le mode **Logiciel lumière**. Pour piloter la barre directement par un boîtier USB-DMX, voir la rubrique « Projecteurs pilotés par Lalabob »."),
             .paragraph("Les lumières elles-mêmes se préparent dans le **logiciel des projecteurs** (LightKey). Lalabob lui envoie le bon signal et lit en retour ce qui est allumé. La couleur réelle des projecteurs n'est pas connue de Lalabob : la teinte du pad est celle que vous avez choisie."),
             .paragraph("**Mise en route** (une fois, dans LightKey) :"),
             .steps([
@@ -159,6 +160,30 @@ enum HelpContent {
             .paragraph("**Relier un fader d'intensité** : « Add Trigger… » sur le réglage dans LightKey, puis bougez le fader (sur le contrôleur ou à l'écran). **Terminer** quitte le mode ; Échap reste « Tout arrêter »."),
             .warning("On ne relie rien en scène : fermer le cadenas termine le mode « Relier »."),
             .paragraph("Pour les curieux : **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L) montre les signaux MIDI échangés avec LightKey (notes, canal)."),
+        ])
+
+    static let dmxLighting = HelpTopic(
+        id: "dmx-lighting", title: "Projecteurs pilotés par Lalabob", symbol: .spotlight,
+        blocks: [
+            .paragraph("Pour une petite salle, Lalabob peut piloter lui-même la barre de projecteurs (4 projecteurs RVB) par un **boîtier USB-DMX**, sans LightKey. Chaque spectacle choisit : **Logiciel lumière** ou **Projecteurs pilotés par Lalabob**. On peut changer de mode sans rien perdre."),
+            .paragraph("**Mise en route** (une fois) :"),
+            .steps([
+                "Branchez le boîtier USB-DMX et la barre. Sur la barre : MENU ▸ `15Ch`, puis l'adresse de départ (celle de la troupe : **050**).",
+                "Spectacle ▸ **Réglages du spectacle…** (cadenas ouvert) ▸ **Projecteurs pilotés par Lalabob**. Réglez l'**adresse**, le **boîtier** de ce Mac, le **fondu du noir**, l'**avance de la lumière** et **En quittant Lalabob**.",
+                "Cliquez **Essayer : 4 projecteurs en blanc**. La pastille « Projecteurs » de l'en-tête indique l'état du boîtier.",
+            ]),
+            .paragraph("**Les pads lumière** décrivent un état des projecteurs, réglé dans le panneau du bas :"),
+            .bullets([
+                "**Couleurs** : *Chacun* (une couleur par projecteur) ou *Ensemble*. Roue des couleurs (teinte et saturation), couleurs favorites du spectacle, **strobo** (arrêté par défaut) et fondu d'entrée.",
+                "**Alternance** : deux couleurs qui basculent au tempo du dernier son lancé (détecté automatiquement), ou au tempo de repli du pad sans son.",
+                "**Programme** : l'un des 12 programmes de la barre. **Sur le son** : la barre suit le son avec son micro.",
+                "**Aperçu** : chaque réglage s'applique tout de suite à la barre ; en quittant le pad, elle revient en fondu à la lumière d'avant.",
+                "Un pad sans état précis allume les 4 projecteurs à la couleur du pad.",
+            ]),
+            .paragraph("**En jeu** : un appui joue l'état du pad avec son fondu. Clic droit sur la carte d'un fader lumière pour choisir son **rôle** : **Général** (intensité), **Couleurs** (fait tourner la roue), **Strobo** ou Aucun. Il n'y a qu'un Général et qu'un fader Couleurs pour tout le spectacle : changer de grille ne change jamais la lumière. La carte Général montre la mini-barre (clic sur un projecteur = le couper ou le rallumer) et le bouton **Noir**. Sur l'APC, le bouton rond d'une colonne lumière est aussi **Noir**. Échap ne touche jamais à la lumière."),
+            .warning("LightKey et Lalabob ne doivent jamais piloter le boîtier en même temps : les deux envoient à la barre sans aucune erreur affichée. En mode Projecteurs, fermez LightKey."),
+            .warning("Strobo : les flashs rapides peuvent déclencher des crises chez les personnes photosensibles. Prévenez la salle et n'allez pas au-delà de ce qui a été essayé en répétition."),
+            .paragraph("Si le boîtier est débranché en jeu, aucun son ne s'arrête ; la lumière reprend au rebranchement. La barre garde sa dernière couleur si Lalabob se ferme brutalement. **Fenêtre ▸ Banc d'essai DMX** permet d'essayer canal par canal (il prend la main sur la sortie du spectacle tant qu'il est ouvert)."),
         ])
 
     static let shortcuts = HelpTopic(
@@ -193,6 +218,8 @@ enum HelpContent {
                 "**Un pad n'allume pas sa LED** : changez de grille et revenez, ou rebranchez le contrôleur ; Lalabob renvoie alors toutes les LED.",
                 "**Une lumière ne s'allume pas, ou s'allume puis s'éteint aussitôt** : dans LightKey, le contrôleur est-il encore activé ? LightKey ne doit écouter que « Lalabob Lumière ».",
                 "**Les pads ne montrent jamais si la lumière est allumée** : dans LightKey, la **sortie** « Lalabob Lumière » est-elle activée ? Le banc d'essai (⌥⌘L) doit afficher des lignes « LightKey → » quand on allume une lumière.",
+                "**Projecteurs pilotés par Lalabob : rien ne s'allume** : la pastille « Projecteurs » de l'en-tête est-elle en erreur ? Vérifiez le boîtier, l'adresse (identique sur la barre et dans les réglages) et le mode 15Ch de la barre, puis essayez « 4 projecteurs en blanc ».",
+                "**La lumière fait des choses étranges** : LightKey est-il encore ouvert et relié au boîtier ? Fermez-le.",
                 "**Rien ne se passe au clic** : un clic sélectionne, le **double-clic** joue.",
                 "**« Spectacle verrouillé »** : ouvrez le cadenas (⌘L) pour modifier.",
                 "**Sons manquants à l'ouverture** : un message les liste ; leurs pads restent muets. Retrouvez les fichiers et glissez-les à nouveau.",

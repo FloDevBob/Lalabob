@@ -90,6 +90,25 @@ sont réunis dans un menu, et le nom du fichier est abrégé d'abord. Un pad son
 à LightKey, puis couleur (popover) et actions. L'état allumé / éteint ne vient pas de l'inspecteur : il se lit sur le pad
 (voir « Relier aux projecteurs » plus bas).
 
+### Lumière DMX — « Projecteurs pilotés par Lalabob » (27/11/2026, maquette https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT, plan `docs/plan-lumiere-dmx.md`)
+Choisi par spectacle (Spectacle › Réglages du spectacle…, déverrouillé) ; le mode LightKey reste intact.
+- **En-tête** : pastille « Projecteurs » (état du boîtier : prêt, signal envoyé, erreur) ; le bouton « Relier » disparaît ; le **cadenas devient compact**
+  (bouton carré, icône seule) pour faire de la place (largeur minimale de fenêtre 1320 pt).
+- **Pad lumière** : repère de 4 points (couleur et intensité de chaque projecteur, gris si éteint) ; ⇄ pour l'alternance, ϟ pour le strobo, arc-en-ciel +
+  P3 / MIC pour un programme ou « sur le son » ; sous-titre par défaut résumant l'état (`LightLook.summary`). Pas de repère sur un pad plus bas que 44 pt
+  ni sur un pad son et lumière.
+- **Panneau du bas** (`App/LookEditor.swift`, ≤ 196 pt) : bande du haut — Essayer, titre, aperçu, fondu − / +, nouvel appui, couleur du pad ;
+  bande du bas — type (Couleurs · Alternance · Programme · Sur le son), Chacun / Ensemble, cartes de projecteurs, strobo (arrêté par défaut), alternance
+  (couleurs A et B, bascule, fondu, tempo de repli), programme 1–12, roue des couleurs (teinte + saturation, couleurs du spectacle).
+  Un glissé est un brouillon : une seule annulation (⌘Z) au relâchement.
+- **Aperçu** (interrupteur, actif par défaut, mémorisé par Mac) : chaque réglage s'applique à la barre sans fondu et sans désigner le pad comme joué ;
+  en quittant le pad, retour en fondu de 0,5 s ; un appui ou un Noir pendant l'aperçu l'emporte ; jamais verrouillé.
+- **Cartes de fader lumière** : clic droit = rôle (Général, Couleurs, Strobo, Aucun). La carte **Général** porte la mini-barre (4 projecteurs aux couleurs
+  réelles, clic = couper / rallumer en fondu), le bouton **Noir** et le tempo « ⇄ 124 » avec un point qui bat. Un seul Général et un seul fader Couleurs
+  pour tout le spectacle.
+- **Contrôleur** : le bouton rond d'une colonne lumière (APC) = Noir, LED rouge. Échap ne touche jamais à la lumière.
+- **Pas encore** : commandes de la barre sans colonne Général (menu Lumière ou panneau de repos) ; contour ambré des pads lumière en DMX ; astuce DMX.
+
 ### Grilles Apple Music (27/11/2026, maquette https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ, spec `docs/spec-grilles-apple-music.md`)
 - **Créer** : le + des onglets propose « Sons et lumière » (⌘T) ou « Apple Music » (⌥⌘T) ; clic droit sur un onglet › Type de grille. Onglet marqué d'une
   note rose (`Surface.musicAccent`, #FF5A8C). Colonnes **Music** (liseré rose) et colonnes lumière.

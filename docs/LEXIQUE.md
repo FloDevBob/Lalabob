@@ -25,6 +25,25 @@ techniques. Les identifiants du code ne changent pas (`LightCue`, `isPaired`, `l
 | **Canal des lumières** (réglage avancé, menu de l'onglet) | Canal LightKey | Le canal MIDI d'une grille |
 | **Mêmes lumières sur toutes les grilles** | Colonnes lumière communes | Option du spectacle |
 
+## Projecteurs pilotés par Lalabob (DMX, J14)
+
+| Dire | Ne plus dire | Sens |
+|---|---|---|
+| **Logiciel lumière** / **Projecteurs pilotés par Lalabob** | mode LightKey / mode DMX | Les deux choix du spectacle pour la lumière |
+| **boîtier** (USB-DMX), **adresse** | interface FTDI, adresse de départ DMX | Ce qui relie le Mac à la barre ; l'adresse se règle sur la barre et dans les réglages |
+| **Noir** | blackout | Tout éteindre en fondu (durée : « Fondu du noir ») |
+| **Général** | master, gradateur | Rôle d'un fader : intensité de tous les projecteurs |
+| **Couleurs** (rôle de fader) | rotation de teinte | Fait tourner toute la roue des couleurs |
+| **Chacun / Ensemble** | per-head / global | Une couleur par projecteur, ou la même partout |
+| **Alternance** | chase, bascule | Deux couleurs qui basculent au tempo du son |
+| **Programme**, **Sur le son** | mode auto, mode sound | Programmes intégrés de la barre ; la barre suit le son avec son micro |
+| **Aperçu** | live preview | Chaque réglage s'applique tout de suite à la barre |
+| **Avance de la lumière** | latence, offset | Faire partir la lumière un peu avant le son |
+| **En quittant Lalabob** | onQuit | Fondu au noir, ou laisser la lumière |
+| **Essayer : 4 projecteurs en blanc** | test blanc | Vérifier la liaison avec la barre |
+
+Tempo : on dit **tempo** (BPM dans l'infobulle seulement) ; « pas de tempo » quand la détection n'est pas sûre.
+
 ## Son (pour mémoire, inchangé)
 
 pad, grille, colonne, fader, filtre, vumètre, cadenas (verrouillé / déverrouillé), Tout arrêter, Nouvel appui

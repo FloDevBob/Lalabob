@@ -5,7 +5,8 @@ Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation L
 ## Avant la représentation
 1. Brancher le contrôleur (Launchpad ou APC mini mk2) : l'indicateur vert apparaît dans l'en-tête.
 2. Choisir la **sortie audio** dans l'en-tête.
-3. Dans LightKey : entrée **et** sortie « Lalabob Lumière » activées, contrôleur physique **désactivé**.
+3. Lumière avec LightKey : entrée **et** sortie « Lalabob Lumière » activées, contrôleur physique **désactivé**.
+   Lumière pilotée par Lalabob (boîtier USB-DMX) : **LightKey fermé**, ou au moins sans qu'il pilote le boîtier (voir « Projecteurs pilotés par Lalabob »).
 4. Ouvrir le spectacle (`.lalabob`). Un spectacle enregistré s'ouvre **verrouillé** : c'est le mode jeu.
 
 ## Jouer (cadenas fermé)
@@ -65,7 +66,40 @@ grille sont alors à refaire).
 grille affichée deviennent les mêmes partout (badge « Commune ») : on les relie une seule fois, et changer de grille ne change
 pas la lumière. Ce qui occupait leur place dans les autres grilles est mis de côté et revient si on désactive l'option.
 
+## Projecteurs pilotés par Lalabob (boîtier USB-DMX)
+Pour une petite salle, Lalabob peut piloter lui-même la barre (Chauvet 4BAR LT BT : 4 projecteurs RVB), sans LightKey.
+Chaque spectacle choisit son mode : **Logiciel lumière** (LightKey) ou **Projecteurs pilotés par Lalabob**. On peut revenir
+de l'un à l'autre sans rien perdre.
+
+**Mise en route** (une fois)
+1. Brancher le boîtier USB-DMX et la barre. Sur la barre : MENU › `15Ch` › adresse de départ (celle de la troupe : **050**).
+2. Spectacle › **Réglages du spectacle…** (cadenas ouvert) › **Projecteurs pilotés par Lalabob**. Régler l'**adresse**, le
+   **boîtier de ce Mac** (retenu par Mac), le **fondu du noir** (1,5 s), l'**avance de la lumière** (0 par défaut) et
+   **En quittant Lalabob** (fondu au noir par défaut ; sinon la lumière reste, car la barre garde sa dernière couleur).
+3. **Essayer : 4 projecteurs en blanc** : les 4 projecteurs s'allument. La pastille « Projecteurs » de l'en-tête dit l'état du boîtier.
+
+**Les pads lumière** décrivent un état des projecteurs, choisi dans le panneau du bas :
+- **Couleurs** : *Chacun* (une couleur par projecteur) ou *Ensemble* (une seule) ; roue des couleurs (teinte + saturation), couleurs favorites du spectacle, **strobo** (arrêté par défaut), **fondu d'entrée**.
+- **Alternance** : deux couleurs qui basculent au tempo du dernier son lancé (tempo détecté automatiquement ; sans tempo fiable, le tempo de repli du pad), ou au tempo de repli sans son.
+- **Programme** : un des 12 programmes de la barre. **Sur le son** : la barre suit le son avec son micro.
+- **Aperçu** (interrupteur du panneau) : chaque réglage s'applique tout de suite à la barre ; en quittant le pad, retour en fondu à la lumière d'avant.
+- Un pad sans état précis allume les 4 projecteurs à la couleur du pad.
+
+**En jeu** : un appui (ou double-clic) joue l'état du pad avec son fondu. Sous les colonnes lumière, clic droit sur la carte d'un fader
+pour choisir son **rôle** : **Général** (intensité), **Couleurs** (fait tourner toute la roue), **Strobo**, ou Aucun. Il n'y a qu'un Général et
+qu'un fader Couleurs pour tout le spectacle : changer de grille ne change jamais la lumière. La carte Général montre la mini-barre
+(clic sur un projecteur = le couper ou le rallumer en fondu) et le bouton **Noir**. Sur l'APC, le bouton rond d'une colonne lumière = **Noir** (fondu).
+Échap (Tout arrêter) ne touche jamais à la lumière.
+
+⚠︎ **LightKey et Lalabob ne doivent jamais piloter le boîtier en même temps** : les deux envoient à la barre, sans aucune erreur
+affichée, et la lumière devient imprévisible. En mode Projecteurs, fermer LightKey.
+⚠︎ **Strobo** : jamais allumé par erreur (arrêté par défaut dans un nouvel état), mais à prévenir : les flashs rapides peuvent
+déclencher des crises chez les personnes photosensibles. Prévenir la salle, et ne pas dépasser ce qu'on a essayé en répétition.
+Si le boîtier est débranché en jeu, aucun son ne s'arrête ; la lumière reprend au rebranchement. Fenêtre › **Banc d'essai DMX** pour essayer canal par canal (il prend la main sur la sortie du spectacle tant qu'il est ouvert).
+
 ## En cas de problème
+- **Projecteurs pilotés par Lalabob : rien ne s'allume** : pastille « Projecteurs » en erreur → boîtier débranché ou occupé ; vérifier l'adresse (barre et réglages identiques) et le mode 15Ch de la barre. Essayer « 4 projecteurs en blanc ».
+- **La lumière fait des choses étranges** : LightKey est-il encore ouvert et relié au boîtier ? Le fermer.
 - **Une lumière ne s'allume pas, ou s'allume puis s'éteint** : dans LightKey, le contrôleur est-il encore activé ? Le désactiver.
 - **Les pads ne montrent jamais si la lumière est allumée** : sortie « Lalabob Lumière » activée dans LightKey ? Le **Banc d'essai lumière** (⌥⌘L) doit montrer une ligne « LightKey → » quand on allume une lumière.
 - **Contrôleur absent** : le rebrancher, les LED reviennent seules ; en attendant, tout se joue à l'écran.

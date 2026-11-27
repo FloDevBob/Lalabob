@@ -314,6 +314,15 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   attend la fiche 06.
   **À essayer** : ☐ activer, appairer une cue une fois, la lancer depuis chaque grille ☐ LED des colonnes lumière inchangées en changeant de
   grille ☐ désactiver : les anciennes colonnes reviennent ☐ ⌘S puis rouvrir avec l'option active ☐ aucun son ne s'arrête.
+- **Étape 5 — documentation (28/11/2026, branche `j14/documentation-dmx`, empilée sur `j14/interface-dmx`)** ✅ texte seul, aucun code ni test touché.
+  `GUIDE.md` (section « Projecteurs pilotés par Lalabob », dépannage, règle **LightKey fermé en mode Projecteurs**, mise en garde strobo), aide intégrée
+  (rubrique « Projecteurs pilotés par Lalabob », dépannage, renvoi depuis « La lumière »), `LEXIQUE.md` (vocabulaire DMX), `DESIGN.md` (section DMX).
+  **Check-list d'essai sur la vraie barre** (à cocher) : ☐ Réglages du spectacle lisibles (adresse 50, boîtier, « 4 projecteurs en blanc ») ☐ pastille « Projecteurs » et cadenas carré (1320 pt)
+  ☐ repères et sous-titres des pads lumière ☐ panneau du bas à la largeur minimale, ≤ 196 pt ☐ aperçu : la barre suit sans fondu, ⌘Z d'un seul pas, retour en fondu ☐ fondus fluides, sans scintillement
+  ☐ Noir (écran et bouton rond de l'APC) ☐ fader 7 = Général, fader 8 = Couleurs, changer de grille ne change rien ☐ mini-barre : couper un projecteur ☐ alternance sur un son rythmé, réglage de l'avance
+  ☐ programmes 1–12 et « sur le son » (⚠︎ valeurs déduites du manuel) ☐ strobo ☐ ouvrir / fermer le banc d'essai DMX en jouant ☐ débrancher le boîtier en jouant : aucun son ne s'arrête ☐ ⌘Q : fondu au noir
+  ☐ LightKey ouvert en même temps : confirmer l'avertissement ☐ **copie d'un vrai spectacle : ⌘S, rien ne change** ☐ mettre les deux Mac à jour ensemble (format 4).
+  **Questions encore à trancher à l'essai** : fondu au noir à la fermeture par défaut (Q5), mini-barre qui agit sur l'état sans modifier le pad (Q6), durée du Noir 1,5 s (Q9), dernier son lancé = tempo (Q8).
 
 ## Risques suivis
 

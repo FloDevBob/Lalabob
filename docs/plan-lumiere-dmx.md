@@ -250,7 +250,8 @@ Respecte `docs/adr/0001-architecture.md` : un module par responsabilité, pas de
    (4 types, Chacun / Ensemble, roue des couleurs), aperçu en direct, d'après la maquette (planches ci-dessus).
    **Code fait le 27/11/2026** (4a à 4e, voir `docs/PLAN.md`, J14) ; à regarder à l'œil et à essayer sur la barre. Écart : `Column.faderRole`
    (rôle du fader, format 4) ; commandes de la barre sans colonne Général : pas encore.
-5. **Documentation et essai** — `GUIDE.md`, aide intégrée, `LEXIQUE.md`, `DESIGN.md`, check-list sur la vraie barre.
+5. **Documentation et essai** (`j14/documentation-dmx`) — `GUIDE.md`, aide intégrée, `LEXIQUE.md`, `DESIGN.md` : **faits le 28/11/2026**.
+   Check-list sur la vraie barre dans `docs/PLAN.md` (J14, étape 5) : **à faire**.
 
 Estimation grossière : l'étape 0 est courte et lève l'essentiel du risque ; 1 à 3 forment le gros du travail ; 4 dépend
 de la maquette.
