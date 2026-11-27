@@ -492,3 +492,10 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   colonnes Music sur l'APC. Contrôleur : un appui sur un pad Music le joue (verrouillé aussi). Disponibilité des pads (☁ nuage, « Introuvable »)
   relue à l'affichage d'une grille Apple Music (script vérifié). Panneau du bas : lecture / pause, stop, temps, barre de position cliquable.
   9 tests (faux lecteur). **Pas essayé en vrai** : lancer un morceau, fondu enchaîné à l'oreille, fin détectée.
+- **Étape 4 — extraits, recherche internet, pochettes (27/11/2026, branche `j11/grilles-apple-music-extraits`)** ✅ code. `ITunesCatalog` (recherche publique
+  d'Apple, sans clé : seul le texte cherché part ; seules les adresses https d'Apple sont suivies), onglet **Internet** du panneau (pochette, titre,
+  artiste, durée, extrait, « Ajouter… » qui ouvre le morceau dans l'app Music, car sans compte développeur Lalabob ne peut pas l'ajouter lui-même),
+  bouton ▶ d'**extrait de 30 s** sur chaque morceau (téléchargé une fois dans un cache, joué par la pré-écoute de Lalabob, sans toucher à Music ;
+  pour un morceau de la bibliothèque, l'extrait est cherché d'après le titre et l'artiste), **pochette** dans le panneau du bas (celle de Music par
+  AppleScript, vérifié : JPEG ; sinon celle du catalogue). Autorisation réseau (`network.client`). 7 tests (faux catalogue, réponse JSON réelle
+  reproduite). **Limite** : l'extrait d'un morceau de la bibliothèque peut être celui d'une autre version du même titre.

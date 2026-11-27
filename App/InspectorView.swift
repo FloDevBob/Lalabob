@@ -203,6 +203,7 @@ private struct MusicHeader: View {
 /// et ce qui n'existe pas pour un morceau protégé.
 private struct MusicDetails: View {
     @Environment(ShowController.self) private var controller
+    @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
     let position: GridPosition
     let pad: Pad
     let track: MusicTrackRef
@@ -218,10 +219,18 @@ private struct MusicDetails: View {
     var body: some View {
         let event = controller.playback[pad.id]
         HStack(alignment: .center, spacing: 16) {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(pad.tint.surfaceColor)
-                .overlay { Icon.music.view(size: 34).foregroundStyle(pad.tint.labelColor.opacity(0.8)) }
+            Group {
+                if let data = musicLibrary?.artworks[track.persistentID], let image = NSImage(data: data) {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(pad.tint.surfaceColor)
+                        .overlay { Icon.music.view(size: 34).foregroundStyle(pad.tint.labelColor.opacity(0.8)) }
+                }
+            }
                 .frame(width: 116, height: 116)
+                .clipShape(.rect(cornerRadius: 10))
+                .task(id: track.persistentID) { await musicLibrary?.loadArtwork(for: track) }
                 .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
                 .accessibilityLabel("Pochette de \(track.album.isEmpty ? track.title : track.album)")
             VStack(alignment: .leading, spacing: 10) {

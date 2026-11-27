@@ -33,6 +33,11 @@ actor FakeMusicLibrary: MusicLibraryReading {
         }
     }
     func openMusic() async { opened += 1 }
+    var artworkData: [String: Data] = [:]
+    private(set) var openedStore: [URL] = []
+    func setArtwork(_ data: Data, for id: String) { artworkData[id] = data }
+    func artwork(of id: String) async throws -> Data? { artworkData[id] }
+    func openInMusic(_ storeURL: URL) async { openedStore.append(storeURL) }
     func availability(of ids: [String]) async throws -> [String: MusicTrackAvailability] {
         let all = content.values.flatMap { $0 }
         return Dictionary(uniqueKeysWithValues: ids.map { id in

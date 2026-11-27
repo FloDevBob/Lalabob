@@ -47,6 +47,8 @@ targets:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.bookmarks.app-scope: true
+        # Grilles Apple Music : recherche dans le catalogue, extraits de 30 s et pochettes (adresses d'Apple seulement).
+        com.apple.security.network.client: true
         # Le 9e fader de l'APC règle le volume d'Apple Music (Apple Events vers Music seulement, ADR 0009).
         com.apple.security.automation.apple-events: true
         com.apple.security.temporary-exception.apple-events: [com.apple.Music]

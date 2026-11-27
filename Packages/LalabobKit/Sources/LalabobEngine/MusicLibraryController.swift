@@ -15,6 +15,21 @@ public final class MusicLibraryController {
     }
 
     @ObservationIgnored private let library: any MusicLibraryReading
+    @ObservationIgnored private let catalog: any MusicCatalogSearching
+    @ObservationIgnored private let cacheDirectory: URL
+
+    /// Où l'on cherche : les playlists de la bibliothèque, ou le catalogue d'Apple Music sur internet.
+    public enum Source: Sendable { case library, internet }
+    public var source: Source = .library
+    /// Résultats de la recherche sur internet.
+    public private(set) var internetResults: [CatalogTrack] = []
+    public private(set) var isSearchingInternet = false
+    /// Dernier problème de réseau ou d'extrait (affiché dans le panneau).
+    public private(set) var networkError: String?
+    /// Pochettes déjà chargées, par identifiant de morceau.
+    public private(set) var artworks: [String: Data] = [:]
+    /// Extraits déjà téléchargés : clé (« lib:<id> », « cat:<id> ») → fichier local.
+    @ObservationIgnored private var previewFiles: [String: URL] = [:]
 
     public private(set) var status: MediaVolumeStatus = .notRunning
     public private(set) var isLoading = false
@@ -34,8 +49,106 @@ public final class MusicLibraryController {
     /// Au plus ce nombre de résultats de recherche.
     public static let searchLimit = 200
 
-    public init(library: any MusicLibraryReading) {
+    public init(
+        library: any MusicLibraryReading, catalog: any MusicCatalogSearching = ITunesCatalog(),
+        cacheDirectory: URL = FileManager.default.temporaryDirectory.appending(path: "lalabob-extraits")
+    ) {
         self.library = library
+        self.catalog = catalog
+        self.cacheDirectory = cacheDirectory
+    }
+
+    // MARK: Internet (catalogue d'Apple Music)
+
+    /// Cherche dans le catalogue d'Apple Music (titre, artiste…). Seul le texte cherché part sur le réseau.
+    public func searchInternet(_ text: String) async {
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            internetResults = []
+            return
+        }
+        isSearchingInternet = true
+        defer { isSearchingInternet = false }
+        do {
+            internetResults = try await catalog.search(query, limit: 40)
+            networkError = nil
+        } catch {
+            internetResults = []
+            networkError = "Recherche impossible : vérifiez la connexion à internet."
+        }
+    }
+
+    /// « Ajouter… » : ouvre le morceau dans l'app Music, où l'on clique + pour l'ajouter à la bibliothèque.
+    public func openInMusic(_ track: CatalogTrack) async {
+        guard let url = track.storeURL else { return }
+        await library.openInMusic(url)
+    }
+
+    /// Le fichier de l'extrait de 30 s d'un morceau du catalogue (téléchargé une fois, gardé ensuite).
+    public func previewFile(for track: CatalogTrack) async -> URL? {
+        guard let url = track.previewURL else {
+            networkError = "Pas d'extrait pour « \(track.title) »."
+            return nil
+        }
+        return await cachedPreview(key: "cat-\(track.id)", from: url)
+    }
+
+    /// L'extrait de 30 s d'un morceau de la bibliothèque : cherché dans le catalogue d'après son titre et son artiste.
+    public func previewFile(for track: MusicTrack) async -> URL? {
+        if let cached = previewFiles["lib-\(track.id)"] { return cached }
+        guard let match = await catalogMatch(title: track.title, artist: track.artist), let url = match.previewURL else {
+            networkError = networkError ?? "Pas d'extrait trouvé pour « \(track.title) »."
+            return nil
+        }
+        let file = await cachedPreview(key: "cat-\(match.id)", from: url)
+        previewFiles["lib-\(track.id)"] = file
+        return file
+    }
+
+    /// Charge la pochette d'un morceau : celle de Music, sinon celle du catalogue. Gardée en mémoire.
+    public func loadArtwork(for track: MusicTrackRef) async {
+        guard artworks[track.persistentID] == nil else { return }
+        if let data = try? await library.artwork(of: track.persistentID), !data.isEmpty {
+            artworks[track.persistentID] = data
+            return
+        }
+        if let match = await catalogMatch(title: track.title, artist: track.artist), let url = match.artworkURL,
+            let data = try? await catalog.download(url)
+        {
+            artworks[track.persistentID] = data
+        }
+    }
+
+    private func catalogMatch(title: String, artist: String) async -> CatalogTrack? {
+        do {
+            let found = try await catalog.search("\(title) \(artist)", limit: 10)
+            networkError = nil
+            let wanted = title.lowercased()
+            return found.first { $0.title.lowercased() == wanted } ?? found.first { $0.title.lowercased().contains(wanted) } ?? found.first
+        } catch {
+            networkError = "Pas de connexion à internet : extraits et pochettes indisponibles."
+            return nil
+        }
+    }
+
+    private func cachedPreview(key: String, from url: URL) async -> URL? {
+        if let cached = previewFiles[key] { return cached }
+        let file = cacheDirectory.appending(path: "\(key).m4a")
+        if FileManager.default.fileExists(atPath: file.path) {
+            previewFiles[key] = file
+            return file
+        }
+        do {
+            let data = try await catalog.download(url)
+            try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+            try data.write(to: file, options: .atomic)
+            previewFiles[key] = file
+            networkError = nil
+            return file
+        } catch {
+            networkError = "Extrait indisponible : vérifiez la connexion à internet."
+            return nil
+        }
     }
 
     // MARK: Chargement

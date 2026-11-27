@@ -8,12 +8,26 @@ import SwiftUI
 struct MusicLibraryView: View {
     @Environment(MusicLibraryController.self) private var library
     @Environment(ShowController.self) private var controller
+    @Environment(PreviewController.self) private var preview
     @State private var query = ""
+    @State private var internetQuery = ""
+    /// Le morceau dont l'extrait joue (ou se télécharge), et son fichier.
+    @State private var previewing: (key: String, title: String, file: URL?)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             statusRow
             if library.status == .running {
+                Picker("Où chercher", selection: Binding(get: { library.source }, set: { library.source = $0 })) {
+                    Text("Mes playlists").tag(MusicLibraryController.Source.library)
+                    Text("Internet").tag(MusicLibraryController.Source.internet)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            if library.status == .running, library.source == .internet {
+                internetSection
+            } else if library.status == .running {
                 TextField("Rechercher une playlist ou un morceau", text: $query)
                     .textFieldStyle(.roundedBorder)
                     .help("Filtre les playlists par nom et cherche les morceaux dans toute la bibliothèque de Music")
@@ -28,6 +42,10 @@ struct MusicLibraryView: View {
             } else {
                 Spacer(minLength: 0)
             }
+            if let error = library.networkError {
+                Text(error).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)
+            }
+            previewZone
         }
         .padding(14)
         .background(Surface.chrome)
@@ -189,6 +207,7 @@ struct MusicLibraryView: View {
             if track.isDownloaded == false {
                 Text("☁").foregroundStyle(Surface.lightAccent).help("Dans le nuage : Internet nécessaire pour le jouer")
             }
+            previewButton(key: "lib-\(track.id)", title: track.title) { await library.previewFile(for: track) }
             Text(AudioLibrary.formatDuration(track.duration)).font(Typography.mono).foregroundStyle(Surface.textTertiary)
         }
         .font(.system(size: 12))
@@ -212,5 +231,141 @@ struct MusicLibraryView: View {
             + (track.isDownloaded == false ? ", dans le nuage" : "") + (onGrid ? ", déjà sur une grille" : ""))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityAction(named: "Sélectionner") { library.clickTrack(track.id) }
+    }
+
+    // MARK: Internet
+
+    private var internetSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            TextField("Chercher sur Apple Music", text: $internetQuery)
+                .textFieldStyle(.roundedBorder)
+                .help("Cherche dans tout le catalogue d'Apple Music (internet nécessaire)")
+                .task(id: internetQuery) {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    await library.searchInternet(internetQuery)
+                }
+            HStack {
+                Text("CATALOGUE APPLE MUSIC").font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Surface.textTertiary)
+                Spacer()
+                if library.isSearchingInternet { ProgressView().controlSize(.small) }
+            }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    ForEach(library.internetResults) { track in
+                        catalogRow(track)
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Un morceau trouvé sur internet").font(.system(size: 12, weight: .semibold)).foregroundStyle(Surface.lightAccent)
+                Text("« Ajouter… » ouvre le morceau dans Music : cliquez + pour l'ajouter à votre bibliothèque. Il apparaît alors dans « Mes playlists », prêt à glisser sur un pad.")
+                    .font(.system(size: 11)).foregroundStyle(Surface.textSecondary).fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(10)
+            .background(Surface.lightAccent.opacity(0.1), in: .rect(cornerRadius: 10))
+        }
+    }
+
+    private func catalogRow(_ track: CatalogTrack) -> some View {
+        HStack(spacing: 8) {
+            AsyncImage(url: track.artworkURL) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                RoundedRectangle(cornerRadius: 5).fill(Surface.well)
+            }
+            .frame(width: 34, height: 34)
+            .clipShape(.rect(cornerRadius: 5))
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(track.title).font(.system(size: 12)).lineLimit(1)
+                Text("\(track.artist) · \(AudioLibrary.formatDuration(track.duration))")
+                    .font(.system(size: 11)).foregroundStyle(Surface.textTertiary).lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            previewButton(key: "cat-\(track.id)", title: track.title) { await library.previewFile(for: track) }
+            Button("Ajouter…") { Task { await library.openInMusic(track) } }
+                .controlSize(.small)
+                .disabled(track.storeURL == nil)
+                .help("Ouvre ce morceau dans Music : cliquez + pour l'ajouter à votre bibliothèque")
+        }
+        .padding(.vertical, 3)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(track.title), \(track.artist)")
+    }
+
+    // MARK: Extraits de 30 s
+
+    /// Bouton ▶ / ■ d'un extrait de 30 s (téléchargé à la première écoute), joué par la pré-écoute de Lalabob : Music n'est pas touché.
+    private func previewButton(key: String, title: String, file: @escaping () async -> URL?) -> some View {
+        let isThis = previewing?.key == key && (previewing?.file == nil || preview.playingItem == previewing?.file)
+        return Button {
+            if isThis {
+                preview.stop()
+                previewing = nil
+                return
+            }
+            preview.stop()
+            previewing = (key, title, nil)
+            Task {
+                guard let url = await file(), previewing?.key == key else {
+                    if previewing?.key == key { previewing = nil }
+                    return
+                }
+                previewing = (key, title, url)
+                preview.toggle(
+                    AudioLibraryItem(url: url, name: title, duration: 30), deviceUID: controller.selectedOutputUID,
+                    isLocked: controller.isLocked)
+            }
+        } label: {
+            (isThis ? Icon.stopFill : Icon.playFill).view(size: 9)
+                .frame(width: 20, height: 20)
+                .background(Surface.musicAccent.opacity(isThis ? 1 : 0.25), in: .circle)
+                .foregroundStyle(isThis ? Surface.window : Surface.musicAccent)
+        }
+        .buttonStyle(.plain)
+        .help(isThis ? "Arrêter l'extrait" : "Écouter un extrait de 30 s (sans toucher à Music)")
+        .accessibilityLabel(isThis ? "Arrêter l'extrait" : "Écouter l'extrait de 30 s de \(title)")
+    }
+
+    @ViewBuilder
+    private var previewZone: some View {
+        if let current = previewing {
+            HStack(spacing: 10) {
+                Button {
+                    preview.stop()
+                    previewing = nil
+                } label: {
+                    Icon.stopFill.view(size: 12)
+                        .frame(width: 32, height: 32)
+                        .background(Surface.musicAccent, in: .circle)
+                        .foregroundStyle(Surface.window)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Arrêter l'extrait")
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("\(current.title) · extrait 30 s").font(.system(size: 12)).lineLimit(1)
+                    Capsule().fill(Color.white.opacity(0.1)).frame(height: 4)
+                        .overlay(alignment: .leading) {
+                            GeometryReader { proxy in
+                                Capsule().fill(Surface.musicAccent)
+                                    .frame(width: proxy.size.width * (current.file == nil ? 0 : preview.progress))
+                            }
+                        }
+                        .frame(height: 4)
+                }
+                if current.file == nil { ProgressView().controlSize(.small) }
+            }
+            .padding(10)
+            .background(Surface.well, in: .rect(cornerRadius: 12))
+            .task(id: current.key) {
+                // Avancement de l'extrait, relu 5 fois par seconde tant qu'il joue.
+                while !Task.isCancelled {
+                    preview.refreshProgress()
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+            }
+            .onChange(of: preview.playingItem) { if preview.playingItem == nil, previewing?.file != nil { previewing = nil } }
+        }
     }
 }

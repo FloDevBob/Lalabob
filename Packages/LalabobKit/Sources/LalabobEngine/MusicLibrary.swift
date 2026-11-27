@@ -70,6 +70,10 @@ public protocol MusicLibraryReading: Sendable {
     func openMusic() async
     /// La disponibilité de ces morceaux (ceux des pads), par identifiant.
     func availability(of ids: [String]) async throws -> [String: MusicTrackAvailability]
+    /// La pochette d'un morceau de la bibliothèque (JPEG ou PNG), `nil` s'il n'en a pas.
+    func artwork(of id: String) async throws -> Data?
+    /// Ouvre la page d'un morceau du catalogue dans l'app Music (pour l'ajouter à la bibliothèque).
+    func openInMusic(_ storeURL: URL) async
 }
 
 /// La bibliothèque réelle, lue par AppleScript. Ne lance jamais Music : tout est refusé s'il est fermé.
@@ -195,6 +199,28 @@ public actor AppleMusicLibrary: MusicLibraryReading {
             }
             return out
         }
+    }
+
+    public func artwork(of id: String) async throws -> Data? {
+        guard MusicScripting.isRunning, MusicTrackRef.isValidPersistentID(id) else { return nil }
+        let script = """
+            set lbTracks to (every track of library playlist 1 whose persistent ID is "\(id)")
+            if lbTracks is {} then return ""
+            set lbTrack to item 1 of lbTracks
+            if (count of artworks of lbTrack) is 0 then return ""
+            return raw data of artwork 1 of lbTrack
+            """
+        return try await MusicScripting.run(script) { result in
+            result.descriptorType == typeUnicodeText || result.descriptorType == typeUTF8Text ? nil : result.data
+        }
+    }
+
+    public func openInMusic(_ storeURL: URL) async {
+        // https://music.apple.com/… → music://music.apple.com/… : la page s'ouvre dans l'app Music, pas dans le navigateur.
+        guard ITunesCatalog.isTrusted(storeURL), var components = URLComponents(url: storeURL, resolvingAgainstBaseURL: false) else { return }
+        components.scheme = "music"
+        guard let url = components.url else { return }
+        _ = await MainActor.run { NSWorkspace.shared.open(url) }
     }
 
     public func openMusic() async {
