@@ -88,6 +88,14 @@ public final class DMXSession {
         setHead(index, on: !console.isHeadOn(index))
     }
 
+    /// « Essayer : 4 projecteurs en blanc » (Réglages du spectacle) : la console joue du blanc, sans pad. Mode Projecteurs seulement.
+    public func testWhite() {
+        guard var console else { return }
+        console.play(
+            .uniform(color: .white, intensity: 1, headCount: console.rig.profile.headCount), pad: nil, at: now())
+        publish(console)
+    }
+
     /// Boîtier choisi sur ce Mac (numéro de série), `nil` = le premier branché. Mémorisé avec celui du banc d'essai.
     public func selectPort(serialNumber: String?) {
         defaults.set(serialNumber, forKey: DMXTestBench.portKey)
@@ -227,5 +235,26 @@ public final class DMXSession {
         await output.shutdown(finalFrame: console.frame(at: start + duration + 1))
         status = .stopped
         log.info("Sortie DMX fermée (fondu au noir)")
+    }
+}
+
+extension DMXStatus {
+    /// Mot court pour la pastille « Projecteurs » de l'en-tête et les Réglages.
+    public var headline: String {
+        switch self {
+        case .stopped: "Signal arrêté"
+        case .noDevice: "Boîtier absent"
+        case .connected: "Branché"
+        case .failed: "En erreur"
+        }
+    }
+
+    /// Une phrase d'aide quand quelque chose ne va pas ; `nil` si tout va bien.
+    public var detail: String? {
+        switch self {
+        case .noDevice: "Branchez le boîtier USB-DMX : Lalabob le cherche chaque seconde."
+        case .failed(_, let message): "\(message). Nouvel essai chaque seconde (une autre app utilise-t-elle le boîtier ?)."
+        case .stopped, .connected: nil
+        }
     }
 }

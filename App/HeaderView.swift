@@ -10,6 +10,7 @@ struct HeaderView: View {
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Binding var showsLibrary: Bool
     @Environment(\.midiSession) private var midiSession
+    @Environment(DMXSession.self) private var dmx
     @State private var showsCalibration = false
     @State private var audioUsage = AudioFolderUsage.empty
 
@@ -47,8 +48,9 @@ struct HeaderView: View {
             // À droite : contrôleur, sortie audio, cadenas, Tout arrêter.
             if let session = midiSession, controller.connectedController == .apcMiniMK2 { MusicVolumePill(session: session) }
             controllerStatusControl
+            if controller.isDMXLighting { projectorsStatus }
             outputPicker
-            PairingButton()
+            if !controller.isDMXLighting { PairingButton() }  // « Relier » n'a pas de sens quand Lalabob allume lui-même la barre
             LockButton()
             Button("Tout arrêter", icon: .stop) {
                 controller.stopAll()
@@ -100,6 +102,24 @@ struct HeaderView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(controller.connectedControllerName.map { "\($0), connecté" } ?? "Aucun contrôleur connecté")
         .help(controller.connectedControllerName.map { "\($0) : contrôleur connecté" } ?? "Aucun Launchpad ni APC mini mk2 détecté : branchez-en un, il sera reconnu tout seul")
+    }
+
+    /// Pastille « Projecteurs » (mode DMX) : le boîtier est-il branché ? Rien n'est affirmé sur la barre elle-même (le DMX ne
+    /// renvoie rien).
+    private var projectorsStatus: some View {
+        let color: Color =
+            switch dmx.status {
+            case .connected: .green
+            case .failed: Surface.lightAccent
+            case .stopped, .noDevice: Surface.textTertiary
+            }
+        return HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text("Projecteurs").font(.system(size: 12)).foregroundStyle(Surface.textSecondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Projecteurs, \(dmx.status.headline)")
+        .help("Boîtier USB-DMX : \(dmx.status.headline)" + (dmx.status.detail.map { "\n\($0)" } ?? ""))
     }
 
     private var outputPicker: some View {
@@ -163,12 +183,11 @@ struct LockButton: View {
         return Button {
             controller.isLocked.toggle()
         } label: {
-            IconLabel(locked ? "Verrouillé" : "Déverrouillé", icon: locked ? .lock : .lockOpen, size: 15)
+            // Bouton carré, icône seule (l'état se lit à l'icône et à l'ambre ; le texte reste pour VoiceOver et l'infobulle).
+            (locked ? Icon.lock : Icon.lockOpen).view(size: 15)
                 .id(locked)
                 .transition(.opacity.combined(with: .scale(scale: 0.6)))
-                .font(.system(size: 12.5, weight: .semibold))
-                .padding(.horizontal, 10)
-                .frame(height: 28)
+                .frame(width: 30, height: 30)
                 .background(locked ? Surface.panel : Surface.lightAccent.opacity(0.18), in: .rect(cornerRadius: 8))
                 .foregroundStyle(locked ? Surface.textSecondary : Surface.lightAccent)
         }

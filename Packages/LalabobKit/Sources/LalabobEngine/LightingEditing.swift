@@ -2,7 +2,7 @@ import Foundation
 import LalabobModel
 
 /// Réglages lumière du spectacle (J14, ADR 0012) : mode LightKey ou Projecteurs, appareil DMX. Passent par `commit`
-/// (⌘Z, refusés verrouillé). L'interface (Réglages du spectacle) viendra à l'étape 4.
+/// (⌘Z, refusés verrouillé). L'interface est dans Réglages du spectacle (`ShowSettingsView`).
 extension ShowController {
     /// Choisit qui pilote la lumière. Passer en Projecteurs aligne les faders Général et Couleurs de toutes les grilles sur
     /// la grille affichée, et quitte le mode « Relier aux projecteurs » (inutile en DMX).
@@ -22,7 +22,8 @@ extension ShowController {
             profile: rig.profile, address: rig.address,
             blackoutFade: min(max(rig.blackoutFade.isFinite ? rig.blackoutFade : 1.5, DMXRig.blackoutFadeRange.lowerBound),
                 DMXRig.blackoutFadeRange.upperBound),
-            onQuit: rig.onQuit, favoriteColors: Array(rig.favoriteColors.prefix(DMXRig.maximumFavoriteColors)))
+            onQuit: rig.onQuit, favoriteColors: Array(rig.favoriteColors.prefix(DMXRig.maximumFavoriteColors)),
+            lightLead: rig.lightLead)
         commit("Réglages des projecteurs") { show, _ in
             guard show.lighting.rig != clamped else { return false }
             show.lighting.rig = clamped

@@ -1,13 +1,16 @@
+import LalabobDMX
 import LalabobDesign
 import LalabobEngine
 import LalabobModel
 import SwiftUI
 
-/// Réglages du spectacle (menu Spectacle › Réglages du spectacle…, déverrouillé) : pour l'instant, l'option
-/// « Colonnes lumière communes à toutes les grilles » (fiche 01b) et son canal LightKey.
+/// Réglages du spectacle (menu Spectacle › Réglages du spectacle…, déverrouillé) : qui pilote la lumière (LightKey ou les
+/// projecteurs, J14), l'appareil DMX, et l'option « Mêmes lumières sur toutes les grilles » (fiche 01b) avec son canal.
 struct ShowSettingsView: View {
     @Environment(ShowController.self) private var controller
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
+    @Environment(DMXSession.self) private var dmx
     /// Activation en attente de confirmation (elle met des colonnes de côté dans les autres grilles).
     @State private var confirmsActivation = false
 
@@ -15,6 +18,11 @@ struct ShowSettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Réglages du spectacle")
                 .font(.title3.weight(.semibold))
+
+            lightingModeSection
+            if controller.isDMXLighting { projectorsSection }
+
+            Divider()
 
             VStack(alignment: .leading, spacing: 8) {
                 Toggle(isOn: Binding(get: { controller.show.sharedLight != nil }, set: toggle)) {
@@ -67,6 +75,152 @@ struct ShowSettingsView: View {
             Button("Annuler", role: .cancel) {}
         } message: {
             Text(activationMessage)
+        }
+    }
+
+    // MARK: - Qui pilote la lumière
+
+    private var lightingModeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Lumière").font(.body.weight(.medium))
+            HStack(spacing: 10) {
+                modeChoice(
+                    .lightKey, title: "Logiciel lumière",
+                    detail: "Lalabob envoie les appuis à LightKey, qui allume les projecteurs et renvoie leur état.")
+                modeChoice(
+                    .dmx, title: "Projecteurs pilotés par Lalabob",
+                    detail: "Lalabob allume la barre lui-même par un boîtier USB-DMX. Pas besoin de logiciel lumière.")
+            }
+            .disabled(controller.isLocked)
+        }
+    }
+
+    private func modeChoice(_ mode: LightingMode, title: String, detail: String) -> some View {
+        let selected = controller.show.lighting.mode == mode
+        return Button {
+            controller.setLightingMode(mode)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Surface.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(selected ? Surface.lightAccent.opacity(0.14) : Surface.panel, in: .rect(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(selected ? Surface.lightAccent : Color.white.opacity(0.08), lineWidth: selected ? 1.5 : 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link, enabled: !controller.isLocked)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    // MARK: - Projecteurs
+
+    private var rig: DMXRig { controller.show.lighting.rig }
+
+    private func edit(_ change: (inout DMXRig) -> Void) {
+        var updated = rig
+        change(&updated)
+        controller.setDMXRig(updated)
+    }
+
+    private var projectorsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+                GridRow {
+                    Text("Appareil")
+                    Text(rig.profile.name).foregroundStyle(Surface.textSecondary)
+                }
+                GridRow {
+                    Text("Adresse")
+                    HStack {
+                        Stepper(
+                            value: Binding(get: { rig.address }, set: { value in edit { $0.address = value } }),
+                            in: DMXRig.addressRange(for: rig.profile)
+                        ) {
+                            Text("\(rig.address)").monospacedDigit()
+                        }
+                        .fixedSize()
+                        Text("celle affichée par la barre : MENU → 15Ch → d \(String(format: "%03d", rig.address))")
+                            .font(.caption)
+                            .foregroundStyle(Surface.textTertiary)
+                    }
+                }
+                GridRow {
+                    Text("Boîtier de ce Mac")
+                    HStack(spacing: 8) {
+                        Picker("Boîtier", selection: Binding(get: { dmx.selectedPortSerial }, set: { dmx.selectPort(serialNumber: $0) })) {
+                            Text("Le premier branché").tag(String?.none)
+                            ForEach(dmx.ports) { port in Text(port.name).tag(String?.some(port.serialNumber)) }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 240)
+                        Circle().fill(dmx.status.isConnected ? Color.green : Surface.textTertiary).frame(width: 8, height: 8)
+                        Text(dmx.status.headline).font(.caption).foregroundStyle(Surface.textSecondary)
+                    }
+                }
+                GridRow {
+                    Text("Fondu du noir")
+                    HStack {
+                        Stepper(
+                            value: Binding(get: { rig.blackoutFade }, set: { value in edit { $0.blackoutFade = value } }),
+                            in: DMXRig.blackoutFadeRange, step: 0.5
+                        ) {
+                            Text(String(format: "%.1f s", rig.blackoutFade)).monospacedDigit()
+                        }
+                        .fixedSize()
+                    }
+                }
+                GridRow {
+                    Text("Avance de la lumière")
+                    HStack {
+                        Stepper(
+                            value: Binding(get: { rig.lightLead }, set: { value in edit { $0.lightLead = value } }),
+                            in: DMXRig.lightLeadRange, step: 0.01
+                        ) {
+                            Text("\(Int((rig.lightLead * 1000).rounded())) ms").monospacedDigit()
+                        }
+                        .fixedSize()
+                        Text("les alternances basculent un peu avant le temps du son")
+                            .font(.caption)
+                            .foregroundStyle(Surface.textTertiary)
+                    }
+                }
+                GridRow {
+                    Text("En quittant Lalabob")
+                    Picker("En quittant Lalabob", selection: Binding(get: { rig.onQuit }, set: { value in edit { $0.onQuit = value } })) {
+                        Text("Fondu au noir").tag(DMXRig.QuitBehavior.fadeToBlack)
+                        Text("Laisser la lumière").tag(DMXRig.QuitBehavior.leaveLight)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 280)
+                }
+            }
+            .disabled(controller.isLocked)
+
+            if let detail = dmx.status.detail {
+                Text(detail).font(.callout).foregroundStyle(Surface.lightAccent)
+            }
+            Text(
+                "La barre doit être en mode 15 canaux. Si LightKey est ouvert, il ne doit pas piloter ce boîtier en même temps : "
+                    + "les deux enverraient à la barre."
+            )
+            .font(.caption)
+            .foregroundStyle(Surface.textTertiary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            HStack {
+                Button("Essayer : 4 projecteurs en blanc") { dmx.testWhite() }
+                Button("Noir") { controller.blackout() }
+                Button("Banc d'essai DMX…") { openWindow(id: LalabobCommands.dmxBenchWindowID) }
+            }
         }
     }
 
