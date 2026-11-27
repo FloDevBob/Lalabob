@@ -553,3 +553,12 @@ Dossier : `docs/tutoriel/` (voir son `README.md`). Décisions (27/11/2026) : pub
   projecteurs prête**, canal LightKey → **canal des lumières** (réglage avancé), colonnes communes → **Mêmes lumières sur toutes les
   grilles**. LightKey n'est plus nommé que pour sa mise en route, le dépannage et le banc d'essai. Textes seuls (interface, aide, guide,
   DESIGN) ; identifiants du code inchangés. Compilé, 721 tests verts, vérifié à l'écran sur le spectacle d'entraînement.
+
+### J14 — Lumière autonome en DMX 📝 à l'étude (plan : `docs/plan-lumiere-dmx.md`)
+Proposition du 27/11/2026 : pour une petite salle (Chauvet DJ 4BAR LT BT, 4 projecteurs RVB, DMX 15 canaux ; boîtier FTDI type Open DMX), Lalabob pilote
+la lumière lui-même, **sans retirer LightKey** (mode lumière au choix). États lumineux sur les pads (couleur et intensité de chaque
+projecteur, strobo, fondu), carte de jeu sous les colonnes lumière (4 projecteurs, intensité, Noir). Rien n'est codé :
+relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT) : couleurs chacun / ensemble (roue), alternance au tempo du son, programme et micro de la barre, faders à rôle (Général, Couleurs) et mini-barre dans la carte Général (piste C), Noir en fondu sur le bouton rond de l'APC ; cadenas compact (bouton carré, icône seule) dans l'en-tête.
+- **Étape 0 — relevé et banc d'essai (27/11/2026, branche `j14/releve-dmx`)** ✅ : relevé recopié (`docs/hardware/chauvet-4bar-ltbt.md`), ADR 0012
+  (proposée), banc d'essai en ligne de commande `tools/banc-dmx` (Open DMX, 30 Hz). Le boîtier accepte 250 kbit/s et le break ; cadence mesurée
+  33,3 ms en moyenne, pire ≈ 40 ms. Sur la barre (adresse 50) : chenillard conforme, gradateur ✅, **perte du signal : la barre garde la dernière couleur**, strobo ✅. Prochaine : étape 1 (module `LalabobDMX`).
