@@ -86,6 +86,18 @@ enum Tips {
             id: "filtre", title: "Le filtre d'une colonne de sons",
             text: "Le potard à côté du fader : au centre, le son est intact. Tournez à gauche pour ne garder que les graves, à droite pour ne garder que les aigus. Double-cliquez pour revenir au centre. Le réglage se fait même pendant la lecture.",
             keys: [], mode: .always),
+        Tip(
+            id: "apple-music", title: "Des morceaux Apple Music sur vos pads",
+            text: "Créez une grille Apple Music avec le + des onglets, puis glissez des morceaux de vos playlists sur les pads. Un appui lance le morceau, un autre l'arrête.",
+            keys: [], mode: .unlockedOnly),
+        Tip(
+            id: "grille-controleur", title: "Changez de grille sans toucher l'ordinateur",
+            text: "Sur l'APC, les boutons à droite de la grille choisissent la grille (avec Shift pour les grilles 9 à 16). Sur le Launchpad, ce sont les deux premières flèches en haut. Aucun son ne s'arrête.",
+            keys: [], mode: .always),
+        Tip(
+            id: "noir", title: "Un Noir en un geste",
+            text: "En mode Projecteurs, le bouton rond sous une colonne lumière de l'APC éteint tout en douceur. Échap, lui, ne touche jamais à la lumière.",
+            keys: [], mode: .always),
     ]
 
     /// Les astuces qui ont du sens dans le mode courant.

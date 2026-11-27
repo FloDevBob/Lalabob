@@ -107,7 +107,7 @@ Choisi par spectacle (Spectacle › Réglages du spectacle…, déverrouillé) ;
   réelles, clic = couper / rallumer en fondu), le bouton **Noir** et le tempo « ⇄ 124 » avec un point qui bat. Un seul Général et un seul fader Couleurs
   pour tout le spectacle.
 - **Contrôleur** : le bouton rond d'une colonne lumière (APC) = Noir, LED rouge. Échap ne touche jamais à la lumière.
-- **Pas encore** : commandes de la barre sans colonne Général (menu Lumière ou panneau de repos) ; contour ambré des pads lumière en DMX ; astuce DMX.
+- **Pas encore** : commandes de la barre sans colonne Général (menu Lumière ou panneau de repos) ; contour ambré des pads lumière en DMX.
 
 ### Grilles Apple Music (27/11/2026, maquette https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ, spec `docs/spec-grilles-apple-music.md`)
 - **Créer** : le + des onglets propose « Sons et lumière » (⌘T) ou « Apple Music » (⌥⌘T) ; clic droit sur un onglet › Type de grille. Onglet marqué d'une
