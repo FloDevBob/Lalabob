@@ -61,6 +61,8 @@ targets:
         com.apple.security.automation.apple-events: true
         com.apple.security.temporary-exception.apple-events: [com.apple.Music]
         # Groupes d'accès déclarés par Music (com.apple.Music.sdef) : la voie prévue pour une app sandboxée.
+        # Lumière en DMX (ADR 0012) : boîtier USB-DMX vu comme un port série (/dev/cu.usbserial-…).
+        com.apple.security.device.serial: true
         com.apple.security.scripting-targets:
           com.apple.Music: [com.apple.Music.playback, com.apple.Music.library.read, com.apple.Music.library.read-write]
     info:

@@ -42,6 +42,8 @@ struct LalabobApp: App {
     @State private var musicPlayer = MusicPlaybackCoordinator(player: AppleMusicPlayer())
     /// Une seule session MIDI pour l'app, rattachée à la fenêtre active.
     @State private var midiSession = ControllerSession.live()
+    /// Banc d'essai DMX : la sortie ne tourne que fenêtre ouverte.
+    @State private var dmxBench = DMXTestBench()
 
     init() {
         Fonts.register()  // Fredoka, pour le logo
@@ -79,5 +81,10 @@ struct LalabobApp: App {
         Window("Banc d'essai lumière", id: LalabobCommands.benchWindowID) {
             LightingBenchView(session: midiSession)
         }
+
+        Window("Banc d'essai DMX", id: LalabobCommands.dmxBenchWindowID) {
+            DMXBenchView(bench: dmxBench)
+        }
+        .defaultSize(width: 620, height: 720)
     }
 }

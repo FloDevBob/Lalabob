@@ -235,7 +235,8 @@ Respecte `docs/adr/0001-architecture.md` : un module par responsabilité, pas de
    couleur**, strobo ✅. **Étape 0 terminée** ; seul le délai de la barre (alternance au tempo) sera mesuré à l'étape 3b.
    La fenêtre « Banc d'essai DMX » dans l'app viendra avec le module (étape 1).
 1. **Module `LalabobDMX`** (`j14/module-dmx`) — trames, transports, détection, rebranchement, fil à 30 Hz. Tests avec un faux
-   port (octets attendus enregistrés).
+   port (octets attendus enregistrés). **Code fait le 27/11/2026** (avec la fenêtre « Banc d'essai DMX ») ; essai sur la barre à faire,
+   voir `docs/PLAN.md` (J14). Écart : rebranchement par essai chaque seconde plutôt que par notifications IOKit.
 2. **Modèle** (`j14/modele-dmx`) — `LightingMode`, `DMXRig`, `FixtureProfile` (profil de la barre), `LightLook` (4 types), couleurs
    teinte + saturation et favoris du spectacle, format v4 + migration, validation. Tests d'abord.
 3. **Console et moteur** (`j14/console-dmx`) — `LightConsole` (fondus, boutons en direct, Noir, strobo), branchement

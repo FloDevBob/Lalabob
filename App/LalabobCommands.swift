@@ -10,6 +10,7 @@ extension FocusedValues {
 /// ⌘X, ⌘C, ⌘V et ⌫ passent par la grille (`onCopyCommand`…), pour ne pas gêner les champs de texte.
 struct LalabobCommands: Commands {
     static let benchWindowID = "lighting-bench"
+    static let dmxBenchWindowID = "dmx-bench"
     static let helpWindowID = "help"
 
     @FocusedValue(\.showController) private var controller
@@ -36,6 +37,7 @@ struct LalabobCommands: Commands {
         CommandGroup(after: .windowArrangement) {
             Button("Banc d'essai lumière") { openWindow(id: Self.benchWindowID) }
                 .keyboardShortcut("l", modifiers: [.command, .option])
+            Button("Banc d'essai DMX") { openWindow(id: Self.dmxBenchWindowID) }
         }
         CommandMenu("Spectacle") {
             Button(controller?.isLocked == true ? "Déverrouiller" : "Verrouiller") { controller?.isLocked.toggle() }

@@ -561,4 +561,23 @@ projecteur, strobo, fondu), carte de jeu sous les colonnes lumière (4 projecteu
 relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT) : couleurs chacun / ensemble (roue), alternance au tempo du son, programme et micro de la barre, faders à rôle (Général, Couleurs) et mini-barre dans la carte Général (piste C), Noir en fondu sur le bouton rond de l'APC ; cadenas compact (bouton carré, icône seule) dans l'en-tête.
 - **Étape 0 — relevé et banc d'essai (27/11/2026, branche `j14/releve-dmx`)** ✅ : relevé recopié (`docs/hardware/chauvet-4bar-ltbt.md`), ADR 0012
   (proposée), banc d'essai en ligne de commande `tools/banc-dmx` (Open DMX, 30 Hz). Le boîtier accepte 250 kbit/s et le break ; cadence mesurée
-  33,3 ms en moyenne, pire ≈ 40 ms. Sur la barre (adresse 50) : chenillard conforme, gradateur ✅, **perte du signal : la barre garde la dernière couleur**, strobo ✅. Prochaine : étape 1 (module `LalabobDMX`).
+  33,3 ms en moyenne, pire ≈ 40 ms. Sur la barre (adresse 50) : chenillard conforme, gradateur ✅, **perte du signal : la barre garde la dernière couleur**, strobo ✅. 
+- **Étape 1 — module `LalabobDMX` (27/11/2026, branche `j14/module-dmx`, empilée sur `j14/releve-dmx`)** ✅ code, essai sur la barre à faire.
+  `DMXFrame` (canaux 1…512, seuls les premiers canaux utiles partent, 24 au moins), `DMXPortDiscovery` (ports `cu.usbserial-…`, CH340, CP210x ;
+  boîtier choisi par numéro de série, sinon le premier), `POSIXSerialOpener` / `POSIXSerialLine` (réglages du banc en ligne de commande + accès
+  exclusif), `OpenDMXWriter` (break 120 µs, mark 16 µs, code de départ, attente de l'envoi), `DMXRefreshLoop` (un pas par rafraîchissement :
+  ouverture, envoi, débranchement → « en erreur », nouvel essai chaque seconde, la trame en cours repart au rebranchement), `DMXOutput` (fil
+  dédié `userInteractive`, 30 Hz par défaut, 1…44 ; état sous `Mutex` jamais tenu pendant un envoi ; `shutdown(finalFrame:)` envoie la trame
+  finale 5 fois puis ferme), protocole `DMXTransport` + `SilentDMX`. **Rebranchement par essai chaque seconde** (pas de notifications IOKit :
+  plus simple, et rien ne coûte tant que le boîtier est là). Autorisation `com.apple.security.device.serial` (`project.yml`).
+  **Banc d'essai DMX** dans l'app (Fenêtre ▸ Banc d'essai DMX) : `DMXTestBench` (Engine) + `App/DMXBenchView.swift` — état du boîtier, choix du
+  boîtier (mémorisé sur ce Mac, `dmxPortSerial`, repris par la console à l'étape 3), adresse (1…498, mémorisée), « 4 projecteurs en blanc », Noir,
+  un curseur par canal (noms du manuel). La sortie ne tourne que fenêtre ouverte ; fermer arrête le signal sans noir (la barre garde sa couleur).
+  Tests : 25 (`LalabobDMXTests`, faux port et octets du relevé) + 5 (`DMXTestBenchTests`) ; tout le package vert (751). App compilée ; **non lancée**
+  (une autre instance de Lalabob tournait), donc l'accès au port en bac à sable n'est pas vérifié.
+  **À essayer** : ☐ Fenêtre ▸ Banc d'essai DMX : « Boîtier USB-DMX AU0483EN · signal envoyé » (sinon : le bac à sable refuse-t-il `/dev` ?)
+  ☐ adresse 50, « 4 projecteurs en blanc », chaque curseur conforme au tableau ☐ débrancher le boîtier pendant l'envoi : « en erreur », aucun son
+  coupé ; le rebrancher : la lumière revient seule ☐ LightKey ou `banc-dmx` ouvert en même temps : « Resource busy » affiché, pas de plantage
+  ☐ régularité à l'œil (pas de scintillement) avec l'interface chargée.
+  **Note outillage** : `make test` utilise `swift test` ; avec les outils en ligne de commande sélectionnés (`xcode-select`), le module Testing
+  manque. Lancer `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer make test` (idem pour `make build`).
