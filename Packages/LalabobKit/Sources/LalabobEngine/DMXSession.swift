@@ -24,6 +24,8 @@ public final class DMXSession {
     public private(set) var console: LightConsole?
     /// Boîtiers USB-DMX branchés.
     public private(set) var ports: [DMXPortInfo] = []
+    /// Le banc d'essai DMX est ouvert : il a pris le boîtier, la sortie du spectacle attend (la console continue).
+    public private(set) var isSuspendedForBench = false
 
     @ObservationIgnored public private(set) weak var attachedController: ShowController?
     @ObservationIgnored private let defaults: UserDefaults
@@ -90,6 +92,23 @@ public final class DMXSession {
 
     public var selectedPortSerial: String? { defaults.string(forKey: DMXTestBench.portKey) }
 
+    // MARK: - Banc d'essai
+
+    /// Le banc d'essai DMX s'ouvre : il prend la main sur le boîtier (décision du 27/11/2026). La sortie du spectacle
+    /// s'arrête sans noir ; la console garde son état et les gestes continuent de la régler.
+    public func suspendForBench() {
+        guard !isSuspendedForBench else { return }
+        isSuspendedForBench = true
+        stopOutput(keepingConsole: true)
+    }
+
+    /// Le banc d'essai se ferme : la lumière du spectacle revient (même état, même fondu en cours).
+    public func resumeAfterBench() {
+        guard isSuspendedForBench else { return }
+        isSuspendedForBench = false
+        refresh()
+    }
+
     private func handle(_ request: ShowController.DMXRequest) {
         guard var console else { return }
         let time = now()
@@ -120,7 +139,7 @@ public final class DMXSession {
     func refresh() {
         guard !isShutDown, let controller = attachedController else { return }
         guard controller.isDMXLighting else {
-            stopOutput()
+            stopOutput(keepingConsole: false)
             controller.setDMXActivePad(nil)
             return
         }
@@ -132,7 +151,7 @@ public final class DMXSession {
             roles.first { $0.value == role }.map { grid.columns[$0.key].level }
         }
         updated.master = level(.general) ?? 1
-        updated.colorShift = level(.colors) ?? 0
+        updated.colorFader = level(.colors) ?? updated.colorFader
         updated.strobeOverride = level(.strobeSpeed).flatMap { $0 > 0 ? $0 : nil }
         publish(updated)
         startOutputIfNeeded()
@@ -145,7 +164,7 @@ public final class DMXSession {
     }
 
     private func startOutputIfNeeded() {
-        guard transport == nil, let console else { return }
+        guard transport == nil, !isSuspendedForBench, let console else { return }
         let output = makeTransport()
         transport = output
         output.selectPort(serialNumber: selectedPortSerial)
@@ -163,9 +182,9 @@ public final class DMXSession {
         }
     }
 
-    /// Arrête la sortie sans noir (passage en mode LightKey) : la barre garde sa dernière lumière.
-    private func stopOutput() {
-        console = nil
+    /// Arrête la sortie sans noir (passage en mode LightKey, banc d'essai) : la barre garde sa dernière lumière.
+    private func stopOutput(keepingConsole: Bool) {
+        if !keepingConsole { console = nil }
         guard let output = transport else { return }
         transport = nil
         statusTask?.cancel()

@@ -47,6 +47,17 @@ struct LalabobCommands: Commands {
             Button("Réglages du spectacle…") { showSettings?.wrappedValue = true }
                 .keyboardShortcut(",", modifiers: [.command, .option])
                 .disabled(showSettings == nil || controller?.isLocked != false)
+            Divider()
+            // En attendant les Réglages du spectacle complets (J14, étape 4) : de quoi essayer la barre.
+            Toggle(
+                "Projecteurs pilotés par Lalabob",
+                isOn: Binding(
+                    get: { controller?.isDMXLighting == true },
+                    set: { controller?.setLightingMode($0 ? .dmx : .lightKey) })
+            )
+            .disabled(controller == nil || controller?.isLocked != false)
+            Button("Noir") { controller?.blackout() }
+                .disabled(controller?.isDMXLighting != true)
         }
         CommandMenu("Grilles") {
             Button("Nouvelle grille") { controller?.addGrid() }

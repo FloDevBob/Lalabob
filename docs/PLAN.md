@@ -621,9 +621,13 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   Échap ne touche pas la lumière. `setLightingMode`, `setDMXRig` (⌘Z). App : `DMXSession` créée au lancement, rattachée à chaque fenêtre active.
   Tests : 19 (`LightConsoleTests` : trames à t = 0, mi-fondu, fin), 20 (`DMXSessionTests`), 3 (`DMXFrameSourceTests`), 2 (couleur d'une teinte) ;
   tout le package vert (822), app compilée.
-  **Choix à confirmer** : rôles des faders fixes (le choix par colonne viendra avec l'interface) ; le général suit le fader **de la grille
-  affichée** (changer de grille peut le faire sauter si les niveaux diffèrent — sauf colonnes lumière communes) ; fader Couleurs : 0 et 100 %
-  donnent les couleurs d'origine (un tour complet), or les colonnes lumière démarrent à 100 % ; une seule sortie : le **banc d'essai DMX et
-  le mode Projecteurs se disputent le boîtier** (fermer le banc en jeu).
-  **À essayer** (après l'étape 4, ou plus tôt avec un spectacle préparé à la main) : ☐ fondus fluides sur la barre ☐ Noir au bouton rond de l'APC
-  ☐ fader 7 = général, fader 8 = couleurs ☐ ⌘Q : la barre s'éteint en fondu ☐ aucun son ne s'arrête.
+  **Décisions du 27/11/2026 (après le code)** : (1) **un seul Général et un seul fader Couleurs pour tout le spectacle** : bouger l'un recopie
+  son niveau sur la colonne de même rôle de chaque grille (`Show.alignDMXFaders`), et passer en Projecteurs aligne toutes les grilles sur la
+  grille affichée — changer de grille ne change jamais la lumière ; (2) **fader Couleurs relatif** : sa position au départ d'un état donne
+  les couleurs du pad, le bouger fait tourner toute la roue (toute la course = un tour, dans les deux sens) ; (3) **le banc d'essai DMX prend
+  la main** : l'ouvrir arrête la sortie du spectacle sans noir (la console continue de suivre le jeu), le fermer la rend
+  (`DMXSession.suspendForBench` / `resumeAfterBench`) ; (4) **menu Spectacle** : interrupteur « Projecteurs pilotés par Lalabob » et
+  « Noir », pour essayer la barre avant l'étape 4. Rôles des faders encore fixes (choix par colonne avec l'interface).
+  **À essayer** (Spectacle ▸ Projecteurs pilotés par Lalabob ; les pads lumière sans état jouent la couleur du pad) : ☐ fondus fluides sur la barre ☐ Noir au bouton rond de l'APC
+  ☐ fader 7 = général, fader 8 = couleurs (relatif) ☐ changer de grille : rien ne bouge ☐ ouvrir / fermer le banc d'essai DMX en jouant
+  ☐ ⌘Q : la barre s'éteint en fondu ☐ aucun son ne s'arrête.

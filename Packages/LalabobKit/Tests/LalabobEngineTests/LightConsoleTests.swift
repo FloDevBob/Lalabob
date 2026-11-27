@@ -238,14 +238,22 @@ struct LightConsoleTests {
 
     // MARK: - Couleurs et projecteurs en direct
 
-    @Test("Fader Couleurs : toutes les teintes tournent ensemble ; le blanc reste blanc")
-    func colorShift() {
+    @Test("Fader Couleurs relatif : sa position au départ d'un état = couleurs du pad ; le bouger fait tourner la roue")
+    func colorFaderRelative() {
         var c = console()
-        c.colorShift = 1.0 / 3  // 120°
+        c.colorFader = 0.5
         c.play(uniform(Self.red), pad: padA, at: 0)
+        #expect(rgb(c.frame(at: 0), head: 1) == [255, 0, 0])  // quelle que soit sa position : l'origine
+        c.colorFader = 0.5 + 1.0 / 3  // un tiers de course = 120°
         #expect(rgb(c.frame(at: 0), head: 1) == [0, 255, 0])
-        c.play(uniform(.white), pad: padB, at: 1)
-        #expect(rgb(c.frame(at: 1), head: 1) == [255, 255, 255])
+        c.colorFader = 0.5 - 1.0 / 3  // dans l'autre sens
+        #expect(rgb(c.frame(at: 0), head: 1) == [0, 0, 255])
+        // Un nouvel état repart de la position en cours.
+        c.play(uniform(Self.red), pad: padB, at: 1)
+        #expect(rgb(c.frame(at: 1), head: 1) == [255, 0, 0])
+        c.play(uniform(.white), pad: padA, at: 2)
+        c.colorFader = 0
+        #expect(rgb(c.frame(at: 2), head: 1) == [255, 255, 255])  // le blanc reste blanc
     }
 
     @Test("Projecteur éteint à la main : en fondu, sans toucher aux autres ni au pad actif")

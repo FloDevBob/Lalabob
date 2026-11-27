@@ -45,6 +45,10 @@ public final class DMXTestBench {
     @ObservationIgnored private let makeTransport: () -> any DMXTransport
     @ObservationIgnored private var transport: (any DMXTransport)?
     @ObservationIgnored private var statusTask: Task<Void, Never>?
+    /// Appelé à l'ouverture, avant de prendre le boîtier (la session DMX du spectacle lui laisse la place).
+    @ObservationIgnored public var willOpen: (@MainActor () -> Void)?
+    /// Appelé une fois le boîtier rendu (la session DMX du spectacle reprend).
+    @ObservationIgnored public var didClose: (@MainActor () -> Void)?
 
     public init(
         defaults: UserDefaults = .standard, makeTransport: @escaping () -> any DMXTransport = { DMXOutput() }
@@ -68,6 +72,7 @@ public final class DMXTestBench {
     /// Démarre l'envoi (fenêtre ouverte). Sans effet si déjà démarré.
     public func open() {
         guard transport == nil else { return }
+        willOpen?()
         let transport = makeTransport()
         self.transport = transport
         transport.selectPort(serialNumber: selectedSerial)
@@ -93,6 +98,7 @@ public final class DMXTestBench {
         statusTask = nil
         await transport.shutdown(finalFrame: nil)
         status = .stopped
+        didClose?()
     }
 
     public func refreshPorts() {

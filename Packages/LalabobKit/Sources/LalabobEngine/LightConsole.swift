@@ -56,18 +56,23 @@ public struct LightConsole: DMXFrameSource, Equatable {
         get { masterLevel }
         set { masterLevel = Self.fraction(newValue) }
     }
-    /// Fader **Couleurs** (0…1) : toutes les teintes tournent ensemble sur la roue (1 = un tour) ; 0 = couleurs du pad.
-    public var colorShift: Double {
-        get { shift }
-        set { shift = Self.fraction(newValue) }
+    /// Fader **Couleurs** (0…1), **relatif** (décision du 27/11/2026) : sa position au moment où un état part donne les
+    /// couleurs du pad ; le bouger ensuite fait tourner toutes les teintes ensemble sur la roue (toute la course = un tour).
+    public var colorFader: Double {
+        get { colorLevel }
+        set { colorLevel = Self.fraction(newValue) }
     }
+    /// Position du fader Couleurs quand l'état en cours est parti (son « origine »).
+    public private(set) var colorReference = 1.0
+    /// Rotation des teintes en cours, en tours (−1…1).
+    public var colorShift: Double { colorLevel - colorReference }
     /// Strobo réglé en direct (0…1, 0 = arrêté) ; `nil` = celui de l'état joué. Sans effet sur un programme de la barre.
     public var strobeOverride: Double?
     /// Tempo du son en cours (étape 3b) ; `nil` = le tempo de repli de l'alternance.
     public var tempoBPM: Double?
 
     private var masterLevel = 1.0
-    private var shift = 0.0
+    private var colorLevel = 1.0
     private(set) var scene: Scene = .black
     private(set) var transition: Transition?
     private var headFades: [HeadFade] = []
@@ -90,6 +95,7 @@ public struct LightConsole: DMXFrameSource, Equatable {
     public mutating func play(_ look: LightLook, pad: UUID?, at time: Double) {
         startTransition(duration: look.fadeIn, at: time)
         scene = .look(look, pad: pad, start: time)
+        colorReference = colorLevel
     }
 
     /// Éteint tout en fondu de `duration` secondes.
@@ -239,7 +245,8 @@ public struct LightConsole: DMXFrameSource, Equatable {
 
     /// Couleur d'un projecteur, rotation du fader Couleurs comprise (un blanc n'a pas de teinte : il reste blanc).
     private func rgb(_ color: LightColor, intensity: Double) -> [Double] {
-        let turned = shift > 0 ? LightColor(hue: color.hue + shift * 360, saturation: color.saturation) : color
+        let shift = colorShift
+        let turned = shift != 0 ? LightColor(hue: color.hue + shift * 360, saturation: color.saturation) : color
         let value = rig.profile.rgb(for: turned, intensity: intensity)
         return [Double(value.red), Double(value.green), Double(value.blue)]
     }
@@ -279,5 +286,25 @@ public enum DMXFaderRole: String, Sendable, CaseIterable {
     public static func roles(for grid: PadGrid) -> [Int: DMXFaderRole] {
         let lightColumns = grid.columns.indices.filter { grid.columns[$0].kind == .light }
         return Dictionary(uniqueKeysWithValues: zip(lightColumns, [DMXFaderRole.general, .colors]))
+    }
+}
+
+extension Show {
+    /// Mode Projecteurs : un **seul** Général et un seul fader Couleurs pour tout le spectacle (décision du 27/11/2026) —
+    /// changer de grille ne change jamais la lumière. Le niveau du fader `column` de la grille `grid`, s'il a un rôle, est
+    /// recopié sur la colonne du même rôle de chaque grille.
+    mutating func alignDMXFaders(from grid: Int, column: Int) {
+        guard grids.indices.contains(grid), let role = DMXFaderRole.roles(for: grids[grid])[column] else { return }
+        let level = grids[grid].columns[column].level
+        for index in grids.indices where index != grid {
+            guard let target = DMXFaderRole.roles(for: grids[index]).first(where: { $0.value == role })?.key else { continue }
+            grids[index].columns[target].level = level
+        }
+    }
+
+    /// Aligne tous les faders à rôle sur ceux de la grille `grid` (passage en mode Projecteurs).
+    mutating func alignAllDMXFaders(from grid: Int) {
+        guard grids.indices.contains(grid) else { return }
+        for column in DMXFaderRole.roles(for: grids[grid]).keys { alignDMXFaders(from: grid, column: column) }
     }
 }

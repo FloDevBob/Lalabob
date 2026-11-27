@@ -227,11 +227,67 @@ struct DMXSessionTests {
         rig.controller.setLightFader(column: 6, level: 0.5)
         #expect(rig.session.console?.master == 0.5)
         rig.controller.setLightFader(column: 7, level: 0.25)
-        #expect(rig.session.console?.colorShift == 0.25)
+        #expect(rig.session.console?.colorFader == 0.25)
         rig.controller.moveHardwareFader(column: 6, value: 0.5)  // rejoint la valeur de l'écran : il prend la main
         rig.controller.moveHardwareFader(column: 6, value: 0.2)
         #expect(abs((rig.session.console?.master ?? 0) - Gain.faderLevel(0.2)) < 0.001)
         #expect(rig.frame()[2] == UInt8((255 * Gain.faderLevel(0.2)).rounded()))
+    }
+
+    @Test("Un seul Général pour le spectacle : changer de grille ne change pas la lumière")
+    func generalSharedAcrossGrids() {
+        let rig = makeRig()
+        rig.controller.addGrid()
+        rig.controller.selectGrid(at: 0)
+        rig.controller.setLightFader(column: 6, level: 0.3)
+        rig.controller.setLightFader(column: 7, level: 0.6)
+        rig.controller.selectGrid(at: 1)
+        #expect(rig.controller.currentGrid.columns[6].level == 0.3)
+        #expect(rig.controller.currentGrid.columns[7].level == 0.6)
+        #expect(rig.session.console?.master == 0.3)
+    }
+
+    @Test("Passer en Projecteurs aligne les faders à rôle de toutes les grilles sur la grille affichée")
+    func switchingAlignsFaders() {
+        let rig = makeRig(mode: .lightKey)
+        rig.controller.addGrid()
+        rig.controller.selectGrid(at: 1)
+        rig.controller.setLightFader(column: 6, level: 0.4)  // LightKey : propre à la grille
+        rig.controller.selectGrid(at: 0)
+        #expect(rig.controller.currentGrid.columns[6].level == 1)
+        rig.controller.selectGrid(at: 1)
+        rig.controller.setLightingMode(.dmx)
+        #expect(rig.controller.show.grids[0].columns[6].level == 0.4)
+    }
+
+    // MARK: - Banc d'essai
+
+    @Test("Le banc d'essai prend le boîtier : la sortie du spectacle s'arrête, la console continue, puis tout revient")
+    func benchTakesOver() async {
+        let rig = makeRig()
+        rig.controller.audition(at: red0)
+        rig.session.suspendForBench()
+        #expect(rig.session.isSuspendedForBench)
+        let first = rig.factory.made[0]
+        #expect(await waitUntil { first.status == .stopped })
+        rig.controller.audition(at: blue1)  // on joue toujours : la console suit
+        #expect(rig.session.console?.activePad == bluePad.id)
+        #expect(rig.factory.made.count == 1)  // rien ne reprend le boîtier tant que le banc est ouvert
+        rig.session.resumeAfterBench()
+        #expect(rig.factory.made.count == 2)
+        #expect(headRGB(rig.frame(after: 5), head: 1) == [0, 0, 255])
+    }
+
+    @Test("Le banc prévient avant de prendre le boîtier et après l'avoir rendu")
+    func benchHooks() async {
+        let bench = DMXTestBench(
+            defaults: UserDefaults(suiteName: "DMXSessionTests-\(UUID().uuidString)")!, makeTransport: { SilentDMX() })
+        var events: [String] = []
+        bench.willOpen = { events.append("open") }
+        bench.didClose = { events.append("close") }
+        bench.open()
+        await bench.close()
+        #expect(events == ["open", "close"])
     }
 
     @Test("Sans colonne lumière, le général reste à fond")

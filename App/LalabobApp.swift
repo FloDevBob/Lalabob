@@ -73,6 +73,9 @@ struct LalabobApp: App {
                 .onAppear {
                     AppLifecycle.session = midiSession
                     AppLifecycle.dmx = dmxSession
+                    // Le banc d'essai DMX prend le boîtier tant qu'il est ouvert ; le spectacle le reprend ensuite.
+                    dmxBench.willOpen = { [dmxSession] in dmxSession.suspendForBench() }
+                    dmxBench.didClose = { [dmxSession] in dmxSession.resumeAfterBench() }
                     midiSession?.start()
                 }
         }

@@ -666,6 +666,7 @@ public final class ShowController {
         let level = Gain.faderLevel(level)
         show.grids[selectedGridIndex].columns[column].level = level
         if show.isSharedLightColumn(column) { show.propagateSharedLight(from: selectedGridIndex) }
+        if isDMXLighting { show.alignDMXFaders(from: selectedGridIndex, column: column) }
         onShowChange?(show)
         if show.grids[selectedGridIndex].columns[column].kind != .light {  // son, mixte, ou Music (pont audio)
             commands.yield(.level(column: column, level: level))

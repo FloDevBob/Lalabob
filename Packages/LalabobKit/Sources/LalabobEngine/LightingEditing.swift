@@ -4,11 +4,13 @@ import LalabobModel
 /// Réglages lumière du spectacle (J14, ADR 0012) : mode LightKey ou Projecteurs, appareil DMX. Passent par `commit`
 /// (⌘Z, refusés verrouillé). L'interface (Réglages du spectacle) viendra à l'étape 4.
 extension ShowController {
-    /// Choisit qui pilote la lumière. Passer en Projecteurs quitte le mode « Relier aux projecteurs » (inutile en DMX).
+    /// Choisit qui pilote la lumière. Passer en Projecteurs aligne les faders Général et Couleurs de toutes les grilles sur
+    /// la grille affichée, et quitte le mode « Relier aux projecteurs » (inutile en DMX).
     public func setLightingMode(_ mode: LightingMode) {
-        let changed = commit(mode == .dmx ? "Projecteurs pilotés par Lalabob" : "Logiciel lumière") { show, _ in
+        let changed = commit(mode == .dmx ? "Projecteurs pilotés par Lalabob" : "Logiciel lumière") { show, grid in
             guard show.lighting.mode != mode else { return false }
             show.lighting.mode = mode
+            if mode == .dmx { show.alignAllDMXFaders(from: grid) }  // un seul Général, une seule rotation des couleurs
             return true
         }
         if changed, mode == .dmx, isPairingLights { setPairingLights(false) }
