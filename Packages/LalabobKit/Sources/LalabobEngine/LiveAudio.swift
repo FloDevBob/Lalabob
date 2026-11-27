@@ -8,6 +8,7 @@ public typealias PlaybackEvent = LalabobAudio.PlaybackEvent
 public typealias AudioOutputDevice = LalabobAudio.AudioOutputDevice
 public typealias Waveform = LalabobAudio.Waveform
 public typealias Gain = LalabobAudio.Gain
+public typealias TempoEstimate = LalabobAudio.TempoEstimate
 public typealias ColumnMeters = LalabobAudio.ColumnMeters
 public typealias MeterBallistics = LalabobAudio.MeterBallistics
 

@@ -453,6 +453,9 @@ public struct AudioClip: Codable, Sendable, Equatable {
     public var retrigger: RetriggerBehavior
     /// Gain propre au pad, en décibels.
     public var gainDB: Double
+    /// Tempo corrigé à la main (J14, étape 3b) ; `nil` = celui détecté (non enregistré). Absent des anciens fichiers,
+    /// ignoré par les anciennes versions de l'app.
+    public var tempo: SoundTempo?
 
     public init(
         fileName: String,
@@ -462,7 +465,8 @@ public struct AudioClip: Codable, Sendable, Equatable {
         fadeOut: TimeInterval? = nil,
         loops: Bool = false,
         retrigger: RetriggerBehavior = .restart,
-        gainDB: Double = 0
+        gainDB: Double = 0,
+        tempo: SoundTempo? = nil
     ) {
         self.fileName = fileName
         self.trimStart = trimStart
@@ -472,6 +476,7 @@ public struct AudioClip: Codable, Sendable, Equatable {
         self.loops = loops
         self.retrigger = retrigger
         self.gainDB = gainDB
+        self.tempo = tempo
     }
 }
 

@@ -134,6 +134,7 @@ struct DocumentWindow: View {
                 let mirror = document.mirror
                 created.onShowChange = { mirror.update($0) }
                 created.musicPlayer = musicPlayer
+                created.tempoAnalyzer = TempoStore.shared  // tempo des sons, analysé en arrière-plan (lumière DMX)
                 controller = created
                 showsMissingAudio = !document.missingAudio.isEmpty
                 // Deux alertes ne s'affichent pas en même temps : celle des appairages suit celle des sons manquants.

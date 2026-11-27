@@ -230,10 +230,24 @@ struct LightConsoleTests {
         c.play(alternate(every: .bar), pad: padA, at: 0)
         #expect(rgb(c.frame(at: 1.9), head: 1) == [255, 0, 0])
         #expect(rgb(c.frame(at: 2.1), head: 1) == [0, 0, 255])
-        c.tempoBPM = 60
+        c.beatClock = LightConsole.BeatClock(bpm: 60, origin: 10)
         c.play(alternate(), pad: padA, at: 10)
         #expect(rgb(c.frame(at: 10.6), head: 1) == [255, 0, 0])
         #expect(rgb(c.frame(at: 11.1), head: 1) == [0, 0, 255])
+    }
+
+    @Test("Alternance calée sur les temps du son, même lancée entre deux temps ; l'avance de la lumière bascule plus tôt")
+    func alternateOnSoundBeats() {
+        var c = console()
+        c.beatClock = LightConsole.BeatClock(bpm: 120, origin: 3.2)  // temps à …, 2,7, 3,2, 3,7…
+        c.play(alternate(), pad: padA, at: 5.0)  // entre deux temps (4,7 et 5,2)
+        let before = rgb(c.frame(at: 5.15), head: 1)
+        let after = rgb(c.frame(at: 5.25), head: 1)
+        #expect(before != after)  // bascule sur le temps du son (5,2), pas 0,5 s après l'appui
+        var rig = c.rig
+        rig.lightLead = 0.1
+        c.rig = rig
+        #expect(rgb(c.frame(at: 5.15), head: 1) == after)  // 100 ms d'avance : déjà basculé
     }
 
     // MARK: - Couleurs et projecteurs en direct

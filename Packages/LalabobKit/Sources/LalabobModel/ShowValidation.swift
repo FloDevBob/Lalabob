@@ -103,6 +103,7 @@ extension Pad {
                 throw .valueOutOfRange("durée de fondu")
             }
             guard (-60...24).contains(clip.gainDB) else { throw .valueOutOfRange("gain") }
+            if case .manual(let grid)? = clip.tempo, !grid.isValid { throw .valueOutOfRange("tempo du son") }
         }
         if let cue = light {
             let out = cue.output

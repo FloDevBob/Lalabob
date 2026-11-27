@@ -227,6 +227,8 @@ public struct DMXRig: Codable, Sendable, Equatable {
 
     public static let maximumFavoriteColors = 16
     public static let blackoutFadeRange = 0.0...10.0
+    /// Avance de la lumière sur les temps du son, en secondes (compense le retard de la barre).
+    public static let lightLeadRange = 0.0...0.5
 
     public var profile: FixtureProfile
     /// Adresse de départ réglée sur la barre (MENU → 15Ch → d …).
@@ -236,6 +238,9 @@ public struct DMXRig: Codable, Sendable, Equatable {
     public var onQuit: QuitBehavior
     /// Couleurs favorites du spectacle (pastilles sous la roue).
     public var favoriteColors: [LightColor]
+    /// « Avance de la lumière » (décision du 27/11/2026) : une alternance bascule ce temps-là **avant** le temps du son,
+    /// pour compenser le retard de la barre. 0 par défaut, à régler à l'œil. Absent des fichiers d'avant = 0.
+    public var lightLead: Double
 
     /// 1…498 pour 15 canaux : les canaux de l'appareil doivent tenir dans les 512.
     public static func addressRange(for profile: FixtureProfile) -> ClosedRange<Int> {
@@ -244,7 +249,7 @@ public struct DMXRig: Codable, Sendable, Equatable {
 
     public init(
         profile: FixtureProfile = .chauvet4BarLTBT, address: Int = 1, blackoutFade: Double = 1.5,
-        onQuit: QuitBehavior = .fadeToBlack, favoriteColors: [LightColor] = []
+        onQuit: QuitBehavior = .fadeToBlack, favoriteColors: [LightColor] = [], lightLead: Double = 0
     ) {
         let range = Self.addressRange(for: profile)
         self.profile = profile
@@ -252,6 +257,20 @@ public struct DMXRig: Codable, Sendable, Equatable {
         self.blackoutFade = blackoutFade
         self.onQuit = onQuit
         self.favoriteColors = favoriteColors
+        self.lightLead = lightLead.isFinite ? min(max(lightLead, Self.lightLeadRange.lowerBound), Self.lightLeadRange.upperBound) : 0
+    }
+
+    private enum CodingKeys: String, CodingKey { case profile, address, blackoutFade, onQuit, favoriteColors, lightLead }
+
+    /// Lu tel quel (refusé ensuite par `validate()` s'il est hors bornes) ; `lightLead` absent = 0.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        profile = try c.decode(FixtureProfile.self, forKey: .profile)
+        address = try c.decode(Int.self, forKey: .address)
+        blackoutFade = try c.decode(Double.self, forKey: .blackoutFade)
+        onQuit = try c.decode(QuitBehavior.self, forKey: .onQuit)
+        favoriteColors = try c.decode([LightColor].self, forKey: .favoriteColors)
+        lightLead = try c.decodeIfPresent(Double.self, forKey: .lightLead) ?? 0
     }
 }
 
@@ -413,6 +432,7 @@ extension DMXRig {
         guard favoriteColors.count <= Self.maximumFavoriteColors, favoriteColors.allSatisfy(\.isValid) else {
             throw .valueOutOfRange("couleurs favorites")
         }
+        guard lightLead.isFinite, Self.lightLeadRange.contains(lightLead) else { throw .valueOutOfRange("avance de la lumière") }
     }
 }
 

@@ -631,3 +631,23 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   **À essayer** (Spectacle ▸ Projecteurs pilotés par Lalabob ; les pads lumière sans état jouent la couleur du pad) : ☐ fondus fluides sur la barre ☐ Noir au bouton rond de l'APC
   ☐ fader 7 = général, fader 8 = couleurs (relatif) ☐ changer de grille : rien ne bouge ☐ ouvrir / fermer le banc d'essai DMX en jouant
   ☐ ⌘Q : la barre s'éteint en fondu ☐ aucun son ne s'arrête.
+- **Étape 3b — tempo des sons (27/11/2026, branche `j14/tempo-sons`, empilée sur `j14/console-dmx`)** ✅ code, **sans interface** (affichage du
+  BPM et boutons de correction à l'étape 4). Décisions du 27/11 : analyse **automatique en arrière-plan** ; sous un seuil de confiance,
+  **« pas de tempo »** ; le tempo vient du **dernier son lancé** (puis du précédent qui joue encore, sinon tempo de repli) ; **« Avance de la
+  lumière »** réglable par spectacle (0 par défaut, 0…0,5 s).
+  `TempoDetector` (LalabobAudio, hors ligne) : flux spectral (Accelerate), autocorrélation avec préférence douce autour de 120 BPM, peigne pour
+  la position des temps, 120 premières secondes ; seuil de confiance 0,2, attaque minimale (une nappe tenue n'a pas de tempo). `TempoStore`
+  (Engine) : cache mémoire + disque comme les formes d'onde ; branché dans chaque fenêtre. Modèle : `BeatGrid`, `SoundTempo` (`AudioClip.tempo`,
+  seule la correction à la main est enregistrée, ignorée par les anciennes versions), `DMXRig.lightLead`. `ShowController` : `detectedTempos`,
+  `beatGrid(for:)`, `tempoSource` (boucles : la grille repart à chaque tour), `doubleTempo` / `halveTempo` / `setTempo` (pas de tempo, revenir
+  à la détection) / `tapTempo` (4 appuis, médiane ; sur un son qui joue, le dernier appui marque un temps), ⌘Z, refusés verrouillé.
+  `LightConsole.beatClock` : l'alternance bascule **sur les temps du son**, en avance de `lightLead`. Tests : 8 (détection, signaux fabriqués),
+  9 (moteur), 4 (modèle), 1 (console) ; tout le package vert, app compilée.
+  **Relevé sur la banque de la troupe** (`~/Music/Banque de sons Bob - Pad`, 163 sons, < 0,3 s chacun ; test `realSounds` avec
+  `LALABOB_TEMPO_DIR`) : morceaux rythmés justes (Alors on danse ≈ 120, Louxor ≈ 136, jingle techno 128, Let's Get Loud 131, Makeba 116) ;
+  ambiances écartées (mer, pluie, vent, feu, fontaine) ; **erreurs d'octave** possibles (Here Comes the Sun donné 64 au lieu de ~129 → ×2) ;
+  quelques faux tempos sur des sons réguliers (sonnettes, insectes, cigales → « pas de tempo » à la main).
+  **Limites** : chaque appui de « taper le tempo » après le 4e est une étape d'annulation ; le premier temps détecté est pris pour le début
+  d'une mesure (bascule « 1 mesure » parfois décalée d'un temps).
+  **À essayer** : ☐ un pad Alternance sur un morceau rythmé : bascules sur les temps ☐ régler l'avance à l'œil ☐ deux sons rythmés : le dernier
+  lancé mène ☐ son arrêté : tempo de repli.

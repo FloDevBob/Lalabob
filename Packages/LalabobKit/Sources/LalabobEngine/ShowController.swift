@@ -145,6 +145,18 @@ public final class ShowController {
     /// Lumière en DMX : le pad dont l'état est joué par la console (`nil` : noir). Lalabob *est* la console, l'état est
     /// connu ; la règle « jamais d'état allumé déduit d'un envoi » reste celle de LightKey.
     public private(set) var dmxActivePad: Pad.ID?
+    /// Tempo détecté de chaque son, par nom de fichier (étape 3b) ; absent = pas encore analysé ou illisible.
+    public internal(set) var detectedTempos: [String: TempoEstimate] = [:]
+    /// Analyse du tempo des sons, en arrière-plan (posée par la fenêtre). `nil` : pas d'analyse (tests, aperçus).
+    @ObservationIgnored public var tempoAnalyzer: (any TempoAnalyzing)? {
+        didSet { analyzeTempos() }
+    }
+    @ObservationIgnored var tempoRequested: Set<String> = []
+    /// Rang de lancement des sons qui jouent (le plus grand = le dernier lancé), pour le tempo de la lumière.
+    @ObservationIgnored var launchOrder: [Pad.ID: Int] = [:]
+    @ObservationIgnored var launchCounter = 0
+    /// « Taper le tempo » en cours : la case et les instants des appuis.
+    @ObservationIgnored var taps: (position: GridPosition, times: [Double])?
 
     /// Une demande à la console DMX.
     enum DMXRequest: Equatable {
@@ -763,6 +775,8 @@ public final class ShowController {
     /// À lancer une fois (`.task`) : répercute l'état de lecture du moteur sur l'écran.
     public func observePlayback() async {
         for await event in audio.events {
+            noteLaunch(event, previous: playback[event.pad]?.state)
+            defer { if isDMXLighting { lightingChangeHandler?() } }  // le son qui donne le tempo a pu changer
             if event.state == .idle {
                 playback[event.pad] = nil
             } else {
@@ -817,6 +831,7 @@ public final class ShowController {
     private func syncAudio() {
         commands.yield(.configure(show))
         syncColumnLevels()
+        analyzeTempos()
     }
 
     /// Niveaux et filtres de la grille affichée vers le moteur (ouverture, changement d'onglet, annulation).

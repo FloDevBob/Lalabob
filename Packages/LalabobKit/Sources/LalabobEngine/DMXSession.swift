@@ -30,6 +30,8 @@ public final class DMXSession {
     @ObservationIgnored public private(set) weak var attachedController: ShowController?
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let now: @MainActor () -> Double
+    /// Horloge de la lecture des sons (`ProcessInfo.systemUptime`), pour placer les temps du son sur `DMXClock`.
+    @ObservationIgnored private let uptime: @MainActor () -> Double
     @ObservationIgnored private let makeTransport: @MainActor () -> any DMXTransport
     @ObservationIgnored private var transport: (any DMXTransport)?
     @ObservationIgnored private var statusTask: Task<Void, Never>?
@@ -38,10 +40,12 @@ public final class DMXSession {
 
     public init(
         defaults: UserDefaults = .standard, now: @escaping @MainActor () -> Double = { DMXClock.now() },
+        uptime: @escaping @MainActor () -> Double = { ProcessInfo.processInfo.systemUptime },
         makeTransport: @escaping @MainActor () -> any DMXTransport = { DMXOutput() }
     ) {
         self.defaults = defaults
         self.now = now
+        self.uptime = uptime
         self.makeTransport = makeTransport
     }
 
@@ -153,6 +157,11 @@ public final class DMXSession {
         updated.master = level(.general) ?? 1
         updated.colorFader = level(.colors) ?? updated.colorFader
         updated.strobeOverride = level(.strobeSpeed).flatMap { $0 > 0 ? $0 : nil }
+        // Le son qui donne le tempo : ses temps, ramenés de l'horloge des sons à celle de la lumière.
+        let soundNow = uptime()
+        updated.beatClock = controller.tempoSource(atUptime: soundNow).map {
+            LightConsole.BeatClock(bpm: $0.bpm, origin: $0.beatUptime + (now() - soundNow))
+        }
         publish(updated)
         startOutputIfNeeded()
     }

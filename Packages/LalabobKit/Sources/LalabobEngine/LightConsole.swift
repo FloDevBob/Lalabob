@@ -68,8 +68,19 @@ public struct LightConsole: DMXFrameSource, Equatable {
     public var colorShift: Double { colorLevel - colorReference }
     /// Strobo réglé en direct (0…1, 0 = arrêté) ; `nil` = celui de l'état joué. Sans effet sur un programme de la barre.
     public var strobeOverride: Double?
-    /// Tempo du son en cours (étape 3b) ; `nil` = le tempo de repli de l'alternance.
-    public var tempoBPM: Double?
+    /// Les temps du son qui donne le tempo (étape 3b) ; `nil` = tempo de repli de l'alternance, compté depuis son départ.
+    public var beatClock: BeatClock?
+
+    /// Tempo et instant d'un temps (de préférence un premier temps de mesure), en secondes de `DMXClock`.
+    public struct BeatClock: Equatable, Sendable {
+        public var bpm: Double
+        public var origin: Double
+
+        public init(bpm: Double, origin: Double) {
+            self.bpm = bpm
+            self.origin = origin
+        }
+    }
 
     private var masterLevel = 1.0
     private var colorLevel = 1.0
@@ -218,10 +229,11 @@ public struct LightConsole: DMXFrameSource, Equatable {
         }
     }
 
-    /// Alternance : projecteurs impairs (1, 3…) en A et pairs en B, échangés à chaque intervalle depuis le début de l'état,
-    /// avec un fondu à la bascule.
+    /// Alternance : projecteurs impairs (1, 3…) en A et pairs en B, échangés à chaque intervalle, avec un fondu à la bascule.
+    /// Avec un son qui donne le tempo, les bascules tombent sur **ses** temps (mesure comptée depuis le temps de référence),
+    /// en avance de `DMXRig.lightLead` ; sinon au tempo de repli, comptées depuis le départ de l'état.
     private func alternateHeads(_ look: AlternateLook, since start: Double, at time: Double, count: Int) -> [[Double]] {
-        let bpm = min(max(tempoBPM ?? look.fallbackBPM, 20), 400)
+        let bpm = min(max(beatClock?.bpm ?? look.fallbackBPM, 20), 400)
         let beats: Double =
             switch look.every {
             case .beat: 1
@@ -229,7 +241,7 @@ public struct LightConsole: DMXFrameSource, Equatable {
             case .bar: 4
             }
         let period = 60 / bpm * beats
-        let elapsed = max(time - start, 0)
+        let elapsed = beatClock.map { time + rig.lightLead - $0.origin } ?? max(time - start, 0)
         let step = (elapsed / period).rounded(.down)
         let within = elapsed - step * period
         func arrangement(_ step: Double) -> [[Double]] {
@@ -237,7 +249,7 @@ public struct LightConsole: DMXFrameSource, Equatable {
             return (0..<count).map { index in rgb((index % 2 == 0) == even ? look.a : look.b, intensity: 1) }
         }
         let current = arrangement(step)
-        guard step >= 1, look.switchFade > 0, within < look.switchFade else { return current }
+        guard beatClock != nil || step >= 1, look.switchFade > 0, within < look.switchFade else { return current }
         let previous = arrangement(step - 1)
         let p = within / look.switchFade
         return current.indices.map { head in (0..<3).map { previous[head][$0] + (current[head][$0] - previous[head][$0]) * p } }
