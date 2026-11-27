@@ -455,6 +455,7 @@ struct PadView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(ShowController.self) private var controller
     @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
+    @Environment(DMXSession.self) private var dmx: DMXSession?
     let position: GridPosition
     let kind: ColumnKind
     /// La grille dont on affiche la case (celle de la page à l'écran, pas forcément la grille courante pendant un défilement).
@@ -713,6 +714,7 @@ struct PadView: View {
                     // Mode Projecteurs : les points des projecteurs SONT le bouton (clic = allumer, second clic = éteindre).
                     ProjectorToggle(
                         summary: summary, tint: pad.tint, isOn: lightState == .on, compact: density.padHeight < 44,
+                        cutHeads: cutHeads,
                         action: {
                             if controller.isPairingLights, !controller.isLocked { controller.pairingSend(at: position) } else { controller.toggleLight(at: position) }
                         })
@@ -764,6 +766,12 @@ struct PadView: View {
         .shadow(color: vivid.opacity(halo), radius: 8)
         // La lueur s'éteint en fondu (0,35 s) quand le son s'arrête ; à l'allumage rien n'est animé.
         .animation(reduceMotion || outline > 0 ? nil : Motion.glowOut, value: outline)
+    }
+
+    /// Les projecteurs coupés à la main (mini-barre de la carte Intensité) : la pastille des pads les montre aussi.
+    private var cutHeads: Set<Int> {
+        guard let console = dmx?.console else { return [] }
+        return Set((0..<console.rig.profile.headCount).filter { !console.isHeadOn($0) })
     }
 
     /// Le résumé de l'état lumineux d'un pad, en mode Projecteurs seulement.
@@ -1213,42 +1221,36 @@ extension PlaybackState {
 /// Les points des projecteurs d'un pad lumière (mode Projecteurs) : c'est le bouton du pad. Un clic allume l'état, un second
 /// l'éteint en fondu. **Allumé** : points pleins qui rayonnent, pastille teintée de la couleur du pad, filet clair.
 /// **Éteint** : points creux (simples anneaux gris), pastille sombre. La forme change, pas seulement la couleur : l'état se lit
-/// sans distinguer les couleurs. Un projecteur éteint dans l'état lui-même est un anneau très sombre.
+/// sans distinguer les couleurs. **Toujours de la même taille**, quel que soit le type d'état : 4 points, ou une barre arc-en-ciel
+/// et le numéro du programme, ou un micro. Elle reflète aussi les projecteurs coupés à la main (mini-barre de la carte
+/// Intensité) : un projecteur coupé est un anneau très sombre. `cutHeads` : les projecteurs coupés (rang depuis 0).
 struct ProjectorToggle: View {
     let summary: LightLookSummary
     let tint: Tint
     let isOn: Bool
     let compact: Bool
+    var cutHeads: Set<Int> = []
     let action: () -> Void
+
+    /// Taille unique de la pastille (un peu plus basse sur un pad bas).
+    private var width: CGFloat { 52 }
+    private var height: CGFloat { compact ? 20 : 26 }
+    private let size: CGFloat = 7
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                switch summary.kind {
-                case .colors, .alternate:
-                    if summary.kind == .alternate { flag("⇄") }
-                    ForEach(Array(summary.dots.enumerated()), id: \.offset) { _, dot in point(dot) }
-                    if summary.hasStrobe { flag("ϟ") }
-                case .program(let number):
-                    rainbow
-                    flag("P\(number)")
-                case .sound:
-                    rainbow
-                    flag("MIC")
+            HStack(spacing: 3) { content }
+                .frame(width: width, height: height)
+                .background {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.black.opacity(0.5))
+                        .overlay { if isOn { RoundedRectangle(cornerRadius: 10).fill(tint.vividColor.opacity(0.22)) } }
                 }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, compact ? 6 : 9)
-            .background {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.black.opacity(0.5))
-                    .overlay { if isOn { RoundedRectangle(cornerRadius: 12).fill(tint.vividColor.opacity(0.22)) } }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(isOn ? tint.vividColor.opacity(0.67) : Color.white.opacity(0.08), lineWidth: 1)
-            }
-            .contentShape(.rect(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(isOn ? tint.vividColor.opacity(0.67) : Color.white.opacity(0.08), lineWidth: 1)
+                }
+                .contentShape(.rect(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .interactiveCursor(.link)
@@ -1258,17 +1260,34 @@ struct ProjectorToggle: View {
         .accessibilityHint("Allume ou éteint cette lumière")
     }
 
-    private var size: CGFloat { 10 }
+    @ViewBuilder
+    private var content: some View {
+        switch summary.kind {
+        case .colors, .alternate:
+            ForEach(Array(summary.dots.enumerated()), id: \.offset) { index, dot in point(dot, lit: dot.isOn && !cutHeads.contains(index)) }
+        case .program(let number):
+            rainbow
+            Text("\(number)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(Surface.textPrimary)
+                .opacity(isOn ? 1 : 0.6)
+                .monospacedDigit()
+        case .sound:
+            MicGlyph()
+                .stroke(isOn ? Surface.textPrimary : Surface.textTertiary.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                .frame(width: 11, height: 14)
+        }
+    }
 
     @ViewBuilder
-    private func point(_ dot: LightLookSummary.Dot) -> some View {
-        if !dot.isOn {
+    private func point(_ dot: LightLookSummary.Dot, lit: Bool) -> some View {
+        if !lit {
             Circle().strokeBorder(Color(white: 0.23), lineWidth: 1.5).frame(width: size, height: size)
         } else if isOn {
             Circle()
                 .fill(Color(light: dot.color).opacity(0.45 + 0.55 * min(max(dot.intensity, 0), 1)))
                 .frame(width: size, height: size)
-                .shadow(color: Color(light: dot.color), radius: 3)
+                .shadow(color: Color(light: dot.color), radius: 2.5)
         } else {
             Circle().strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5).frame(width: size, height: size)
         }
@@ -1278,16 +1297,26 @@ struct ProjectorToggle: View {
         let gradient = LinearGradient(colors: [.red, .yellow, .green, .blue, .purple], startPoint: .leading, endPoint: .trailing)
         return ZStack {
             if isOn {
-                RoundedRectangle(cornerRadius: 4).fill(gradient)
+                RoundedRectangle(cornerRadius: 3).fill(gradient)
             } else {
-                RoundedRectangle(cornerRadius: 4).strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 3).strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5)
             }
         }
-        .frame(width: 34, height: 8)
+        .frame(width: 20, height: 7)
     }
+}
 
-    private func flag(_ text: String) -> some View {
-        Text(text).font(.system(size: 9, weight: .bold)).foregroundStyle(Surface.textPrimary).opacity(isOn ? 1 : 0.6)
+/// Petit micro (« sur le son », le micro de la barre) : capsule, arc en U et pied.
+private nonisolated struct MicGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width, h = rect.height
+        path.addRoundedRect(in: CGRect(x: w * 0.32, y: 0, width: w * 0.36, height: h * 0.58), cornerSize: CGSize(width: w * 0.18, height: w * 0.18))
+        path.move(to: CGPoint(x: w * 0.1, y: h * 0.4))
+        path.addQuadCurve(to: CGPoint(x: w * 0.9, y: h * 0.4), control: CGPoint(x: w * 0.5, y: h * 1.0))
+        path.move(to: CGPoint(x: w * 0.5, y: h * 0.75))
+        path.addLine(to: CGPoint(x: w * 0.5, y: h))
+        return path
     }
 }
 
