@@ -24,7 +24,7 @@ extension LightColor {
             if (180...270).contains(hue) { return LightColorName(plain: "Blanc froid", mood: "Lumière froide") }
         }
         switch hue {
-        case 345..<360, 0..<15: return LightColorName(plain: "Rouge", mood: "Danger")
+        case 345..<360, 0..<15: return LightColorName(plain: "Rouge", mood: "Tension")
         case 15..<45: return LightColorName(plain: "Orange", mood: "Soir")
         case 45..<70: return LightColorName(plain: "Jaune", mood: "Soleil")
         case 70..<160: return LightColorName(plain: "Vert", mood: "Forêt")

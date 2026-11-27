@@ -10,7 +10,7 @@ struct LightLabelTests {
     }
 
     @Test("Les couleurs franches : ambiance en titre, nom simple en sous-titre", arguments: [
-        (0.0, 1.0, "Danger", "Rouge"), (30.0, 1.0, "Soir", "Orange"), (55.0, 1.0, "Soleil", "Jaune"),
+        (0.0, 1.0, "Tension", "Rouge"), (30.0, 1.0, "Soir", "Orange"), (55.0, 1.0, "Soleil", "Jaune"),
         (120.0, 1.0, "Forêt", "Vert"), (180.0, 1.0, "Mer", "Turquoise"), (225.0, 1.0, "Nuit", "Bleu"),
         (270.0, 1.0, "Mystère", "Violet"), (320.0, 1.0, "Romantique", "Rose"),
     ])
@@ -35,7 +35,7 @@ struct LightLabelTests {
     @Test("Les projecteurs éteints ne comptent pas ; des couleurs différentes : « Plusieurs couleurs »")
     func severalColors() {
         let red = LightColor(hue: 0, saturation: 1), blue = LightColor(hue: 225, saturation: 1)
-        #expect(look([red, blue, red, blue], on: [true, false, true, false]).autoLabel == LightLabel(title: "Danger", subtitle: "Rouge"))
+        #expect(look([red, blue, red, blue], on: [true, false, true, false]).autoLabel == LightLabel(title: "Tension", subtitle: "Rouge"))
         #expect(look([red, blue]).autoLabel == LightLabel(title: "Plusieurs couleurs", subtitle: "Rouge et Bleu"))
         let green = LightColor(hue: 120, saturation: 1)
         #expect(look([red, blue, green]).autoLabel.subtitle == "Rouge et Bleu…")
