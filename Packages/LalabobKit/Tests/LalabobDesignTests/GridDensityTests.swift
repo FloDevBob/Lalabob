@@ -40,7 +40,7 @@ struct GridDensityTests {
         #expect(GridDensity.regular.faderTrackHeight == 120)
     }
 
-    @Test(arguments: [600, 560, 540, 520] as [CGFloat])
+    @Test(arguments: [620, 600, 560, 540] as [CGFloat])
     func aLowWindowShrinksThePadsThenTheFaderToFitExactly(_ available: CGFloat) {
         let density = GridDensity.fitting(availableHeight: available)
         #expect(density.padHeight < Metrics.padHeight)

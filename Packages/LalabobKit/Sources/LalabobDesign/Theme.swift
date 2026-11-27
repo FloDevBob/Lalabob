@@ -79,9 +79,9 @@ public struct GridDensity: Equatable, Sendable {
     public static let maximumPadHeight: CGFloat = 110
     public static let minimumFaderTrackHeight: CGFloat = 64
 
-    /// Hauteur de tout ce qui n'est ni pad ni piste de fader : en-tête de colonne, espaces, carte de volume (marges,
+    /// Hauteur de tout ce qui n'est ni pad ni piste de fader : en-tête de colonne, espaces, carte de fader (titre, caisson, marges,
     /// valeur), marges de la grille.
-    public static let fixedHeight: CGFloat = 152
+    public static let fixedHeight: CGFloat = 170
 
     /// Densité qui tient dans `availableHeight` (la zone de la grille, sans l'en-tête de la fenêtre ni la barre du bas).
     public static func fitting(availableHeight: CGFloat) -> GridDensity {

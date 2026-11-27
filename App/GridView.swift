@@ -86,8 +86,150 @@ struct ColumnView: View {
 
     @Environment(ShowController.self) private var controller
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DMXSession.self) private var dmx: DMXSession?
     let index: Int
     let onPress: () -> Void
+
+    // MARK: - Carte de fader
+
+    /// Ce que dit le petit titre de la carte, et son icône.
+    private func cardHeading(_ column: Column, role: DMXFaderRole?) -> (String, Icon) {
+        guard column.kind == .light else { return ("Volume", .volume) }
+        switch role {
+        case .general?: return ("Intensité lumineuse", .sun)
+        case .colors?: return ("Couleurs", .palette)
+        case .strobeSpeed?: return ("Strobo", .flash)
+        case DMXFaderRole.none?: return ("Sans rôle", .sun)
+        case nil: return ("Intensité", .sun)
+        }
+    }
+
+    /// Petit titre discret en haut de la carte. En mode Projecteurs, déverrouillé, c'est aussi le menu du rôle du fader.
+    @ViewBuilder
+    private func cardTitle(_ column: Column, role: DMXFaderRole?) -> some View {
+        let (title, icon) = cardHeading(column, role: role)
+        let label = HStack(spacing: 5) {
+            icon.view(size: 11)
+            Text(title).font(.system(size: 10.5, weight: .semibold)).lineLimit(1).truncationMode(.tail)
+        }
+        .foregroundStyle(Surface.textTertiary)
+        .frame(height: 15)
+        .padding(.leading, 4)
+        if let role, !controller.isLocked {
+            Menu {
+                faderRoleMenu(current: role)
+            } label: { label }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Ce que règle ce fader : \(role.title) (cliquer pour le changer)")
+        } else {
+            label
+        }
+    }
+
+    @ViewBuilder
+    private func cardContent(_ column: Column, role: DMXFaderRole?) -> some View {
+        if column.kind == .music, controller.musicPlayer?.isBridgeEnabled != true {
+            // Colonne Music : pas de fader (le volume est celui de Music, réglé par le 9e fader de l'APC).
+            Text("Réglé par le 9e fader de l'APC (Apple Music)")
+                .font(.system(size: 11))
+                .foregroundStyle(Surface.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 6)
+                .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight + 20, alignment: .topLeading)
+        } else if column.kind.hasAudio || column.kind == .music {  // son, mixte, ou Music par le pont audio
+            HStack(alignment: .top, spacing: 8) {
+                VerticalFader(
+                    name: column.name,
+                    level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
+                    hardwareMarker: controller.waitingFaders[index]
+                ) {
+                    LevelMeter(column: index).frame(width: 14)
+                }
+                // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
+                RotaryKnob(
+                    name: column.name,
+                    accent: accentColor(of: column),
+                    value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
+                    onReset: { controller.resetColumnFilter(index) }
+                )
+            }
+        } else {
+            lightContent(column, role: role)
+                .contextMenu { if let role, !controller.isLocked { faderRoleMenu(current: role) } }
+        }
+    }
+
+    @ViewBuilder
+    private func lightContent(_ column: Column, role: DMXFaderRole?) -> some View {
+        let level = Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) })
+        switch role {
+        case .general?:
+            // Intensité lumineuse : la barre des 4 projecteurs à la place du potard, le tempo dessous.
+            HStack(alignment: .top, spacing: 6) {
+                VerticalFader(name: column.name, level: level, valueText: lightValueText(column), defaultLevel: 1,
+                    hardwareMarker: controller.waitingFaders[index]) { EmptyView() }
+                VStack(alignment: .leading, spacing: 8) {
+                    DMXHeadsBar()
+                    DMXTempo()
+                }
+            }
+        case .colors?:
+            // Couleurs : le rail est un arc-en-ciel recalé sur la couleur du pad ; la couleur en cours à droite.
+            let info = colorFaderInfo(level: column.level)
+            HStack(alignment: .top, spacing: 6) {
+                VerticalFader(name: column.name, level: level, valueText: info.value, defaultLevel: 1,
+                    hardwareMarker: controller.waitingFaders[index], trackStyle: AnyShapeStyle(info.track), handleColor: info.current) { EmptyView() }
+                VStack(spacing: 5) {
+                    Circle()
+                        .fill(info.current)
+                        .overlay { Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 2) }
+                        .shadow(color: info.current.opacity(0.7), radius: 6)
+                        .frame(width: 26, height: 26)
+                    Text(info.caption)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(Surface.textPrimary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+                .padding(.top, 18)
+                .frame(width: 46)
+            }
+        default:
+            // Strobo, sans rôle, ou mode LightKey : le fader et un repère qui suit le niveau.
+            VerticalFader(name: column.name, level: level, valueText: lightValueText(column), defaultLevel: 1,
+                hardwareMarker: controller.waitingFaders[index]) {
+                (role == .strobeSpeed ? Icon.flash : Icon.sun).view(size: 16)
+                    .foregroundStyle(Surface.lightAccent)
+                    .opacity(0.25 + 0.75 * column.level)
+                    .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
+            }
+            .opacity(role == DMXFaderRole.none ? 0.5 : 1)
+        }
+    }
+
+    /// Le fader Couleurs est **relatif** : sa position au départ d'un état donne les couleurs du pad, le bouger fait tourner la
+    /// roue (toute la course = un tour). Le rail montre donc l'arc-en-ciel calé pour que la poignée soit sur la couleur en cours :
+    /// on voit vers quelle couleur on va. Un état sans teinte (blanc) garde un arc-en-ciel pâle.
+    private func colorFaderInfo(level: Double) -> (track: LinearGradient, current: Color, value: String, caption: String) {
+        let console = dmx?.console
+        let base = console?.activeLook?.representativeColor ?? LightColor(hue: 0, saturation: 1)
+        let reference = console?.colorReference ?? level
+        let pale = base.saturation < 0.15
+        let saturation = pale ? 0.3 : base.saturation
+        let stops = (0...12).map { step -> Color in
+            let position = Double(step) / 12
+            return Color(light: LightColor(hue: base.hue + (position - reference) * 360, saturation: saturation))
+        }
+        let shift = Int(((level - reference) * 360).rounded())
+        let current = Color(light: LightColor(hue: base.hue + Double(shift), saturation: pale ? 0 : base.saturation))
+        return (
+            LinearGradient(colors: stops, startPoint: .bottom, endPoint: .top), current,
+            shift == 0 ? "origine" : (shift > 0 ? "+\(shift)°" : "\(shift)°"),
+            shift == 0 ? "Couleurs du pad" : "Tourné de \(abs(shift))°"
+        )
+    }
 
     /// Clic droit sur la carte d'un fader lumière (mode Projecteurs) : ce que règle ce fader.
     @ViewBuilder
@@ -116,28 +258,32 @@ struct ColumnView: View {
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
-        .padding(6)
+        .padding(4)
         .interactiveCursor(.link)
         .help("Arrêter tous les sons de cette colonne")
         .accessibilityLabel("Arrêter la colonne \(index + 1)")
     }
 
-    /// Bouton rond « Noir » de la carte Intensité (mode Projecteurs), au même endroit et de la même taille que le stop d'une
-    /// colonne son : éteint toute la barre en fondu. Un anneau creux dans un rond sombre, comme les points éteints des pads.
+    /// Bouton « Noir » de la carte Intensité lumineuse (mode Projecteurs), dans le coin du caisson comme le stop d'une colonne
+    /// son : éteint toute la barre en fondu. Carré stop et libellé, fond et filet rouges (comme le pad Noir).
     private var blackoutButton: some View {
-        Button {
+        let red = Color(red: 1, green: 0.36, blue: 0.4)
+        return Button {
             controller.blackout()
         } label: {
-            Circle()
-                .strokeBorder(Color.white, lineWidth: 1.5)
-                .frame(width: 11, height: 11)
-                .frame(width: 28, height: 28)
-                .background(Color.black.opacity(0.85), in: .circle)
-                .overlay { Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) }
-                .contentShape(.circle)
+            HStack(spacing: 5) {
+                RoundedRectangle(cornerRadius: 1.5).fill(Color(red: 1, green: 0.88, blue: 0.89)).frame(width: 7, height: 7)
+                Text("Noir").font(.system(size: 10.5, weight: .semibold))
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(red.opacity(0.18), in: RoundedRectangle(cornerRadius: 7))
+            .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(red.opacity(0.6), lineWidth: 1) }
+            .foregroundStyle(Color(red: 1, green: 0.88, blue: 0.89))
+            .contentShape(.rect(cornerRadius: 7))
         }
         .buttonStyle(.plain)
-        .padding(6)
+        .padding(4)
         .interactiveCursor(.link)
         .help("Noir : éteindre toute la barre en fondu (bouton rond de l'APC)")
         .accessibilityLabel("Noir")
@@ -213,69 +359,20 @@ struct ColumnView: View {
             // Les 8 pads de la colonne : seuls eux défilent (comme une page) quand on change d'onglet.
             PadsPager(column: index, kind: column.kind, onPress: onPress)
 
-            // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
-            // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
-            Group {
-                if column.kind == .music, controller.musicPlayer?.isBridgeEnabled != true {
-                    // Colonne Music : pas de fader (le volume est celui de Music, réglé par le 9e fader de l'APC).
-                    VStack(alignment: .leading, spacing: 6) {
-                        IconLabel("Volume", icon: .volume, size: 12)
-                            .font(.system(size: 10.5, weight: .semibold))
-                            .foregroundStyle(Surface.textTertiary)
-                        Text("Réglé par le 9e fader de l'APC (Apple Music)")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Surface.textTertiary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
+            // Carte sous la colonne (maquette « titre + caisson », option A) : un petit titre avec son icône, puis un caisson
+            // sombre avec le fader à gauche (valeur dessous) et ce qui l'accompagne à droite ; Stop ou Noir dans le coin du caisson.
+            VStack(alignment: .leading, spacing: 3) {
+                cardTitle(column, role: dmxRole)
+                cardContent(column, role: dmxRole)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(Surface.well, in: .rect(cornerRadius: 10))
+                    .overlay(alignment: .bottomTrailing) {
+                        if column.kind.hasAudio || column.kind == .music { stopColumnButton } else if dmxRole == .general { blackoutButton }
                     }
-                    .padding(.horizontal, 10)
-                    .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight, alignment: .topLeading)
-                    .accessibilityElement(children: .combine)
-                } else if column.kind.hasAudio || column.kind == .music {  // son, mixte, ou Music par le pont audio
-                    HStack(alignment: .top, spacing: 8) {
-                        VerticalFader(
-                            name: column.name,
-                            level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
-                            hardwareMarker: controller.waitingFaders[index]
-                        ) {
-                            LevelMeter(column: index).frame(width: 14)
-                        }
-                        // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
-                        RotaryKnob(
-                            name: column.name,
-                            accent: accentColor(of: column),
-                            value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
-                            onReset: { controller.resetColumnFilter(index) }
-                        )
-                    }
-                } else {
-                    let role = dmxRole
-                    // Même disposition qu'une colonne son : fader (valeur dessous), puis à la place du vumètre les 4 projecteurs
-                    // (carte Intensité), à la place du potard le rôle du fader et le tempo ; le Noir est dans le coin, comme le stop.
-                    HStack(alignment: .top, spacing: 8) {
-                        VerticalFader(
-                            name: column.name,
-                            level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
-                            valueText: lightValueText(column),
-                            defaultLevel: 1,
-                            hardwareMarker: controller.waitingFaders[index]
-                        ) {
-                            if role == .general {
-                                DMXHeadsColumn()
-                            } else {
-                                Icon.sun.view(size: 16)
-                                    .foregroundStyle(Surface.lightAccent)
-                                    .opacity(0.25 + 0.75 * column.level)
-                                    .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
-                            }
-                        }
-                        .opacity(role == DMXFaderRole.none ? 0.5 : 1)
-                        if let role { DMXRoleColumn(column: index, role: role) }
-                    }
-                    .contextMenu { if role != nil, !controller.isLocked { faderRoleMenu(current: role ?? .none) } }
-                }
             }
-            .padding(.vertical, 10)
+            .padding(4)
             .frame(maxWidth: .infinity)
             .background(Surface.panel, in: .rect(cornerRadius: Metrics.padCornerRadius))
             .overlay(
@@ -283,9 +380,6 @@ struct ColumnView: View {
                     .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
             )
             .overlay { faderPairingOverlay(column) }
-            .overlay(alignment: .bottomTrailing) {
-                if column.kind.hasAudio || column.kind == .music { stopColumnButton } else if dmxRole == .general { blackoutButton }
-            }
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)
@@ -1349,28 +1443,23 @@ private nonisolated struct MicGlyph: Shape {
     }
 }
 
-/// Les 4 projecteurs de la carte **Intensité** (mode Projecteurs), à la place du vumètre d'une colonne son : un par ligne,
+/// Les projecteurs de la carte **Intensité lumineuse** (mode Projecteurs), en ligne à la place du potard d'une colonne son :
 /// tels que la barre les montre (fondus compris). Un clic en coupe ou rallume un en fondu sans toucher au pad ; la pastille
 /// des pads le reflète.
-struct DMXHeadsColumn: View {
+struct DMXHeadsBar: View {
     @Environment(DMXSession.self) private var dmx
-    @Environment(\.gridDensity) private var density
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
             let colors = dmx.console?.headColors(at: DMXClock.now()) ?? []
-            let count = dmx.console?.rig.profile.headCount ?? 4
-            VStack(spacing: 0) {
-                ForEach(0..<count, id: \.self) { index in
-                    if index > 0 { Spacer(minLength: 2) }
+            HStack(spacing: 2) {
+                ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
                     head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
                 }
             }
-            .padding(.vertical, 3)
-            .padding(.horizontal, 3)
-            .frame(height: density.faderTrackHeight)
-            .background(Color(red: 0.15, green: 0.16, blue: 0.18), in: RoundedRectangle(cornerRadius: 8))
-            .overlay { RoundedRectangle(cornerRadius: 8).stroke(Color(red: 0.23, green: 0.24, blue: 0.27), lineWidth: 1) }
+            .padding(3)
+            .background(Color(red: 0.15, green: 0.16, blue: 0.18), in: RoundedRectangle(cornerRadius: 6))
+            .overlay { RoundedRectangle(cornerRadius: 6).stroke(Color(red: 0.23, green: 0.24, blue: 0.27), lineWidth: 1) }
         }
     }
 
@@ -1380,9 +1469,9 @@ struct DMXHeadsColumn: View {
         return Button { dmx.toggleHead(index) } label: {
             Circle()
                 .fill(Color(red: 0.07, green: 0.08, blue: 0.09))
-                .overlay { Circle().fill(fill).padding(3) }
+                .overlay { Circle().fill(fill).padding(2.5) }
                 .overlay { Circle().stroke(Color(red: 0.29, green: 0.3, blue: 0.33), lineWidth: 1) }
-                .frame(width: 15, height: 15)
+                .frame(width: 13, height: 13)
                 .opacity(isOn ? 1 : 0.45)
         }
         .buttonStyle(.plain)
@@ -1393,56 +1482,15 @@ struct DMXHeadsColumn: View {
     }
 }
 
-/// À la place du potard d'une colonne son : le **rôle** du fader (Intensité, Couleurs, Strobo, Aucun) dans une pastille ambrée
-/// (clic ou clic droit = le changer) et, quand une alternance joue sur la carte Intensité, son tempo avec un point qui bat.
-struct DMXRoleColumn: View {
-    @Environment(ShowController.self) private var controller
+/// Quand une alternance joue : son tempo, avec un point qui bat (carte Intensité lumineuse).
+struct DMXTempo: View {
     @Environment(DMXSession.self) private var dmx
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let column: Int
-    let role: DMXFaderRole
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            rolePill
-            if role == .general { tempo }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    private var rolePill: some View {
-        let label = Text(role.title)
-            .font(.system(size: 10, weight: .semibold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .padding(.horizontal, 6)
-            .frame(height: 20)
-            .background(Surface.lightAccent.opacity(0.08), in: Capsule())
-            .overlay { Capsule().stroke(Surface.lightAccent.opacity(0.35), lineWidth: 1) }
-            .foregroundStyle(role == .none ? Surface.textTertiary : Color(red: 1, green: 0.95, blue: 0.78))
-        return Group {
-            if controller.isLocked {
-                label
-            } else {
-                Menu {
-                    ForEach(DMXFaderRole.allCases, id: \.self) { choice in
-                        Button((choice == role ? "✓ " : "") + choice.title) { controller.setFaderRole(column: column, to: choice) }
-                    }
-                } label: { label }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-            }
-        }
-        .help(controller.isLocked ? "Ce que règle ce fader : \(role.title)" : "Ce que règle ce fader : \(role.title) (cliquer pour le changer)")
-    }
-
-    @ViewBuilder
-    private var tempo: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
             if let info = dmx.console?.alternationInfo(at: DMXClock.now()) {
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
                     Circle().fill(Surface.lightAccent).frame(width: 6, height: 6)
                         .opacity(info.onBeat && !reduceMotion ? 1 : 0.25)
                     Text("⇄ \(Int(info.bpm.rounded()))")
