@@ -383,7 +383,7 @@ public final class MusicPlaybackCoordinator {
         if ring.secondsSinceLastWrite > bridgeStaleLimit {
             await stopBridge(reason: "La capture du son de Music s'est arrêtée : Music joue directement.")
         } else if position > bridgeSilenceLimit, ring.secondsSinceLastSound > bridgeSilenceLimit {
-            await stopBridge(reason: "Le son de Music arrive muet dans Lalabob (morceau protégé ?) : Music joue directement. Option désactivée.")
+            await stopBridge(reason: "Le son de Music arrive muet dans Lalabob (une autre app capte-t-elle Music, comme Audio Hijack ? morceau protégé ?) : Music joue directement. Option désactivée.")
             isBridgeEnabled = false
             defaults.set(false, forKey: Self.bridgeDefaultsKey)
         }

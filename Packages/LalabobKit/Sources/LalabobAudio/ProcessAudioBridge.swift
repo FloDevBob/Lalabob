@@ -29,15 +29,12 @@ public actor ProcessAudioBridge {
         public var skippedBuffers: Int
         /// Processus audio de l'app captés (et rendus muets) : plus d'un si l'app joue aussi par un processus auxiliaire.
         public var tappedProcesses: Int
-        /// La capture suit l'app par son identifiant (macOS 26) : elle la retrouve si l'app est relancée.
-        public var followsBundleID: Bool
 
-        public init(sampleRate: Double, tapSampleRate: Double, skippedBuffers: Int, tappedProcesses: Int = 1, followsBundleID: Bool = false) {
+        public init(sampleRate: Double, tapSampleRate: Double, skippedBuffers: Int, tappedProcesses: Int = 1) {
             self.sampleRate = sampleRate
             self.tapSampleRate = tapSampleRate
             self.skippedBuffers = skippedBuffers
             self.tappedProcesses = tappedProcesses
-            self.followsBundleID = followsBundleID
         }
     }
 
@@ -56,27 +53,14 @@ public actor ProcessAudioBridge {
         let bundleID = Self.bundleID(of: process)
         let processes = Self.audioProcesses(pid: pid, bundleID: bundleID, main: process)
 
-        func makeDescription(followingBundleID: Bool) -> CATapDescription {
-            let description = CATapDescription(stereoMixdownOfProcesses: processes)
-            description.uuid = UUID()
-            description.muteBehavior = .mutedWhenTapped
-            description.isPrivate = true
-            if followingBundleID, let bundleID {
-                description.bundleIDs = [bundleID]
-                description.isProcessRestoreEnabled = true
-            }
-            return description
-        }
-        var description = makeDescription(followingBundleID: bundleID != nil)
+        // Pas de `bundleIDs` / `isProcessRestoreEnabled` (macOS 26) : essayés le 28/11/2026 sans gain démontré ; par identifiant
+        // seul, l'appareil agrégé ne tournait pas du tout (sonde en ligne de commande). La capture par processus suffit.
+        let description = CATapDescription(stereoMixdownOfProcesses: processes)
+        description.uuid = UUID()
+        description.muteBehavior = .mutedWhenTapped
+        description.isPrivate = true
         var tap = AudioObjectID(kAudioObjectUnknown)
-        var tapStatus = AudioHardwareCreateProcessTap(description, &tap)
-        var followsBundleID = bundleID != nil
-        if tapStatus != noErr, followsBundleID {
-            // Repli : la description d'origine, par processus seulement.
-            description = makeDescription(followingBundleID: false)
-            followsBundleID = false
-            tapStatus = AudioHardwareCreateProcessTap(description, &tap)
-        }
+        let tapStatus = AudioHardwareCreateProcessTap(description, &tap)
         guard tapStatus == noErr else { throw .tapRefused(tapStatus) }
         tapID = tap
         let tapSampleRate = Self.sampleRate(ofTap: tap) ?? 48_000
@@ -132,9 +116,7 @@ public actor ProcessAudioBridge {
             stop()
             throw .deviceFailed(startStatus)
         }
-        return Info(
-            sampleRate: sampleRate, tapSampleRate: tapSampleRate, skippedBuffers: skip, tappedProcesses: processes.count,
-            followsBundleID: followsBundleID)
+        return Info(sampleRate: sampleRate, tapSampleRate: tapSampleRate, skippedBuffers: skip, tappedProcesses: processes.count)
     }
 
     /// Arrête la capture et défait tout : l'app captée redevient audible.

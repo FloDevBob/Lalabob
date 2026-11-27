@@ -30,9 +30,12 @@ macOS (`CATapDescription`, macOS 14.2+) peut **rendre Music muet** pendant qu'on
 - **Lecture à vitesse fixe** : la lecture à vitesse ajustée (±1 %, interpolation linéaire) est retirée. La capture suit déjà l'horloge de la
   sortie de Lalabob avec la compensation de dérive de macOS : rien à rattraper. Elle faisait onduler la hauteur (effet chorus) et ternissait
   les aigus. Test : une sinusoïde aiguë traverse le tampon par blocs de tailles différentes et ressort identique, échantillon par échantillon.
-- **Tous les processus audio de Music** sont captés et rendus muets (processus principal, même PID, mêmes identifiants d'app ou dérivés) ;
-  un son resté audible hors de la capture s'entendait ~40 ms avant la copie : un écho. Capture aussi par identifiant d'app
-  (`CATapDescription.bundleIDs`, `isProcessRestoreEnabled`, macOS 26) avec repli sur la capture par processus.
+- **Tous les processus audio de Music** sont captés et rendus muets (processus principal, même PID, mêmes identifiants d'app ou dérivés).
+  Relevé : Music n'a qu'**un** processus audio, ce n'était donc pas la source de l'écho. `bundleIDs` / `isProcessRestoreEnabled` essayés
+  puis retirés (par identifiant seul, l'appareil agrégé ne tournait pas).
+- **Cause réelle de l'écho à l'essai** : **Audio Hijack** captait aussi Music et le renvoyait vers la sortie (deux copies décalées). Avec deux
+  captures du même processus, celle de Lalabob recevait du silence et coupait l'option (« morceau protégé ? »). Règle d'usage : aucune autre
+  app ne doit capter Music quand l'option est active ; le message le dit.
 - Avance ramenée de 65 à ~43 ms (2 048 trames à 48 kHz). Diagnostic du panneau : « N processus captés ».
 - Si l'écho persiste : piste de l'ADR à écrire, rendre le son directement vers la sortie dans la fonction de rappel de l'appareil agrégé
   (sans tampon), au prix de refaire fader, filtre et vumètre hors AVAudioEngine.
