@@ -675,8 +675,13 @@ struct PadView: View {
         return HStack(spacing: Self.contentSpacing) {
             VStack(alignment: .leading, spacing: 1) {
                 InlinePadText(position: position, field: .title, text: pad.title, font: Typography.padTitle, editing: $editingField)
-                InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
-                    .opacity(0.88)
+                if pad.subtitle.isEmpty, let summary = lookSummary(pad) {
+                    // Pas de sous-titre : en mode Projecteurs, l'état lumineux se résume (« Ensemble · 2 et 3 »).
+                    Text(summary.subtitle).font(Typography.padSubtitle).lineLimit(1).opacity(0.88)
+                } else {
+                    InlinePadText(position: position, field: .subtitle, text: pad.subtitle, font: Typography.padSubtitle, editing: $editingField)
+                        .opacity(0.88)
+                }
             }
             Spacer(minLength: 0)
             if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
@@ -713,6 +718,15 @@ struct PadView: View {
                 .allowsHitTesting(false)
         }
         .overlay(alignment: .bottom) { progressBar(event, color: vivid) }
+        .overlay(alignment: .bottomTrailing) {
+            // Repère des projecteurs (mode Projecteurs) : seulement si la hauteur du pad le permet sous le bouton rond.
+            if pad.audio == nil, density.padHeight >= 44, let summary = lookSummary(pad) {
+                LookDotsView(summary: summary)
+                    .padding(.trailing, Self.horizontalInset)
+                    .padding(.bottom, 4)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(vivid.opacity(outline), lineWidth: 2)
         }
@@ -734,6 +748,12 @@ struct PadView: View {
         .shadow(color: vivid.opacity(halo), radius: 8)
         // La lueur s'éteint en fondu (0,35 s) quand le son s'arrête ; à l'allumage rien n'est animé.
         .animation(reduceMotion || outline > 0 ? nil : Motion.glowOut, value: outline)
+    }
+
+    /// Le résumé de l'état lumineux d'un pad, en mode Projecteurs seulement.
+    private func lookSummary(_ pad: Pad) -> LightLookSummary? {
+        guard controller.isDMXLighting, pad.audio == nil, pad.music == nil else { return nil }
+        return pad.light?.look?.summary
     }
 
     /// Bouton rond d'une cue lumière, du même dessin que le bouton lecture d'un son : une ampoule pleine qui envoie la cue
@@ -1155,5 +1175,49 @@ extension PlaybackState {
         case .playing(let startedAt): now - startedAt
         case .paused(let elapsed): elapsed
         }
+    }
+}
+
+
+/// Repère des projecteurs d'un pad lumière (J14, étape 4b) : un point par projecteur à sa couleur (plus pâle si l'intensité est
+/// basse, gris si éteint), ⇄ pour une alternance, ϟ pour du strobo, « P3 » / « MIC » pour un programme ou « sur le son ».
+struct LookDotsView: View {
+    let summary: LightLookSummary
+
+    var body: some View {
+        HStack(spacing: 3) {
+            switch summary.kind {
+            case .colors, .alternate:
+                if summary.kind == .alternate { flag("⇄") }
+                ForEach(Array(summary.dots.enumerated()), id: \.offset) { _, dot in
+                    Circle().fill(fill(dot)).frame(width: 6, height: 6)
+                }
+                if summary.hasStrobe { flag("ϟ") }
+            case .program(let number):
+                rainbow
+                flag("P\(number)")
+            case .sound:
+                rainbow
+                flag("MIC")
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func fill(_ dot: LightLookSummary.Dot) -> Color {
+        guard dot.isOn else { return Color.white.opacity(0.22) }
+        let rgb = dot.color.rgb
+        return Color(red: Double(rgb.red) / 255, green: Double(rgb.green) / 255, blue: Double(rgb.blue) / 255)
+            .opacity(0.4 + 0.6 * min(max(dot.intensity, 0), 1))
+    }
+
+    private func flag(_ text: String) -> some View {
+        Text(text).font(.system(size: 8.5, weight: .bold)).opacity(0.85)
+    }
+
+    private var rainbow: some View {
+        RoundedRectangle(cornerRadius: 2)
+            .fill(LinearGradient(colors: [.red, .yellow, .green, .blue, .purple], startPoint: .leading, endPoint: .trailing))
+            .frame(width: 22, height: 5)
     }
 }
