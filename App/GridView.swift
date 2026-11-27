@@ -959,6 +959,21 @@ struct PadView: View {
                         .accessibilityLabel("Créer une lumière")
                     }
                     .font(.system(size: 11.5))
+                } else if kind == .light {
+                    // Colonne lumière : un clic crée la lumière (en mode Projecteurs, « Relier » n'existe pas).
+                    Button {
+                        controller.newLightCue(at: position)
+                    } label: {
+                        IconLabel("Nouvelle lumière", icon: .plus, size: 13)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Surface.lightAccent)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .interactiveCursor(.link)
+                    .help("Créer une lumière sur cette case")
+                    .accessibilityLabel("Créer une lumière")
                 } else {
                     IconLabel(kind == .music ? "Morceau" : kind.hasAudio ? "Déposer un son" : "Nouvelle lumière", icon: .plus, size: 13)
                         .font(.system(size: 11.5))

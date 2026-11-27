@@ -50,7 +50,9 @@ struct IdleBar: View {
     private func hint(for position: GridPosition) -> String {
         switch controller.currentGrid.columns[position.column].kind {
         case .light:
-            return "Créez une lumière sur ce pad, puis reliez-la aux projecteurs (bouton « Relier »)."
+            return controller.isDMXLighting
+                ? "Cliquez « Nouvelle lumière » sur ce pad : vous réglerez ses couleurs dans ce panneau."
+                : "Créez une lumière sur ce pad (cliquez « Nouvelle lumière »), puis reliez-la aux projecteurs (bouton « Relier »)."
         case .mixed:
             return "Glissez un son de la bibliothèque ou du Finder sur ce pad, ou cliquez « Lumière » pour créer une lumière."
         case .audio:
