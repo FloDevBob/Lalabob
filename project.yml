@@ -33,6 +33,14 @@ targets:
     platform: macOS
     sources:
       - path: App
+      # Visite guidée (page HTML + sons, la même que celle publiée en ligne) et spectacle d'entraînement,
+      # copiés tels quels dans l'app (dossier « visite » et paquet Entrainement.lalabob).
+      - path: docs/tutoriel/visite
+        type: folder
+        buildPhase: resources
+      - path: docs/tutoriel/Entrainement.lalabob
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: LalabobKit
         product: LalabobModel

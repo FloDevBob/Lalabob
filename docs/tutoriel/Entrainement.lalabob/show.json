@@ -1,0 +1,698 @@
+{
+  "formatVersion" : 2,
+  "grids" : [
+    {
+      "columns" : [
+        {
+          "filter" : 0,
+          "id" : "8FF36A4B-A0F9-462F-B653-29A7D9F0B202",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Ambiances",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "pluie.m4a",
+                "gainDB" : 4,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "0BD093E6-DA1E-4827-8FD9-060709F84A2B",
+              "ledIntensity" : "full",
+              "subtitle" : "Pluie douce",
+              "tint" : "azur",
+              "title" : "Pluie"
+            },
+            {
+              "audio" : {
+                "fileName" : "vent-arbres.m4a",
+                "gainDB" : 4,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "B8EF6B5F-C027-41BD-9639-E6676390360B",
+              "ledIntensity" : "full",
+              "subtitle" : "Brise d'été",
+              "tint" : "azur",
+              "title" : "Vent dans les arbres"
+            },
+            {
+              "audio" : {
+                "fileName" : "foret-nuit.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "E7E905E0-2FFD-4196-B486-77ADF01A7B0C",
+              "ledIntensity" : "full",
+              "subtitle" : "Grillons, nuit calme",
+              "tint" : "azur",
+              "title" : "Forêt la nuit"
+            },
+            {
+              "audio" : {
+                "fileName" : "rue-ville.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "1197857C-F4E7-4C10-9554-72DE4BBCC761",
+              "ledIntensity" : "full",
+              "subtitle" : "Passants, voitures",
+              "tint" : "azur",
+              "title" : "Rue de ville"
+            },
+            {
+              "audio" : {
+                "fileName" : "cafe.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "1DD26D11-BB1F-4B61-ABB1-E72570CE7247",
+              "ledIntensity" : "full",
+              "subtitle" : "Salle, vaisselle",
+              "tint" : "azur",
+              "title" : "Café animé"
+            },
+            {
+              "audio" : {
+                "fileName" : "bord-de-mer.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "029D12F7-A662-455E-A7F6-A5AA2B6A0976",
+              "ledIntensity" : "full",
+              "subtitle" : "Vagues",
+              "tint" : "azur",
+              "title" : "Bord de mer"
+            },
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "49E030D3-7E28-45A2-884A-822A594495DF",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Bruitages",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "tonnerre.m4a",
+                "gainDB" : 3,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "D870CB62-5DBB-4399-A457-3D44EFB1E340",
+              "ledIntensity" : "full",
+              "subtitle" : "Grondement grave",
+              "tint" : "orange",
+              "title" : "Tonnerre"
+            },
+            {
+              "audio" : {
+                "fileName" : "porte-claque.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "9B644F82-0305-4480-AB9E-DFAA9884A90E",
+              "ledIntensity" : "full",
+              "subtitle" : "Claquement sec",
+              "tint" : "orange",
+              "title" : "Porte qui claque"
+            },
+            {
+              "audio" : {
+                "fileName" : "pas-parquet.m4a",
+                "gainDB" : 4,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "C10CD828-881C-4E08-AFC1-298F2E6F3451",
+              "ledIntensity" : "full",
+              "subtitle" : "Quelqu'un entre",
+              "tint" : "orange",
+              "title" : "Pas sur parquet"
+            },
+            {
+              "audio" : {
+                "fileName" : "verre-brise.m4a",
+                "gainDB" : 3,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "45FF32BE-971F-43FF-9E19-84AB7ABF28FF",
+              "ledIntensity" : "full",
+              "subtitle" : "Chute et éclats",
+              "tint" : "orange",
+              "title" : "Verre brisé"
+            },
+            {
+              "audio" : {
+                "fileName" : "coups-de-feu-lointains.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "361FF03B-DBC0-4B72-9F10-7C3965D83C4D",
+              "ledIntensity" : "full",
+              "subtitle" : "Au loin, trois coups",
+              "tint" : "orange",
+              "title" : "Coups de feu"
+            },
+            {
+              "audio" : {
+                "fileName" : "telephone-ancien.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "C1A180E1-A93A-45B6-9B32-DA3B237775D3",
+              "ledIntensity" : "full",
+              "subtitle" : "Sonnerie à cloche",
+              "tint" : "orange",
+              "title" : "Téléphone ancien"
+            },
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "EB8A34D3-5ACE-4785-9993-3A8D76674D03",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Cinéma",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "montee-tension.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "D7D33EDD-F0DD-4E31-921C-D1AE9C8A3B8F",
+              "ledIntensity" : "full",
+              "subtitle" : "Suspense",
+              "tint" : "violet",
+              "title" : "Montée de tension"
+            },
+            {
+              "audio" : {
+                "fileName" : "coup-de-theatre.m4a",
+                "gainDB" : 4,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "7087D599-42A3-4C61-A18D-6568B0DB2265",
+              "ledIntensity" : "full",
+              "subtitle" : "Impact grave",
+              "tint" : "violet",
+              "title" : "Coup de théâtre"
+            },
+            {
+              "audio" : {
+                "fileName" : "whoosh.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "C1092003-DE69-4E6C-842D-CBB19F48F5D5",
+              "ledIntensity" : "full",
+              "subtitle" : "Passage rapide",
+              "tint" : "violet",
+              "title" : "Whoosh"
+            },
+            {
+              "audio" : {
+                "fileName" : "battements-coeur.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "D2E65C35-2909-46BF-80FE-EC7903C3CF4F",
+              "ledIntensity" : "full",
+              "subtitle" : "Angoisse",
+              "tint" : "violet",
+              "title" : "Battements de cœur"
+            },
+            {
+              "audio" : {
+                "fileName" : "horloge.m4a",
+                "gainDB" : 4,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "90D14681-CE30-40D9-B083-612AEDE18129",
+              "ledIntensity" : "full",
+              "subtitle" : "Tic-tac lent",
+              "tint" : "violet",
+              "title" : "Horloge"
+            },
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "F643930D-33C1-4E0E-AD82-208B08FEB9F7",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Public",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "applaudissements.m4a",
+                "gainDB" : 3,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "45A26004-652B-41F9-B3CF-ABB2D5C4DB59",
+              "ledIntensity" : "full",
+              "subtitle" : "Salle de concert",
+              "tint" : "rose",
+              "title" : "Applaudissements"
+            },
+            {
+              "audio" : {
+                "fileName" : "rires.m4a",
+                "gainDB" : 4,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "06B72297-1153-4F9C-A0E3-FBDB9B0202A8",
+              "ledIntensity" : "full",
+              "subtitle" : "Public conquis",
+              "tint" : "rose",
+              "title" : "Rires"
+            },
+            {
+              "audio" : {
+                "fileName" : "murmures-salle.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "A6BDF678-5E45-4347-B69B-4CAD72AADB79",
+              "ledIntensity" : "full",
+              "subtitle" : "Avant le spectacle",
+              "tint" : "rose",
+              "title" : "Murmures de salle"
+            },
+            {
+              "audio" : {
+                "fileName" : "oh-surprise.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "3E79CD21-34AE-4ECE-AF93-55A2C909D7C4",
+              "ledIntensity" : "full",
+              "subtitle" : "Surprise du public",
+              "tint" : "rose",
+              "title" : "« Oh ! »"
+            },
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "D015540F-5695-4AC9-B72B-95FD9E156C70",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Transitions",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "cloche.m4a",
+                "gainDB" : 3,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "FB94BC6E-4449-465F-991B-113DE32CA9B8",
+              "ledIntensity" : "full",
+              "subtitle" : "Changement de scène",
+              "tint" : "ambre",
+              "title" : "Cloche"
+            },
+            {
+              "audio" : {
+                "fileName" : "gong.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "6C067A06-8D5F-4391-AF2D-4BF61C40D07D",
+              "ledIntensity" : "full",
+              "subtitle" : "Longue résonance",
+              "tint" : "ambre",
+              "title" : "Gong"
+            },
+            {
+              "audio" : {
+                "fileName" : "rate.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "1A27A9EF-9A01-4F22-B946-AA7782A94CDF",
+              "ledIntensity" : "full",
+              "subtitle" : "Jingle comique",
+              "tint" : "ambre",
+              "title" : "Raté !"
+            },
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "D7AFF6EF-8949-495C-8E0E-8B6DD0A9AC0F",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "À vous",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "6ADAA87F-0C69-4211-88FA-F66F3ACD7B6A",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Lumière 1",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "BF4E9A8A-5E95-4959-9426-90A615E05372",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Lumière 2",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "id" : "8738ABCC-FC32-4C46-8794-B0613AC3D2A5",
+      "lightChannel" : 1,
+      "name" : "Découverte"
+    },
+    {
+      "columns" : [
+        {
+          "filter" : 0,
+          "id" : "977D9DFD-7368-481D-AD56-8FA16ABAC96A",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Ambiances",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "pluie-forte.m4a",
+                "gainDB" : 3,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "1D5632C8-BEA9-48E4-A2BC-89531CB91493",
+              "ledIntensity" : "full",
+              "subtitle" : "Averse",
+              "tint" : "indigo",
+              "title" : "Pluie forte"
+            },
+            {
+              "audio" : {
+                "fileName" : "vent-hurle.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "9E19128C-6C6D-4B63-9FE9-EE94F005EED2",
+              "ledIntensity" : "full",
+              "subtitle" : "Tempête",
+              "tint" : "indigo",
+              "title" : "Vent qui hurle"
+            },
+            {
+              "audio" : {
+                "fileName" : "horloge-orage.m4a",
+                "gainDB" : 0,
+                "loops" : true,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "21F67C43-0EDF-4FC6-AE34-561EFC78EDE7",
+              "ledIntensity" : "full",
+              "subtitle" : "Dans la maison",
+              "tint" : "indigo",
+              "title" : "Horloge"
+            },
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "164BB8F3-47F3-4AD7-86A9-CB88762498E4",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Bruitages",
+          "slots" : [
+            {
+              "audio" : {
+                "fileName" : "tonnerre-proche.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "87436605-C223-4755-8ECC-727728227739",
+              "ledIntensity" : "full",
+              "subtitle" : "Éclair et fracas",
+              "tint" : "ciel",
+              "title" : "Tonnerre proche"
+            },
+            {
+              "audio" : {
+                "fileName" : "volet-claque.m4a",
+                "gainDB" : 4,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "81951346-73E3-48DD-A064-F09DAD3F259F",
+              "ledIntensity" : "full",
+              "subtitle" : "Vent et volet",
+              "tint" : "ciel",
+              "title" : "Volet qui claque"
+            },
+            {
+              "audio" : {
+                "fileName" : "chiens-au-loin.m4a",
+                "gainDB" : 0,
+                "loops" : false,
+                "retrigger" : "restart",
+                "trimStart" : 0
+              },
+              "id" : "E9FE014E-AB8A-41F7-8762-7F05B2E2C7CE",
+              "ledIntensity" : "full",
+              "subtitle" : "Aboiements",
+              "tint" : "ciel",
+              "title" : "Chiens au loin"
+            },
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "B2C88C74-1FF3-4CC0-A1D5-6AC6B318FA1F",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 3",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "B2985666-A58B-4BF4-AD37-54FF41D92C05",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 4",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "7A350972-D010-4D6F-801D-A3AB9FABFBFC",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 5",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "593643E8-9274-49BA-9ABD-8D0CEFA62BB5",
+          "isFaderPaired" : false,
+          "kind" : "audio",
+          "level" : 0.8,
+          "name" : "Colonne 6",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "5EC22B9B-DBDA-43C8-A425-F6F5BCBD80BE",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Lumière 1",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "filter" : 0,
+          "id" : "36884165-1D22-4315-81E5-262DFD62219A",
+          "isFaderPaired" : false,
+          "kind" : "light",
+          "level" : 1,
+          "name" : "Lumière 2",
+          "slots" : [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "id" : "7A60D58B-E2CD-4916-BAE5-1ACEE772A6FB",
+      "lightChannel" : 2,
+      "name" : "L'orage"
+    }
+  ],
+  "name" : "Entraînement"
+}

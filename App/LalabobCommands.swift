@@ -15,6 +15,7 @@ struct LalabobCommands: Commands {
     @FocusedValue(\.showController) private var controller
     @FocusedValue(\.showSettingsPresented) private var showSettings
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openDocument) private var openDocument
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
@@ -26,6 +27,11 @@ struct LalabobCommands: Commands {
         CommandGroup(replacing: .help) {
             Button("Aide de Lalabob") { openWindow(id: Self.helpWindowID) }
                 .keyboardShortcut("?", modifiers: .command)
+            Divider()
+            Button("Visite guidée") { openWindow(id: Tour.windowID) }
+            Button("Ouvrir le spectacle d'entraînement") {
+                Task { await Tour.openTrainingShow(with: openDocument) }
+            }
         }
         CommandGroup(after: .windowArrangement) {
             Button("Banc d'essai lumière") { openWindow(id: Self.benchWindowID) }

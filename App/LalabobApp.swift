@@ -57,6 +57,7 @@ struct LalabobApp: App {
                 .environment(\.midiSession, midiSession)
                 .preferredColorScheme(.dark)
                 .frame(minWidth: 1320, minHeight: 720)  // bibliothèque (273) + 8 colonnes de même largeur tiennent sans être coupées
+                .modifier(FirstLaunchTour())
                 .onAppear {
                     AppLifecycle.session = midiSession
                     midiSession?.start()
@@ -69,6 +70,11 @@ struct LalabobApp: App {
             HelpView()
         }
         .defaultSize(width: 900, height: 640)
+
+        Window("Visite guidée", id: Tour.windowID) {
+            TourView()
+        }
+        .defaultSize(width: 1360, height: 820)
 
         Window("Banc d'essai lumière", id: LalabobCommands.benchWindowID) {
             LightingBenchView(session: midiSession)

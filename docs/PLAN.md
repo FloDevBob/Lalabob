@@ -524,3 +524,32 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   périmée ignorée (numéro de geste et morceau attendu), délai de grâce de 1,5 s après un départ, deux lectures de suite pour conclure à la fin. Deux
   tests reproduisent le bug. (2) **Comportement** (décision du 27/11) : appui sur un morceau qui joue = **arrêt** en fondu de 1 s, appui suivant =
   départ au début ; en pause, un appui le **reprend** ; la pause est dans la barre du bas et sur Espace ; bouton du pad = lecture / stop.
+
+### J12 — Visite guidée 🟡 faite et essayée dans l'app, essai avec la troupe à faire (branche `j12/tutoriel`, empilée sur `j11/lecture-arret-synchro`)
+Dossier : `docs/tutoriel/` (voir son `README.md`). Décisions (27/11/2026) : public de tous niveaux ; sons d'ambiance et de bruitage **CC0**
+(Freesound) seulement, car redistribués ; **visite guidée sur le modèle d'Impro Match** (étapes à gauche, copie de l'app à droite, un geste par
+étape, « Suivant » fait le geste) après l'abandon d'un premier tutoriel en longue page, jugé trop long et impossible à suivre en manipulant l'app.
+- **Fait** : 30 sons téléchargés, préparés (`sons/prepare_sons.py` : 48 kHz, niveau homogène, boucles sans clic vérifiées) et crédités
+  (`CREDITS.md`) ; spectacle d'entraînement **fabriqué** par `docs/tutoriel/generateur` avec `LalabobModel` (2 grilles, 30 pads).
+  Visite `docs/tutoriel/visite/index.html` : 14 étapes, 5 chapitres, copie recalée sur une capture de la vraie fenêtre, **vrais sons** (9, dans
+  `sons.js`) avec fader, filtre et vumètres qui marchent (Web Audio). Dans l'app : **Aide ▸ Visite guidée** (`App/TourView.swift`, proposée une
+  fois à l'ouverture du premier spectacle), « Essayer maintenant » ferme la visite et ouvre une copie neuve du spectacle d'entraînement ;
+  **Aide ▸ Ouvrir le spectacle d'entraînement** (`TrainingShow.freshCopy`). 4 tests (`TrainingShowTests`). **Essayé** : tout le parcours avec
+  « Suivant » et avec les vrais gestes (double-clic, Espace, Échap, fader) dans un navigateur ; dans l'app, la visite s'affiche, joue la pluie,
+  « Essayer maintenant » ouvre le spectacle et ferme la visite.
+- **À essayer** : ☐ les sons à l'oreille (voir `docs/tutoriel/sons-selection.md`) ☐ faire suivre la visite à un membre débutant de la troupe,
+  sans l'aider ☐ premier lancement sur un Mac neuf (la visite s'ouvre avec le premier spectacle).
+- **Limite connue** : au tout premier lancement, macOS montre d'abord la fenêtre « Ouvrir » ; la visite n'apparaît qu'une fois un spectacle ouvert
+  ou créé.
+- **Reste** : publication en ligne (dépôt public dédié + GitHub Pages, comme Impro Match).
+- **Refonte du 27/11/2026 (retour d'essai : « la colonne de gauche contraint tout, on a du mal à manipuler »)** : la copie occupe tout
+  l'écran, l'élément à utiliser est mis en lumière et une **bulle** le suit ; 17 bulles en 5 chapitres ; chapitre **lumière** refait
+  (pads Plein feu, Douche bleue, Contre rouge, Salle, Noir dans la copie ; une petite scène dans la bulle montre les faisceaux et
+  l'intensité). Essayée dans un navigateur (parcours entier, 1440 × 880 et 1024 × 680) et dans l'app (accueil, saut de chapitre,
+  double-clic réel sur Plein feu).
+- **Vocabulaire de la lumière (27/11/2026, `docs/LEXIQUE.md`)** : « cue » → **lumière**, « appairage » → **relier aux projecteurs**
+  (bouton **Relier**, « Reliée ✓ », « Délier », « C'est relié »), fader lumière → **Intensité 75 %** (le CC n'est plus affiché),
+  « Tester » → **Essayer**, nouvel appui « laisse allumé / allume ou éteint », « Port Lalabob Lumière actif » → **Liaison avec les
+  projecteurs prête**, canal LightKey → **canal des lumières** (réglage avancé), colonnes communes → **Mêmes lumières sur toutes les
+  grilles**. LightKey n'est plus nommé que pour sa mise en route, le dépannage et le banc d'essai. Textes seuls (interface, aide, guide,
+  DESIGN) ; identifiants du code inchangés. Compilé, 721 tests verts, vérifié à l'écran sur le spectacle d'entraînement.

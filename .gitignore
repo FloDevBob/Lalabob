@@ -18,3 +18,9 @@ Config/Local.xcconfig
 # Fichiers générés par XcodeGen depuis project.yml
 App/Info.plist
 App/Lalabob.entitlements
+
+# Originaux Freesound (≈ 260 Mo) : gardés en local, jamais commités. Voir docs/tutoriel/CREDITS.md.
+docs/tutoriel/sons/originaux/
+docs/tutoriel/generateur/.build/
+# Sons préparés : le spectacle embarqué (docs/tutoriel/web/Entrainement.lalabob) les contient déjà.
+docs/tutoriel/sons/prepares/
