@@ -31,6 +31,24 @@ struct DMXLookEditingTests {
         #expect(rig.controller.pad(at: red0)?.light?.look != look)
     }
 
+    @Test("La couleur du pad suit la roue, d'une seule annulation ; le fondu ne la change pas")
+    func padTintFollowsColor() {
+        let (rig, undo) = makeRig()
+        #expect(rig.controller.pad(at: red0)?.tint == .rouge)
+        #expect(rig.controller.setLook(at: red0, to: LightLook.uniform(color: LightColor(hue: 120, saturation: 1), intensity: 1, headCount: 4)))
+        #expect(rig.controller.pad(at: red0)?.tint == .vert)
+        rig.controller.updatePad(at: red0, tint: .rose)
+        var longer = rig.controller.effectiveLook(at: red0)!
+        longer.fadeIn = 3
+        rig.controller.setLook(at: red0, to: longer)
+        #expect(rig.controller.pad(at: red0)?.tint == .rose)
+        undo.undo()
+        undo.undo()
+        #expect(rig.controller.pad(at: red0)?.tint == .vert)
+        undo.undo()
+        #expect(rig.controller.pad(at: red0)?.tint == .rouge)
+    }
+
     @Test("setLook refuse un état injouable (3 projecteurs) et ne change rien")
     func setLookRejectsInvalid() {
         let (rig, _) = makeRig()

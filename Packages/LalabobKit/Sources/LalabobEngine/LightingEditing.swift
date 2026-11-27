@@ -48,6 +48,10 @@ extension ShowController {
         guard look.isValid(for: profile) else { return false }
         let changed = commit("Modifier la lumière") { show, grid in
             guard position.isValid, var pad = show.grids[grid][position], var cue = pad.light, cue.look != look else { return false }
+            // La couleur du pad suit la couleur choisie dans la roue (seulement quand celle-ci change : un autre réglage, comme
+            // le fondu, ne défait pas une teinte choisie à la main).
+            let before = (cue.look ?? DMXSession.fallbackLook(for: pad, headCount: profile.headCount)).representativeColor
+            if let after = look.representativeColor, after != before { pad.tint = Tint.nearest(to: after) }
             cue.look = look
             pad.light = cue
             show.grids[grid][position] = pad

@@ -93,3 +93,26 @@ struct LightLookEditingTests {
         #expect(!LightLook(content: .fixtureProgram(number: 13, speed: 0.5)).isValid(for: profile))
     }
 }
+
+@Suite("Couleur du pad d'après sa lumière")
+struct PadTintFromLookTests {
+    @Test("Les couleurs franches donnent la teinte attendue")
+    func nearestTint() {
+        #expect(Tint.nearest(to: LightColor(hue: 0, saturation: 1)) == .rouge)
+        #expect(Tint.nearest(to: LightColor(hue: 120, saturation: 1)) == .vert)
+        #expect(Tint.nearest(to: LightColor(hue: 50, saturation: 1)) == .ambre)
+        #expect(Tint.nearest(to: .white) == .blanc)
+    }
+
+    @Test("Couleur représentative : premier projecteur allumé, couleur A, rien pour un programme")
+    func representative() {
+        let red = LightColor(hue: 0, saturation: 1), blue = LightColor(hue: 240, saturation: 1)
+        var heads = [HeadLook](repeating: HeadLook(isOn: true, color: red, intensity: 1), count: 4)
+        heads[0].isOn = false
+        heads[1].color = blue
+        #expect(LightLook(content: .colors(ColorsLook(heads: heads, linked: false, strobe: nil))).representativeColor == blue)
+        let alternate = AlternateLook(a: red, b: blue, every: .beat, switchFade: 0, fallbackBPM: 120)
+        #expect(LightLook(content: .alternate(alternate)).representativeColor == red)
+        #expect(LightLook(content: .fixtureProgram(number: 1, speed: 0.5)).representativeColor == nil)
+    }
+}

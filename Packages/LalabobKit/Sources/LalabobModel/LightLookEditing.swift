@@ -89,3 +89,30 @@ extension ColorsLook {
         return result
     }
 }
+
+// MARK: - Couleur du pad d'après sa lumière
+
+extension LightLook {
+    /// La couleur qui représente cet état sur son pad : celle du premier projecteur allumé (« Ensemble » : la même pour tous),
+    /// ou la couleur A d'une alternance. `nil` pour un programme de la barre ou « sur le son » (la barre choisit ses couleurs).
+    public var representativeColor: LightColor? {
+        switch content {
+        case .colors(let look): (look.heads.first { $0.isOn && $0.intensity > 0 } ?? look.heads.first)?.color
+        case .alternate(let look): look.a
+        case .fixtureProgram, .soundActive: nil
+        }
+    }
+}
+
+extension Tint {
+    /// La teinte de pad la plus proche d'une couleur de la roue (distance entre les couleurs vives à l'écran).
+    public static func nearest(to color: LightColor) -> Tint {
+        let target = color.rgb
+        func distance(_ other: RGB) -> Double {
+            let r = Double(target.red) - Double(other.red), g = Double(target.green) - Double(other.green)
+            let b = Double(target.blue) - Double(other.blue)
+            return r * r + g * g + b * b
+        }
+        return Tint.allCases.min { distance($0.spec.vivid) < distance($1.spec.vivid) } ?? .ambre
+    }
+}
