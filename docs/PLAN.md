@@ -577,8 +577,11 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   **le bac à sable laisse ouvrir le boîtier** (« Boîtier USB-DMX AU0483EN · signal envoyé »), adresse 50 et « 4 projecteurs en blanc » envoyés
   sans erreur (barre non regardée par l'agent).
   **À essayer** : ☑ Fenêtre ▸ Banc d'essai DMX : « Boîtier USB-DMX AU0483EN · signal envoyé » (27/11/2026)
-  ☐ adresse 50, « 4 projecteurs en blanc », chaque curseur conforme au tableau ☐ débrancher le boîtier pendant l'envoi : « en erreur », aucun son
-  coupé ; le rebrancher : la lumière revient seule ☐ LightKey ou `banc-dmx` ouvert en même temps : « Resource busy » affiché, pas de plantage
+  ☑ adresse 50, « 4 projecteurs en blanc » ☑ débrancher le boîtier pendant l'envoi : détecté ; le rebrancher : tout revient, y compris les
+  couleurs changées entre-temps (essai de l'utilisateur, 27/11/2026) ☒ LightKey ouvert en même temps : **les deux envoient à la barre**, aucune
+  erreur. Cause probable : LightKey parle à la puce FTDI directement par USB (pilote D2XX), sans passer par `/dev/cu.usbserial-…`, donc
+  l'accès exclusif du port série (`TIOCEXCL`) ne le voit pas. Lalabob ne peut pas le détecter. **Règle d'usage** : en mode Projecteurs, LightKey
+  ne doit pas piloter le boîtier (à écrire dans le guide et l'aide à l'étape 5). Un vrai boîtier Enttec Pro ne changerait rien à ce point.
   ☐ régularité à l'œil (pas de scintillement) avec l'interface chargée.
   **Note outillage** : `make test` utilise `swift test` ; avec les outils en ligne de commande sélectionnés (`xcode-select`), le module Testing
   manque. Lancer `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer make test` (idem pour `make build`).

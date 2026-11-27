@@ -17,6 +17,11 @@ Relevé du 27/11/2026 (J14, étape 0). Sources : manuel papier de la troupe (« 
 - **Cadence mesurée** (banc d'essai, 30 Hz, fil ordinaire sans priorité particulière) : intervalle moyen **33,3 ms**, pire
   **≈ 40 ms** sur 120 trames. Largement dans ce qu'accepte un appareil DMX (une trame au moins par seconde).
 - **Sécurité** : si Lalabob se fige ou se ferme, **le signal s'arrête** (aucun boîtier ne répète la dernière trame).
+- **Deux logiciels à la fois** (essai du 27/11/2026) : Lalabob et LightKey peuvent envoyer **en même temps** sur ce boîtier, sans erreur
+  d'un côté ni de l'autre. LightKey passe vraisemblablement par le pilote USB de FTDI (D2XX) et non par le port série : l'accès exclusif
+  demandé par Lalabob ne l'arrête pas. Deux signaux mélangés = lumière incohérente. **N'en garder qu'un ouvert sur le boîtier.**
+- **Rebranchement** (essai du 27/11/2026) : débrancher est détecté ; au rebranchement, Lalabob renvoie la trame en cours, y compris les
+  changements faits pendant que le boîtier était débranché.
   **La barre garde alors la dernière couleur** (relevé du 27/11/2026) : un plantage ne plonge pas la scène dans le noir, mais
   la lumière reste figée ; à la fermeture normale, Lalabob doit envoyer lui-même le noir s'il le faut. Un boîtier Enttec DMX USB Pro (~150 €) supprimerait ce
   point (il répète lui-même la dernière trame).
