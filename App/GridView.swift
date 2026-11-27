@@ -112,7 +112,8 @@ struct ColumnView: View {
             icon.view(size: 11)
             Text(title).font(.system(size: 10.5, weight: .semibold)).lineLimit(1).truncationMode(.tail)
         }
-        .foregroundStyle(Surface.textTertiary)
+        // Jaune pour une carte lumière (comme l'icône de l'en-tête des colonnes lumière), discret pour le volume.
+        .foregroundStyle(column.kind == .light ? Surface.lightAccent : Surface.textTertiary)
         .frame(height: 15)
         .padding(.leading, 4)
         if let role, !controller.isLocked {
