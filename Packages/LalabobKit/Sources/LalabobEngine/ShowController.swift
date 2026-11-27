@@ -704,6 +704,8 @@ public final class ShowController {
     /// (actif cadenas fermé) et ne passe pas par ⌘Z ; il est enregistré avec le spectacle. Sans effet sur une colonne lumière.
     public func setColumnFilter(_ column: Int, value: Double) {
         guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind != .light else { return }
+        // Rien ne change (un clic sans mouvement sur le potard) : le retour au neutre en cours continue.
+        guard FilterCurve.snapped(value) != currentGrid.columns[column].filter else { return }
         filterGlides.removeValue(forKey: FilterGlideKey(grid: currentGrid.id, column: column))?.cancel()  // la main reprend
         applyColumnFilter(column, value: value, inGrid: currentGrid.id)
     }

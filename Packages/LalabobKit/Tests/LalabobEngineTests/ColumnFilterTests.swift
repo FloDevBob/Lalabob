@@ -185,4 +185,15 @@ struct ColumnFilterControllerTests {
         try? await Task.sleep(for: .milliseconds(100))
         #expect(changes == 0)
     }
+
+    @Test("Un réglage à la valeur actuelle (clic sans mouvement) n'interrompt pas le retour au neutre")
+    func sameValueDoesNotStopTheGlide() async {
+        let controller = makeController(RecordingAudioEngine())
+        controller.filterResetDuration = 0.3
+        controller.setColumnFilter(2, value: 0.8)
+        controller.resetColumnFilter(2)
+        _ = await waitUntil { await controller.currentGrid.columns[2].filter < 0.7 }
+        controller.setColumnFilter(2, value: controller.currentGrid.columns[2].filter)
+        #expect(await waitUntil { await controller.currentGrid.columns[2].filter == 0 })
+    }
 }

@@ -234,7 +234,7 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   **Non fait** : égaliseur 3 bandes ; APC (ses 8 faders servent déjà au volume, on n'y touche pas).
 - **Filtre : retour progressif au neutre (28/11/2026, branche `j7/filtre-retour-progressif`, demande de l'utilisateur)** ✅ code. Le double-clic sur le potard
   ne remet plus le filtre au neutre d'un coup : il **glisse en 1,5 s** (courbe en cosinus, ~33 pas/s), le son s'ouvre doucement et l'aiguille suit.
-  Toucher le potard pendant le glissé l'interrompt ; changer de grille ne l'arrête pas (la grille de départ finit au neutre). `ShowController.resetColumnFilter`
+  Toucher le potard pendant le glissé l'interrompt (seulement s'il bouge d'au moins 2 pt : corrigé le 28/11, le clic du double-clic interrompait le retour avant le neutre) ; changer de grille ne l'arrête pas (la grille de départ finit au neutre). `ShowController.resetColumnFilter`
   / `filterResetDuration`. 5 tests (`ColumnFilterControllerTests`). **À essayer** : ☐ double-clic sur un passe-haut puis un passe-bas en jouant : aucun clic ni
   à-coup ☐ l'aiguille et l'étiquette suivent ☐ reprendre le potard pendant le retour ☐ la durée convient (1 ou 2 s ?).
 - **Reste pour l'étape 0** : « cue supprimée » n'a pas été relevé ; les fixtures Swift d'après le journal brut ne sont pas écrites.

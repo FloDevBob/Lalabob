@@ -24,6 +24,8 @@ struct RotaryKnob: View {
 
     /// Course de la souris (en points) pour aller du centre à une butée.
     private static let dragTravel: CGFloat = 100
+    /// Mouvement minimal (en points) avant qu'un appui devienne un réglage.
+    private static let dragThreshold: CGFloat = 2
     /// Pas des flèches du clavier et de VoiceOver.
     private static let step = 0.05
     /// Débattement de l'aiguille de part et d'autre du sommet.
@@ -44,6 +46,9 @@ struct RotaryKnob: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { drag in
+                            // Un clic sans mouvement (dont chaque clic d'un double-clic) ne règle rien : sinon il réécrirait
+                            // l'ancienne valeur et interromprait le retour au neutre que le double-clic vient de lancer.
+                            if dragStart == nil, hypot(drag.translation.width, drag.translation.height) < Self.dragThreshold { return }
                             let start = dragStart ?? position
                             if dragStart == nil { dragStart = start }
                             let delta = (drag.translation.width - drag.translation.height) / Self.dragTravel
