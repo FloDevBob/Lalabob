@@ -458,7 +458,7 @@ Le brouillon (module `LalabobImport`, `AbletonImporter`, menu Fichier › « Imp
 compilé ni essayé : il est **retiré de `main`** et conservé tel quel sur la branche **`j8/import-ableton`** (issue de `j7/filtre-colonne`
 1.1.1). À reprendre plus tard : rebaser cette branche sur `main`, compiler, `make test`, essai avec le dossier `Bob play`.
 
-### J11 — Grilles Apple Music 🚧 (spec : `docs/spec-grilles-apple-music.md`, maquette : https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ)
+### J11 — Grilles Apple Music 🟡 code terminé, essai réel à faire (spec : `docs/spec-grilles-apple-music.md`, maquette : https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ)
 Décisions (27/11/2026) : Apple Events (pas de compte développeur) ; grilles Music + lumière ; un morceau à la fois, fondu enchaîné de 1 s ;
 ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s pour la pré-écoute ; dépôt multiple colonne par colonne ;
 Échap arrête Music avec un fondu de 0,3 s ; départ à un moment précis : plus tard.

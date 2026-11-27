@@ -88,6 +88,16 @@ sont réunis dans un menu, et le nom du fichier est abrégé d'abord. Un pad son
 à LightKey, puis couleur (popover) et actions. L'état allumé / éteint ne vient pas de l'inspecteur : il se lit sur le pad
 (voir « Appairage lumière » plus bas).
 
+### Grilles Apple Music (27/11/2026, maquette https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ, spec `docs/spec-grilles-apple-music.md`)
+- **Créer** : le + des onglets propose « Sons et lumière » (⌘T) ou « Apple Music » (⌥⌘T) ; clic droit sur un onglet › Type de grille. Onglet marqué d'une
+  note rose (`Surface.musicAccent`, #FF5A8C). Colonnes **Music** (liseré rose) et colonnes lumière.
+- **Panneau de gauche** (déverrouillé) : état de Music (« Ouvrir Music », refus d'accès), bascule **Mes playlists / Internet**, recherche, dossiers de
+  playlists repliables, morceaux (point rose = déjà sur une grille, ☁ = dans le nuage, ▶ = extrait de 30 s), « Téléchargés seulement »,
+  « Télécharger les N », sélection Maj / ⌘, glisser (cases d'arrivée numérotées) ; interrupteur **« Son de Music par Lalabob »** et sa ligne de diagnostic.
+- **Pad Music** : titre (morceau), sous-titre (artiste), bouton lecture / pause ; ☁ ambre ou « Introuvable » rouge ; lueur, progression et LED comme un son.
+- **Sous une colonne Music** : carte « Volume : 9e fader » ; avec le pont audio, fader, vumètre et filtre comme une colonne son ; bouton ■ (fondu de sortie).
+- **Panneau du bas** : lecture / pause, stop, temps, titre, morceau d'origine et playlist, **pochette** (116 pt), barre de position cliquable, ce qui n'est pas disponible.
+
 ## Interactions
 
 - **Clic et double-clic (01/11/2026, verrouillé ou non)** : un **clic** sélectionne le pad (verrouillé : le panneau de jeu s'ouvre pour un son), un **double-clic** le joue ; seul le contrôleur physique joue d'un appui. Évite un départ de son sur un clic accidentel.
