@@ -124,7 +124,10 @@ struct ColumnView: View {
             Menu {
                 faderRoleMenu(current: role)
             } label: { label }
-            .menuStyle(.borderlessButton)
+            // `.borderlessButton` ignore la police et la taille de l'icône de l'étiquette (titre et icône grossissaient
+            // déverrouillé) : style bouton « plain » pour que l'étiquette reste exactement celle du mode verrouillé.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
             .menuIndicator(.hidden)
             .fixedSize()
             .help("Ce que règle ce fader : \(role.title) (cliquer pour le changer)")
