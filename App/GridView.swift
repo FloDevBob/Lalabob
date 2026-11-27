@@ -155,7 +155,7 @@ struct ColumnView: View {
                         accent: accentColor(of: column),
                         value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
                         onReset: { controller.resetColumnFilter(index) },
-                        size: clampSize(min(space.width - 8, space.height - 30), 28, 84)
+                        size: clampSize(min(space.width * 0.55, space.height - 44), 28, 56)
                     )
                 }
             }
@@ -176,7 +176,7 @@ struct ColumnView: View {
                     hardwareMarker: controller.waitingFaders[index]) { EmptyView() }
                 FaderCompanion { space in
                     VStack(spacing: 8) {
-                        DMXHeadsBar(lampSize: clampSize((space.width - 14) / 4.6, 12, 28))
+                        DMXHeadsBar(lampSize: clampSize(space.width * 0.7 / 4.6, 12, 20))
                         DMXTempo()
                     }
                 }
@@ -188,7 +188,7 @@ struct ColumnView: View {
                 VerticalFader(name: column.name, level: level, valueText: info.value, defaultLevel: 1,
                     hardwareMarker: controller.waitingFaders[index], trackStyle: AnyShapeStyle(info.track), handleColor: info.current) { EmptyView() }
                 FaderCompanion { space in
-                    let diameter = clampSize(min(space.width - 12, space.height - 36), 24, 64)
+                    let diameter = clampSize(min(space.width * 0.45, space.height - 50), 24, 44)
                     VStack(spacing: 5) {
                         Circle()
                             .fill(info.current)
@@ -282,12 +282,12 @@ struct ColumnView: View {
                 RoundedRectangle(cornerRadius: 1.5).fill(Color(red: 1, green: 0.88, blue: 0.89)).frame(width: 7, height: 7)
                 Text("Noir").font(.system(size: 10.5, weight: .semibold))
             }
-            .padding(.horizontal, 8)
-            .frame(height: 24)
-            .background(red.opacity(0.18), in: RoundedRectangle(cornerRadius: 7))
-            .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(red.opacity(0.6), lineWidth: 1) }
+            .padding(.horizontal, 10)
+            .frame(height: 28)  // même hauteur que le bouton stop des colonnes son
+            .background(red.opacity(0.18), in: Capsule())
+            .overlay { Capsule().strokeBorder(red.opacity(0.6), lineWidth: 1) }
             .foregroundStyle(Color(red: 1, green: 0.88, blue: 0.89))
-            .contentShape(.rect(cornerRadius: 7))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .padding(4)
@@ -1517,14 +1517,15 @@ struct DMXTempo: View {
 
 
 /// La place à droite du fader dans le caisson d'une carte : ce qui accompagne le fader (potard, projecteurs, couleur) y est
-/// **centré** et **grandit** avec la place disponible (fenêtre plus large ou plus haute). Le bas de la piste reste libre pour
-/// le bouton Stop / Noir du coin.
+/// **centré** en hauteur sur le bloc du fader et **grandit** avec la place disponible, sans dépasser une taille raisonnable
+/// (de l'air autour). Les tailles bornées laissent le coin libre pour le bouton Stop / Noir.
 struct FaderCompanion<Content: View>: View {
     @Environment(\.gridDensity) private var density
     @ViewBuilder let content: (CGSize) -> Content
 
-    /// Ce qui reste libre en bas de la piste, au-dessus du bouton du coin.
-    static var cornerReserve: CGFloat { 14 }
+    /// La hauteur du bloc du fader : la piste plus la ligne de la valeur dessous. L'élément est centré sur toute cette hauteur,
+    /// en laissant de l'air (il ne grandit pas jusqu'aux bords).
+    private var blockHeight: CGFloat { density.faderTrackHeight + 20 }
 
     var body: some View {
         GeometryReader { geometry in
@@ -1532,7 +1533,7 @@ struct FaderCompanion<Content: View>: View {
                 .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: max(density.faderTrackHeight - Self.cornerReserve, 40))
+        .frame(height: blockHeight)
     }
 }
 
