@@ -83,7 +83,7 @@ extension Show {
         guard grids.indices.contains(origin) else { return "Grille introuvable." }
         guard !lightColumnIndices(ofGrid: origin).isEmpty else { return "La grille affichée n'a aucune colonne lumière." }
         guard grids[origin].lightChannel != nil || firstFreeLightChannel() != nil else {
-            return "Les 16 canaux LightKey sont déjà pris par des grilles."
+            return "Les 16 canaux des lumières sont déjà pris par des grilles."
         }
         return nil
     }

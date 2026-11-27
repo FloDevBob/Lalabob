@@ -14,20 +14,20 @@ struct PairingBar: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Icon.spotlight.view(size: 17).foregroundStyle(Surface.lightAccent)
-                Text("Appairage lumière")
+                Text("Relier aux projecteurs")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Surface.textPrimary)
                 Spacer(minLength: 8)
                 Button("Terminer") { controller.setPairingLights(false) }
                     .controlSize(.small)
-                    .help("Quitter l'appairage (le cadenas le quitte aussi)")
+                    .help("Terminer (fermer le cadenas termine aussi)")
             }
             HStack(alignment: .top, spacing: 28) {
                 VStack(alignment: .leading, spacing: 7) {
-                    step("1", "Dans LightKey : clic droit sur une cue › External Control › Add Trigger…")
-                    step("2", "Appuyez sur un pad des deux colonnes de droite, ou cliquez son ampoule : la note part vers LightKey.")
-                    step("3", "Pour un fader : « Add Trigger… » sur le réglage, puis bougez le fader (à la main ou à l'écran).")
-                    step("4", "Quand LightKey répond (ou sur « C'est appairé »), c'est appairé : nommez la cue, la suivante s'arme.")
+                    step("1", "Dans le logiciel des projecteurs (LightKey) : clic droit sur la lumière › External Control › Add Trigger…")
+                    step("2", "Ici : appuyez sur un pad des colonnes lumière, ou cliquez son ampoule.")
+                    step("3", "Pour une intensité : « Add Trigger… » sur le réglage dans LightKey, puis bougez le fader.")
+                    step("4", "Quand les projecteurs répondent (ou sur « C'est relié »), nommez la lumière : la case suivante est prête.")
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 targetBox(target, fader: fader)
@@ -61,25 +61,24 @@ struct PairingBar: View {
         VStack(alignment: .leading, spacing: 8) {
             if let fader {
                 let paired = controller.isFaderPaired(column: fader)
-                let cc = controller.lightFaderCC(forColumn: fader).map { " · CC \($0)" } ?? ""
-                Text("Fader de la colonne \(fader + 1)\(cc)")
+                Text("Intensité de la colonne \(fader + 1)")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Surface.textTertiary)
                 if paired {
-                    Text("Appairé ✓")
+                    Text("Relié ✓")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Surface.loopAccent)
-                    Button("Retirer l'appairage") { controller.unpairFader(column: fader) }
+                    Button("Délier") { controller.unpairFader(column: fader) }
                         .controlSize(.small)
-                        .help("Le réglage reste dans LightKey ; seul Lalabob l'oublie")
+                        .help("Le réglage reste dans le logiciel des projecteurs ; seul Lalabob l'oublie")
                 } else {
                     Text("Bougez le fader…")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Surface.lightAccent)
-                    Button("C'est appairé") { controller.confirmPairing() }
+                    Button("C'est relié") { controller.confirmPairing() }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                        .help("LightKey ne répond pas toujours pour un fader : confirmez à la main")
+                        .help("Le logiciel des projecteurs ne répond pas toujours pour un fader : confirmez à la main")
                 }
             } else if let target {
                 let paired = controller.isPaired(at: target)
@@ -87,20 +86,20 @@ struct PairingBar: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Surface.textTertiary)
                 if paired {
-                    Text("Appairée ✓")
+                    Text("Reliée ✓")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Surface.loopAccent)
-                    Button("Retirer l'appairage") { controller.unpairCue(at: target) }
+                    Button("Délier") { controller.unpairCue(at: target) }
                         .controlSize(.small)
-                        .help("La cue reste sur la grille ; LightKey n'est pas modifié")
+                        .help("La lumière reste sur la grille ; rien ne change dans le logiciel des projecteurs")
                 } else {
-                    Text("En attente de LightKey…")
+                    Text("En attente des projecteurs…")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Surface.lightAccent)
-                    Button("C'est appairé") { controller.confirmPairing() }
+                    Button("C'est relié") { controller.confirmPairing() }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                        .help("Une cue éteinte peut ne rien répondre : confirmez à la main")
+                        .help("Une lumière éteinte peut ne rien répondre : confirmez à la main")
                 }
             } else {
                 Text("Choisissez une case lumière (flèches du clavier ou clic).")

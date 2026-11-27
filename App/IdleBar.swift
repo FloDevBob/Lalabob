@@ -50,9 +50,9 @@ struct IdleBar: View {
     private func hint(for position: GridPosition) -> String {
         switch controller.currentGrid.columns[position.column].kind {
         case .light:
-            return "Ajoutez une commande lumière — LightKey apprend la note de ce pad sur le contrôleur."
+            return "Créez une lumière sur ce pad, puis reliez-la aux projecteurs (bouton « Relier »)."
         case .mixed:
-            return "Glissez un son de la bibliothèque ou du Finder sur ce pad, ou cliquez « Cue » pour une commande lumière."
+            return "Glissez un son de la bibliothèque ou du Finder sur ce pad, ou cliquez « Lumière » pour créer une lumière."
         case .audio:
             return "Glissez un son de la bibliothèque ou du Finder sur ce pad."
         case .music:
@@ -145,11 +145,11 @@ struct IdleContent: View {
     private var lightingCard: StatusCardModel {
         let lights = gridStats.lights
         return StatusCardModel(
-            id: "lumiere", icon: .spotlight, title: "Éclairage", headline: "LightKey",
+            id: "lumiere", icon: .spotlight, title: "Éclairage", headline: "Projecteurs",
             lines: [
-                .init(text: "Port « Lalabob Lumière » actif", tone: .ok),
+                .init(text: "Liaison avec les projecteurs prête", tone: .ok),
                 .init(
-                    text: lights == 0 ? "Aucune commande lumière" : lights == 1 ? "1 commande lumière" : "\(lights) commandes lumière",
+                    text: lights == 0 ? "Aucune lumière" : lights == 1 ? "1 lumière" : "\(lights) lumières",
                     tone: .neutral),
             ])
     }

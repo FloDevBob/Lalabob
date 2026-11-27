@@ -18,7 +18,7 @@ struct ShowSettingsView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Toggle(isOn: Binding(get: { controller.show.sharedLight != nil }, set: toggle)) {
-                    Text("Colonnes lumière communes à toutes les grilles")
+                    Text("Mêmes lumières sur toutes les grilles")
                         .font(.body.weight(.medium))
                 }
                 .toggleStyle(.switch)
@@ -37,7 +37,7 @@ struct ShowSettingsView: View {
             }
 
             if let sharedLight = controller.show.sharedLight {
-                Picker("Canal LightKey des colonnes communes", selection: Binding(
+                Picker("Canal des lumières communes", selection: Binding(
                     get: { sharedLight.channel },
                     set: { controller.setSharedLightChannel($0) }
                 )) {
@@ -49,7 +49,7 @@ struct ShowSettingsView: View {
                     }
                 }
                 .disabled(controller.isLocked)
-                Text("Changer ce canal oblige à réappairer les cues et faders des colonnes communes dans LightKey.")
+                Text("Changer ce canal oblige à relier de nouveau les lumières et intensités communes aux projecteurs.")
                     .font(.callout)
                     .foregroundStyle(Surface.textSecondary)
             }
@@ -62,8 +62,8 @@ struct ShowSettingsView: View {
         }
         .padding(24)
         .frame(width: 520)
-        .alert("Rendre les colonnes lumière communes ?", isPresented: $confirmsActivation) {
-            Button("Rendre communes") { controller.setSharedLight(true) }
+        .alert("Mêmes lumières sur toutes les grilles ?", isPresented: $confirmsActivation) {
+            Button("Activer") { controller.setSharedLight(true) }
             Button("Annuler", role: .cancel) {}
         } message: {
             Text(activationMessage)
@@ -76,12 +76,12 @@ struct ShowSettingsView: View {
 
     private var explanation: String {
         if controller.show.sharedLight != nil {
-            return "Les colonnes lumière sont les mêmes dans toutes les grilles et parlent à LightKey sur un canal commun : "
+            return "Les colonnes lumière sont les mêmes dans toutes les grilles : "
                 + "changer de grille ne change pas la lumière. Désactiver rend à chaque grille les colonnes mises de côté ; "
                 + "la grille « \(originName) » garde les colonnes communes."
         }
         return "Activée, les colonnes lumière de la grille affichée (« \(controller.currentGrid.name) ») deviennent communes à "
-            + "toutes les grilles : on les appaire une seule fois. Les colonnes des autres grilles sont mises de côté et "
+            + "toutes les grilles : on les relie aux projecteurs une seule fois. Les colonnes des autres grilles sont mises de côté et "
             + "reviennent si vous désactivez l'option."
     }
 

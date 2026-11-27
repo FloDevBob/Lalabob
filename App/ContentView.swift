@@ -173,7 +173,7 @@ extension ContentView {
     grid.columns[2] = Column.empty(name: "Éclairage", kind: .light)
     grid.columns[6] = Column.empty(name: "Sons", kind: .audio)
     grid[GridPosition(column: 2, row: 0)] = Pad(
-        title: "Plein feu", subtitle: "Cue", tint: .ambre,
+        title: "Plein feu", subtitle: "Lumière", tint: .ambre,
         light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     grid[GridPosition(column: 6, row: 0)] = Pad(
         title: "Rire", subtitle: "Public", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
@@ -194,7 +194,7 @@ extension ContentView {
     let sound = AudioClip(fileName: "essai.wav")
     // Colonne mixte : son seul, cue seule, son et lumière, « en attente de son », puis deux cases vides (« Son » / « Cue »).
     grid[GridPosition(column: 0, row: 0)] = Pad(title: "Pluie", subtitle: "Son seul", tint: .ciel, audio: sound)
-    grid[GridPosition(column: 0, row: 1)] = Pad(title: "Face", subtitle: "Cue seule", tint: .blanc, light: cue)
+    grid[GridPosition(column: 0, row: 1)] = Pad(title: "Face", subtitle: "Lumière seule", tint: .blanc, light: cue)
     grid[GridPosition(column: 0, row: 2)] = Pad(title: "Aube", subtitle: "Son et lumière", tint: .ambre, audio: sound, light: cue)
     grid[GridPosition(column: 0, row: 3)] = Pad(title: "Orage", subtitle: "Son et lumière", tint: .azur, audio: sound, light: .blank)
     grid[GridPosition(column: 0, row: 4)] = Pad(title: "À venir", subtitle: "En attente de son", tint: .rose, light: cue, awaitsSound: true)
@@ -220,7 +220,7 @@ extension ContentView {
         title: "Rire", subtitle: "Public", tint: .ambre, audio: AudioClip(fileName: "rire.wav"))
     for (index, title) in ["Plein feu", "Noir", "Ambiance"].enumerated() {
         grid[GridPosition(column: 6, row: index)] = Pad(
-            title: title, subtitle: "Cue", tint: [.orange, .azur, .rose][index],
+            title: title, subtitle: "Lumière", tint: [.orange, .azur, .rose][index],
             light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     }
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]))

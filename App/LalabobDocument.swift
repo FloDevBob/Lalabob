@@ -149,7 +149,7 @@ struct DocumentWindow: View {
         } message: {
             Text("Ces sons sont introuvables dans le spectacle ; leurs pads restent muets :\n" + document.missingAudio.joined(separator: ", "))
         }
-        .alert("Lumière : appairages à refaire", isPresented: $showsPairingReset) {
+        .alert("Lumières à relier de nouveau", isPresented: $showsPairingReset) {
             Button("OK") {}
         } message: {
             Text(pairingResetMessage)
@@ -161,8 +161,8 @@ struct DocumentWindow: View {
         let grids = document.mirror.current.grids
         let names = document.lightPairingsReset.filter { grids.indices.contains($0) }
             .map { "\($0 + 1). \(grids[$0].name)" }
-        return "Chaque grille a maintenant son propre canal LightKey. Les cues et faders lumière de ces grilles sont à "
-            + "réappairer dans LightKey (mode Appairage) :\n" + names.joined(separator: ", ")
+        return "Chaque grille commande maintenant ses propres lumières. Les lumières et intensités de ces grilles sont à "
+            + "relier de nouveau aux projecteurs (bouton « Relier ») :\n" + names.joined(separator: ", ")
             + "\n\nEnregistrez le spectacle pour ne plus voir ce message."
     }
 

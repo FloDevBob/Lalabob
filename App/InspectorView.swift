@@ -284,17 +284,18 @@ private struct LightHeader: View {
         HStack(spacing: 12) {
             TitleFields(position: position, pad: pad)
             Spacer(minLength: 8)
-            Button("Tester", icon: .spotlight, size: 12) { controller.testCue(at: position) }
+            Button("Essayer", icon: .spotlight, size: 12) { controller.testCue(at: position) }
                 .buttonStyle(.borderedProminent)
                 .tint(Surface.lightAccent)
                 .foregroundStyle(Surface.window)
                 .controlSize(.small)
-                .help("Envoie la note de cette case à LightKey (port « Lalabob Lumière »)")
-            Text(noteText)
+                .help("Allume ou éteint cette lumière, pour l'essayer")
+            Text(linkText)
                 .font(.system(size: 11))
                 .foregroundStyle(Surface.textSecondary)
                 .lineLimit(1)
                 .layoutPriority(-1)
+                .help(noteText)
             if pad.awaitsSound {
                 Text("En attente de son : déposez un fichier sur le pad")
                     .font(.system(size: 11, weight: .medium))
@@ -310,13 +311,20 @@ private struct LightHeader: View {
         .padding(.horizontal, 14)
     }
 
+    /// Ce qu'on lit : la lumière est-elle reliée aux projecteurs ? (la note MIDI passe dans l'infobulle)
+    private var linkText: String {
+        controller.isPaired(at: position)
+            ? "Reliée aux projecteurs ✓"
+            : "Pas encore reliée : bouton « Relier » en haut, cadenas ouvert"
+    }
+
     private var noteText: String {
         let label = controller.positionLabel(for: position)
         guard let note = label.components(separatedBy: " · note ").last, label.contains(" · note ") else {
-            return "Branchez le contrôleur pour connaître la note envoyée à LightKey."
+            return "Branchez le contrôleur pour connaître la note envoyée au logiciel des projecteurs (LightKey)."
         }
         let model = controller.connectedControllerName ?? controller.lastControllerModel?.displayName ?? "contrôleur"
-        return "LightKey reçoit la note \(note) (\(model))."
+        return "Le logiciel des projecteurs (LightKey) reçoit la note \(note) (\(model))."
     }
 }
 
@@ -334,13 +342,13 @@ private struct LightGroup: View {
             Icon.lightbulbFill.view(size: 14)
                 .foregroundStyle(state == .on ? pad.tint.vividColor : Surface.lightAccent.opacity(state == .off ? 0.5 : 1))
                 .accessibilityHidden(true)
-            Text(noteText + (paired ? " ✓" : ""))
-                .font(.system(size: 11, design: .monospaced))
+            Text(paired ? "Reliée ✓" : "À relier")
+                .font(.system(size: 11))
                 .foregroundStyle(paired ? Surface.textPrimary : Surface.textSecondary)
                 .lineLimit(1)
-            Button("Tester") { controller.testCue(at: position) }
+            Button("Essayer") { controller.testCue(at: position) }
                 .controlSize(.small)
-                .help("Envoie la cue à LightKey, sans lancer le son")
+                .help("Allume ou éteint la lumière, sans lancer le son")
         }
         .padding(.horizontal, 10)
         .frame(height: 34)
@@ -360,11 +368,11 @@ private struct LightGroup: View {
 
     private func helpText(paired: Bool, state: LightState) -> String {
         var parts = [noteText]
-        if let channel = controller.lightChannel(forColumn: position.column) { parts.append("canal LightKey \(channel)") }
-        parts.append(paired ? "appairée" : "non appairée")
+        if let channel = controller.lightChannel(forColumn: position.column) { parts.append("canal des lumières \(channel)") }
+        parts.append(paired ? "reliée aux projecteurs" : "pas encore reliée")
         switch state {
-        case .on: parts.append("allumée dans LightKey")
-        case .off: parts.append("éteinte dans LightKey")
+        case .on: parts.append("allumée")
+        case .off: parts.append("éteinte")
         case .unknown: break
         }
         return parts.joined(separator: " · ")
@@ -394,8 +402,8 @@ private struct MixedRetriggerMenu: View {
                 selection: Binding(
                     get: { pad.lightRetrigger }, set: { controller.setLightRetrigger(at: position, to: $0) })
             ) {
-                Text("Lumière : allumer seulement").tag(LightRetrigger.turnOnOnly)
-                Text("Lumière : basculer à chaque appui").tag(LightRetrigger.toggle)
+                Text("Lumière : laisse allumé").tag(LightRetrigger.turnOnOnly)
+                Text("Lumière : allume ou éteint").tag(LightRetrigger.toggle)
             }
             .pickerStyle(.inline)
         } label: {
@@ -405,7 +413,7 @@ private struct MixedRetriggerMenu: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .help("Si on rejoue ce pad : le son repart ou s'arrête ; la cue ne s'envoie que si LightKey la dit éteinte, ou à chaque appui")
+        .help("Si on rejoue ce pad : le son repart ou s'arrête ; la lumière reste allumée, ou s'allume et s'éteint à chaque appui")
         .accessibilityLabel("Nouvel appui")
     }
 }
@@ -842,13 +850,13 @@ struct PadContextMenu: View {
                 audioItems(pad: pad, clip: clip, locked: locked)
                 if pad.light != nil {
                     Divider()
-                    Button("Tester la cue", icon: .spotlight) { controller.testCue(at: position) }
+                    Button("Essayer la lumière", icon: .spotlight) { controller.testCue(at: position) }
                 }
             } else {
                 if !locked {
-                    Button("Tester", icon: .spotlight) { controller.testCue(at: position) }
+                    Button("Essayer la lumière", icon: .spotlight) { controller.testCue(at: position) }
                     if controller.isPaired(at: position) {
-                        Button("Retirer l'appairage") { controller.unpairCue(at: position) }
+                        Button("Délier des projecteurs") { controller.unpairCue(at: position) }
                     }
                     Divider()
                     colorMenu(pad: pad)
@@ -1105,7 +1113,7 @@ private struct TrackGainGauge: View {
     grid.columns[1] = Column.empty(name: "Scènes", kind: .mixed)
     let position = GridPosition(column: 1, row: 2)
     grid[position] = Pad(
-        title: "Noir", subtitle: "Cue", tint: .graphite, light: .blank, awaitsSound: true)
+        title: "Noir", subtitle: "Lumière", tint: .graphite, light: .blank, awaitsSound: true)
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
     controller.selection = position
     return InspectorView(position: position)

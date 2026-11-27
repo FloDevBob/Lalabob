@@ -1,6 +1,6 @@
 # Lalabob — guide d'utilisation (une page)
 
-Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation Launchpad Mini MK3** (grille, sans fader). La version complète est dans l'app : **Aide ▸ Aide de Lalabob** (⌘?).
+Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation Launchpad Mini MK3** (grille, sans fader). La version complète est dans l'app : **Aide ▸ Aide de Lalabob** (⌘?). Pour apprendre en cinq minutes : **Aide ▸ Visite guidée**.
 
 ## Avant la représentation
 1. Brancher le contrôleur (Launchpad ou APC mini mk2) : l'indicateur vert apparaît dans l'en-tête.
@@ -11,13 +11,13 @@ Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation L
 ## Jouer (cadenas fermé)
 | Geste | Effet |
 | --- | --- |
-| Appui sur un pad du contrôleur | Lance le son (relance s'il joue déjà) ; sur les 2 colonnes de droite, lance la cue LightKey |
+| Appui sur un pad du contrôleur | Lance le son (relance s'il joue déjà) ; sur les 2 colonnes de droite, allume ou éteint la lumière |
 | Clic / double-clic à l'écran | Sélectionne / joue |
 | ← → ↑ ↓ | Passe d'un pad à l'autre |
 | Espace / Retour | Pause-reprise / lecture du pad sélectionné |
 | **Échap** | **Tout arrêter** (fondu de 40 ms) |
 | Bouton ■ de la colonne / bouton rouge sous la colonne (APC) | Arrête tous les sons de cette colonne |
-| Faders | Volume des sons ; intensité côté LightKey pour les 2 colonnes de droite |
+| Faders | Volume des sons ; intensité des projecteurs pour les 2 colonnes de droite |
 | Potard à côté du fader (colonnes sons) | **Filtre** : centre = son intact ; vers la gauche, il reste les basses ; vers la droite, il reste les aigus. Double-clic = neutre |
 | ⌘1 … ⌘9 | Changer de grille |
 
@@ -44,26 +44,30 @@ Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien :
   tout seul (et un message le dit). Un morceau protégé capté en silence désactive l'option.
 - Droits : l'abonnement Apple Music est personnel ; une diffusion publique relève des droits de la troupe (SACEM).
 
-## Appairer la lumière (déverrouillé)
-1. Bouton **Appairage** dans l'en-tête.
-2. Dans LightKey : clic droit sur la cue › External Control › Add Trigger…
-3. Appuyer sur un pad des 2 colonnes de droite (ou cliquer son ampoule). Quand LightKey répond, la case est appairée : la nommer ; la case libre suivante s'arme. Sinon cliquer **C'est appairé**.
-4. Fader : « Add Trigger… » sur le réglage, puis bouger le fader.
+## La lumière
+Les **2 colonnes de droite** commandent les **projecteurs** : chaque pad est une **lumière** (« Plein feu »…), un appui
+l'allume ou l'éteint, le **fader** règle l'**intensité**. Une lumière **allumée** a un contour, un halo et une ampoule à
+sa couleur ; **éteinte**, l'ampoule est atténuée. Les lumières se préparent dans le logiciel des projecteurs (LightKey).
+
+**Relier un pad aux projecteurs** (cadenas ouvert) :
+1. Bouton **Relier** dans l'en-tête.
+2. Dans LightKey : clic droit sur la lumière › External Control › Add Trigger…
+3. Appuyer sur le pad (ou cliquer son ampoule). Quand les projecteurs répondent, le pad est **relié** : le nommer ; la case
+   suivante est prête. Sinon cliquer **C'est relié**.
+4. Fader d'intensité : « Add Trigger… » sur le réglage dans LightKey, puis bouger le fader.
 5. **Terminer** (Échap reste « Tout arrêter »).
 
-Chaque grille a **son canal LightKey** : la même touche lance une cue différente selon la grille affichée. On appaire donc
-chaque grille à part. Le canal se lit dans l'infobulle de l'onglet et se change par clic droit sur l'onglet › **Canal LightKey**
-(les appairages de la grille sont alors à refaire). Un spectacle d'avant cette version le signale à l'ouverture : les cues des grilles 2 et suivantes sont à réappairer.
+Chaque grille commande **ses propres lumières** : la même touche allume une lumière différente selon la grille affichée,
+on relie donc chaque grille à part. Réglage avancé : clic droit sur l'onglet › **Canal des lumières** (les liaisons de la
+grille sont alors à refaire).
 
-**Colonnes lumière communes** (Spectacle › Réglages du spectacle…, déverrouillé) : les colonnes lumière de la grille affichée
-deviennent les mêmes dans toutes les grilles (badge « Commune »), sur un canal commun : on les appaire une seule fois, et changer de
-grille ne change pas la lumière. Ce qui occupait leur place dans les autres grilles est mis de côté et revient si on désactive l'option.
-
-Sur la grille : une cue **allumée** dans LightKey a un contour, un halo et une ampoule à sa couleur ; **éteinte**, l'ampoule est atténuée ; sans ampoule, LightKey n'a rien dit. La couleur réelle de la cue n'est pas connue de Lalabob.
+**Mêmes lumières sur toutes les grilles** (Spectacle › Réglages du spectacle…, cadenas ouvert) : les colonnes lumière de la
+grille affichée deviennent les mêmes partout (badge « Commune ») : on les relie une seule fois, et changer de grille ne change
+pas la lumière. Ce qui occupait leur place dans les autres grilles est mis de côté et revient si on désactive l'option.
 
 ## En cas de problème
-- **Une cue ne se lance pas ou deux fois** : LightKey écoute-t-il encore le contrôleur ? Le désactiver.
-- **Aucun état sur les pads** : sortie de « Lalabob Lumière » activée dans LightKey ? Ouvrir le **Banc d'essai lumière** (⌥⌘L) : une ligne « LightKey → » doit apparaître quand on lance une cue.
+- **Une lumière ne s'allume pas, ou s'allume puis s'éteint** : dans LightKey, le contrôleur est-il encore activé ? Le désactiver.
+- **Les pads ne montrent jamais si la lumière est allumée** : sortie « Lalabob Lumière » activée dans LightKey ? Le **Banc d'essai lumière** (⌥⌘L) doit montrer une ligne « LightKey → » quand on allume une lumière.
 - **Contrôleur absent** : le rebrancher, les LED reviennent seules ; en attendant, tout se joue à l'écran.
 - **Sons manquants à l'ouverture** : un message les liste ; leurs pads restent muets.
 - **Apple Music ne répond pas** : Music doit être ouvert (Lalabob ne l'ouvre jamais seul en scène). « Accès refusé » : Réglages Système ›

@@ -132,7 +132,7 @@ struct PairingButton: View {
         Button {
             controller.setPairingLights(!active)
         } label: {
-            IconLabel("Appairage", icon: .spotlight, size: 15)
+            IconLabel("Relier", icon: .spotlight, size: 15)
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.horizontal, 10)
                 .frame(height: 28)
@@ -144,8 +144,8 @@ struct PairingButton: View {
         .opacity(locked ? 0.45 : 1)
         .hoverHighlight()
         .interactiveCursor(.link, enabled: !locked)
-        .help(locked ? "Déverrouillez pour appairer les cues lumière" : "Appairer les cases lumière aux cues de LightKey")
-        .accessibilityLabel(active ? "Quitter l'appairage lumière" : "Appairage lumière")
+        .help(locked ? "Déverrouillez pour relier les lumières aux projecteurs" : "Relier les pads lumière aux projecteurs")
+        .accessibilityLabel(active ? "Terminer : relier aux projecteurs" : "Relier aux projecteurs")
     }
 }
 
@@ -235,7 +235,7 @@ struct GridTabsView: View {
         }
         .frame(height: 36)
         .alert(
-            "Changer le canal LightKey ?",
+            "Changer le canal des lumières ?",
             isPresented: Binding(get: { pendingChannel != nil }, set: { if !$0 { pendingChannel = nil } }),
             presenting: pendingChannel
         ) { pending in
@@ -244,8 +244,8 @@ struct GridTabsView: View {
         } message: { pending in
             Text(
                 pending.channel == nil
-                    ? "Sans canal, les cues et faders lumière de cette grille n'enverront plus rien à LightKey."
-                    : "Les cues et faders lumière de cette grille sont à réappairer dans LightKey sur le canal \(pending.channel ?? 0)."
+                    ? "Sans canal, les lumières et intensités de cette grille ne commanderont plus les projecteurs."
+                    : "Les lumières et intensités de cette grille seront à relier de nouveau aux projecteurs (canal \(pending.channel ?? 0))."
             )
         }
         .alert(
@@ -304,7 +304,7 @@ struct GridTabsView: View {
         .interactiveCursor(.link, enabled: renaming != grid.id)
         .help(
             (controller.isLocked ? "Grille \(index + 1) : \(grid.name)" : "Grille \(index + 1) : \(grid.name) · Double-cliquer pour renommer, glisser pour réordonner (⌘\(index + 1))")
-                + " · " + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey")
+                + " · " + (grid.lightChannel.map { "canal des lumières \($0)" } ?? "sans canal des lumières")
                 + (controller.isLocked ? "" : " (clic droit pour le changer)"))
         .onTapGesture(count: 2) {
             if controller.isLocked { controller.notifyLocked() } else { startRenaming(grid) }
@@ -331,7 +331,7 @@ struct GridTabsView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityLabel(
             "Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads, "
-                + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey")
+                + (grid.lightChannel.map { "canal des lumières \($0)" } ?? "sans canal des lumières")
                 + (grid.kind == .appleMusic ? ", grille Apple Music" : ""))
     }
 
@@ -371,11 +371,11 @@ struct GridTabsView: View {
 
     /// Sous-menu « Canal LightKey » : les 16 canaux (ceux des autres grilles grisés, avec leur nom) et « Sans canal ».
     private func channelMenu(index: Int, grid: PadGrid) -> some View {
-        Menu("Canal LightKey : \(grid.lightChannel.map(String.init) ?? "aucun")") {
+        Menu("Canal des lumières : \(grid.lightChannel.map(String.init) ?? "aucun")") {
             ForEach(Array(Show.lightChannels), id: \.self) { channel in
                 let owner = controller.gridIndex(usingLightChannel: channel)
                 let isShared = controller.show.sharedLight?.channel == channel
-                let title = isShared ? "Canal \(channel) — colonnes communes"
+                let title = isShared ? "Canal \(channel) — mêmes lumières partout"
                     : owner.flatMap { $0 == index ? nil : "Canal \(channel) — \(controller.show.grids[$0].name)" }
                     ?? "Canal \(channel)"
                 Button {

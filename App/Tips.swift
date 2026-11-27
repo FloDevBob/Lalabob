@@ -28,7 +28,7 @@ enum Tips {
     static let all: [Tip] = [
         Tip(
             id: "pad", title: "C'est quoi, un pad ?",
-            text: "Un pad, c'est une case de la grille, comme les boutons lumineux de votre Launchpad. Il joue un son, ou envoie une commande à la lumière.",
+            text: "Un pad, c'est une case de la grille, comme les boutons lumineux de votre Launchpad. Il joue un son, ou allume une lumière.",
             keys: [], mode: .always),
         Tip(
             id: "cadenas", title: "Verrouillez pour jouer",
@@ -68,7 +68,7 @@ enum Tips {
             keys: [], mode: .unlockedOnly),
         Tip(
             id: "son-et-lumiere", title: "Un son et une lumière d'un seul appui",
-            text: "Cliquez sur le petit logo à gauche du nom d'une colonne pour la passer en « Son et lumière » : ses pads peuvent alors lancer un son, une commande lumière, ou les deux à la fois.",
+            text: "Cliquez sur le petit logo à gauche du nom d'une colonne pour la passer en « Son et lumière » : ses pads peuvent alors lancer un son, une lumière, ou les deux à la fois.",
             keys: [], mode: .unlockedOnly),
         Tip(
             id: "nouvel-appui", title: "Et si on rappuie sur un son en cours ?",

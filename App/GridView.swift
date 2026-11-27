@@ -74,11 +74,9 @@ struct ColumnView: View {
     @Environment(\.gridDensity) private var density
     /// Incrémenté par « Renommer… » du menu : le titre passe en saisie.
     @State private var renameRequest = 0
-    /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
+    /// « Intensité 75 % » : l'intensité des projecteurs de la colonne (le CC MIDI n'est pas affiché, voir docs/LEXIQUE.md).
     private func lightValueText(_ column: Column) -> String {
-        let percent = Int((column.level * 100).rounded())
-        guard let cc = controller.lightFaderCC(forColumn: index) else { return "\(percent) %" }
-        return "\(percent) % · CC \(cc)"
+        "Intensité \(Int((column.level * 100).rounded())) %"
     }
 
     @Environment(ShowController.self) private var controller
@@ -135,7 +133,7 @@ struct ColumnView: View {
                 Button {
                     controller.selectPairingFader(column: index)
                 } label: {
-                    Text(paired ? "Appairé ✓" : isTarget ? "En attente…" : "Appairer")
+                    Text(paired ? "Relié ✓" : isTarget ? "En attente…" : "Relier")
                         .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
@@ -146,8 +144,8 @@ struct ColumnView: View {
                 .buttonStyle(.plain)
                 .padding(.top, 5)
                 .interactiveCursor(.link)
-                .help("Désigner ce fader comme cible, puis le bouger : son CC part vers LightKey")
-                .accessibilityLabel(paired ? "Fader appairé" : "Appairer ce fader")
+                .help("Choisir ce fader, puis le bouger : le logiciel des projecteurs apprend qu'il règle cette intensité")
+                .accessibilityLabel(paired ? "Fader relié aux projecteurs" : "Relier ce fader aux projecteurs")
             }
         }
     }
@@ -518,7 +516,7 @@ struct PadView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { controller.audition(at: position) }
         .accessibilityAction(named: "Sélectionner") { activate() }
-        .accessibilityAction(named: "Tester la cue") { controller.testCue(at: position) }
+        .accessibilityAction(named: "Essayer la lumière") { controller.testCue(at: position) }
         .help(padHelp(pad))
     }
 
@@ -557,8 +555,8 @@ struct PadView: View {
                     .buttonStyle(.plain)
                     .padding(6)
                     .interactiveCursor(.link)
-                    .help("Envoyer la note de cette case à LightKey")
-                    .accessibilityLabel("Envoyer la note à LightKey")
+                    .help("Envoyer le signal de cette case au logiciel des projecteurs, pour la relier")
+                    .accessibilityLabel("Envoyer le signal de cette case")
                 }
             }
         }
@@ -569,13 +567,13 @@ struct PadView: View {
         var parts: [String] = []
         if case .playing = event?.state { parts.append("En lecture") } else if event?.state.isPaused == true { parts.append("En pause") }
         let light = lightAccessibilityValue(pad)
-        if !light.isEmpty { parts.append(pad?.audio != nil ? "cue " + light.lowercased() : light) }
+        if !light.isEmpty { parts.append(pad?.audio != nil ? "lumière " + light.lowercased() : light) }
         return parts.joined(separator: ", ")
     }
 
     private func lightAccessibilityValue(_ pad: Pad?) -> String {
         if controller.isPairingLights, !controller.isLocked, controller.isLightCell(position) {
-            return controller.isPaired(at: position) ? "Appairée" : "À appairer"
+            return controller.isPaired(at: position) ? "Reliée" : "À relier"
         }
         guard pad?.light != nil else { return "" }
         switch controller.lightState(at: position) {
@@ -593,8 +591,8 @@ struct PadView: View {
         }
         guard !controller.isLocked else { return "" }
         if kind == .music { return "Glissez ici un morceau d'une playlist d'Apple Music (panneau de gauche)" }
-        if kind == .mixed { return "Glissez un son ici (bibliothèque ou Finder), ou cliquez « + Cue » pour créer une cue lumière" }
-        return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
+        if kind == .mixed { return "Glissez un son ici (bibliothèque ou Finder), ou cliquez « + Lumière » pour créer une lumière" }
+        return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une lumière"
     }
 
     /// Clic : ⇧ étend la sélection en rectangle depuis l'ancre, ⌘ ajoute ou retire la case, sinon la case seule.
@@ -764,12 +762,12 @@ struct PadView: View {
         .interactiveCursor(.link)
         .help(
             controller.isPairingLights
-                ? "Envoyer la note de cette case à LightKey"
+                ? "Envoyer le signal de cette case au logiciel des projecteurs, pour la relier"
                 : pad.audio != nil
-                    ? "Tester la cue : l'envoie à LightKey sans lancer le son"
-                    : "Envoyer la cue à LightKey (double-clic sur le pad : pareil)"
+                    ? "Essayer la lumière, sans lancer le son"
+                    : "Allumer ou éteindre la lumière (double-clic sur le pad : pareil)"
         )
-        .accessibilityLabel(controller.isPairingLights ? "Envoyer la note à LightKey" : "Tester la cue")
+        .accessibilityLabel(controller.isPairingLights ? "Envoyer le signal de cette case" : "Essayer la lumière")
         .accessibilityValue(isOn ? "Allumée" : isOff ? "Éteinte" : "")
     }
 
@@ -904,19 +902,19 @@ struct PadView: View {
                         Button {
                             controller.newLightCue(at: position)
                         } label: {
-                            IconLabel("Cue", icon: .plus, size: 12)
+                            IconLabel("Lumière", icon: .plus, size: 12)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .foregroundStyle(Surface.lightAccent)
                                 .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
                         .interactiveCursor(.link)
-                        .help("Créer une cue lumière sur cette case")
-                        .accessibilityLabel("Créer une cue")
+                        .help("Créer une lumière sur cette case")
+                        .accessibilityLabel("Créer une lumière")
                     }
                     .font(.system(size: 11.5))
                 } else {
-                    IconLabel(kind == .music ? "Morceau" : kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                    IconLabel(kind == .music ? "Morceau" : kind.hasAudio ? "Déposer un son" : "Nouvelle lumière", icon: .plus, size: 13)
                         .font(.system(size: 11.5))
                         .foregroundStyle(Surface.textTertiary)
                 }

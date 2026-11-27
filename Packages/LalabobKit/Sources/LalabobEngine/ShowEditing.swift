@@ -28,7 +28,7 @@ extension ShowController {
 
     /// Une cue lumière vierge. La note envoyée à LightKey est celle du contrôleur (ADR 0006) : le message stocké ne sert pas.
     static func blankLightPad() -> Pad {
-        Pad.cue(title: "Nouvelle cue", tint: .ambre, cue: .blank)
+        Pad.cue(title: "Nouvelle lumière", tint: .ambre, cue: .blank)
     }
 
     @discardableResult
@@ -337,7 +337,7 @@ extension ShowController {
     /// Change le canal LightKey d'une grille (`nil` = « Sans canal »). Refusé verrouillé, hors de 1…16, ou si une autre
     /// grille utilise déjà ce canal. Les appairages de la grille sont à refaire dans LightKey (l'interface le dit avant).
     public func setLightChannel(grid index: Int, channel: Int?) {
-        commit("Canal LightKey") { show, _ in
+        commit("Canal des lumières") { show, _ in
             guard show.grids.indices.contains(index) else { return false }
             if let channel {
                 guard Show.lightChannels.contains(channel), show.sharedLight?.channel != channel,
@@ -365,7 +365,7 @@ extension ShowController {
 
     /// Change le canal LightKey des colonnes communes (refusé s'il est pris par une grille, ou verrouillé).
     public func setSharedLightChannel(_ channel: Int) {
-        commit("Canal des colonnes communes") { show, _ in show.setSharedLightChannel(channel) }
+        commit("Canal des lumières communes") { show, _ in show.setSharedLightChannel(channel) }
     }
 
     // MARK: - Types de colonnes et de pads (fiche 06)

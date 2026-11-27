@@ -20,7 +20,7 @@ extension ColumnKind {
         switch self {
         case .audio: "Sons uniquement · fader de volume, filtre, stop"
         case .mixed: "Pads son, lumière, ou les deux à la fois · fader de volume"
-        case .light: "Cues uniquement · fader MIDI vers LightKey (intensité)"
+        case .light: "Lumières uniquement · fader d'intensité des projecteurs"
         case .music: "Morceaux d'Apple Music · volume général de Music (9e fader)"
         }
     }
@@ -165,8 +165,8 @@ final class ConversionPrompter {
         if !plan.padsLosingLight.isEmpty {
             let n = plan.padsLosingLight.count
             lines.append(Line(
-                tone: .reduced, headline: "\(n) \(plural(n, "pad perdra sa cue", "pads perdront leur cue"))",
-                detail: titles(plan.padsLosingLight) + " · l'appairage est oublié (rien n'est changé dans LightKey)"))
+                tone: .reduced, headline: "\(n) \(plural(n, "pad perdra sa lumière", "pads perdront leur lumière"))",
+                detail: titles(plan.padsLosingLight) + " · la liaison aux projecteurs est oubliée (rien ne change dans le logiciel des projecteurs)"))
         }
         if !plan.padsLosingSound.isEmpty {
             let n = plan.padsLosingSound.count
@@ -175,7 +175,7 @@ final class ConversionPrompter {
                 detail: titles(plan.padsLosingSound)))
         }
         if plan.faderPairingForgotten {
-            lines.append(Line(tone: .reduced, headline: "L'appairage du fader est oublié", detail: "Rien n'est changé dans LightKey."))
+            lines.append(Line(tone: .reduced, headline: "La liaison du fader aux projecteurs est oubliée", detail: "Rien ne change dans le logiciel des projecteurs."))
         }
         if plan.filterReset {
             lines.append(Line(tone: .reduced, headline: "Le filtre revient au neutre", detail: nil))

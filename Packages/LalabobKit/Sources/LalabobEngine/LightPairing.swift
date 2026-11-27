@@ -92,7 +92,7 @@ extension ShowController {
     @discardableResult
     func pairFader(column: Int) -> Bool {
         guard isPairingLights else { return false }
-        let done = commit("Appairer le fader") { show, grid in
+        let done = commit("Relier le fader") { show, grid in
             guard (0..<PadGrid.size).contains(column), show.grids[grid].columns[column].kind == .light,
                 !show.grids[grid].columns[column].isFaderPaired
             else { return false }
@@ -106,7 +106,7 @@ extension ShowController {
     /// « Retirer l'appairage » du fader : ne touche pas à LightKey.
     @discardableResult
     public func unpairFader(column: Int) -> Bool {
-        commit("Retirer l'appairage du fader") { show, grid in
+        commit("Délier le fader") { show, grid in
             guard (0..<PadGrid.size).contains(column), show.grids[grid].columns[column].isFaderPaired else { return false }
             show.grids[grid].columns[column].isFaderPaired = false
             return true
@@ -122,7 +122,7 @@ extension ShowController {
     @discardableResult
     func pairCue(at position: GridPosition) -> Bool {
         guard isPairingLights else { return false }
-        let done = commit("Appairer la cue") { show, grid in
+        let done = commit("Relier la lumière") { show, grid in
             guard position.isValid, show.grids[grid].columns[position.column].kind.hasLight else { return false }
             var pad = show.grids[grid][position] ?? Self.blankLightPad()
             // Un pad son d'une colonne mixte reçoit sa cue : il devient son et lumière.
@@ -140,7 +140,7 @@ extension ShowController {
     /// « Retirer l'appairage » : ne touche pas à LightKey.
     @discardableResult
     public func unpairCue(at position: GridPosition) -> Bool {
-        commit("Retirer l'appairage") { show, grid in
+        commit("Délier la lumière") { show, grid in
             guard position.isValid, var pad = show.grids[grid][position], var cue = pad.light, cue.isPaired else {
                 return false
             }
