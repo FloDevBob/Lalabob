@@ -100,6 +100,8 @@ public final class ShowController {
     /// Glisser de morceaux depuis le panneau Apple Music : combien on en glisse (0 = aucun glisser en cours) et les cases où
     /// ils tomberaient, dans l'ordre (aperçu numéroté).
     public internal(set) var musicDragCount = 0
+    /// Lecteur des pads Apple Music (un seul pour l'app, posé par la fenêtre). `nil` : les pads Music ne jouent pas.
+    @ObservationIgnored public var musicPlayer: MusicPlaybackCoordinator?
     public internal(set) var musicDropPreview: [GridPosition] = []
 
     /// Aperçu d'un glisser de groupe : les cases visées et si le dépôt serait accepté.
@@ -325,6 +327,11 @@ public final class ShowController {
     /// l'éteindre. `.toggle` l'envoie à chaque appui, comme un pad lumière.
     private func play(at position: GridPosition) {
         guard let pad = currentGrid[position] else { return }
+        if pad.music != nil {
+            musicPlayer?.press(pad, owner: self)
+            if isLocked { selection = position }
+            return
+        }
         if pad.audio != nil {
             commands.yield(.trigger(pad.id))
             if isLocked { selection = position }
@@ -348,6 +355,8 @@ public final class ShowController {
         var playsSound: Bool
         /// L'appui est relayé à LightKey (Note On à l'appui, Note Off au relâchement).
         var relaysLight: Bool
+        /// Le morceau Apple Music du pad part (ou se met en pause, ou reprend).
+        var playsMusic = false
     }
 
     /// Routage d'un appui physique :
@@ -363,6 +372,7 @@ public final class ShowController {
             return ControllerPress(playsSound: false, relaysLight: true)
         }
         guard let pad = currentGrid[position] else { return ControllerPress(playsSound: false, relaysLight: false) }
+        if pad.music != nil { return ControllerPress(playsSound: false, relaysLight: false, playsMusic: true) }
         return ControllerPress(playsSound: pad.audio != nil, relaysLight: shouldSendLight(for: pad, at: position))
     }
 
@@ -403,6 +413,29 @@ public final class ShowController {
         lockNotice = nil
     }
 
+    /// Appui sur un pad Apple Music du contrôleur : lecture, pause ou reprise, quel que soit le mode de l'écran.
+    func pressMusicFromController(at position: GridPosition) {
+        guard let pad = pad(at: position), pad.music != nil else { return }
+        musicPlayer?.press(pad, owner: self)
+        if isLocked { selection = position }
+    }
+
+    /// Barre de position d'un pad Apple Music (panneau du bas) : déplace la lecture du morceau en cours. Marche verrouillé.
+    public func seekMusic(at position: GridPosition, to seconds: TimeInterval) {
+        guard let pad = pad(at: position), pad.music != nil else { return }
+        musicPlayer?.seek(padID: pad.id, to: seconds)
+    }
+
+    /// Le lecteur Apple Music publie l'état d'un pad (même forme qu'un son de Lalabob : lueur, progression, LED).
+    func applyMusicPlayback(_ event: PlaybackEvent) {
+        if event.state == .idle { playback[event.pad] = nil } else { playback[event.pad] = event }
+    }
+
+    /// Un message court à l'écran (bandeau), pour la lecture Apple Music (Music fermé, morceau introuvable…).
+    func showMusicNotice(_ text: String) {
+        lockNotice = text
+    }
+
     /// Appui sur un pad du contrôleur : joue toujours, quel que soit le mode de l'écran.
     func pressFromController(at position: GridPosition) {
         guard let pad = pad(at: position), pad.audio != nil else { return }
@@ -432,6 +465,10 @@ public final class ShowController {
     }
 
     public func togglePause(at position: GridPosition) {
+        if let pad = pad(at: position), pad.music != nil {
+            if playback[pad.id]?.state.isActive == true { musicPlayer?.press(pad, owner: self) }
+            return
+        }
         guard let pad = pad(at: position), pad.audio != nil else { return }
         commands.yield(.togglePause(pad.id))
     }
@@ -450,6 +487,7 @@ public final class ShowController {
     /// Bouton lecture / stop d'un pad son : arrête un son qui joue, reprend un son en pause, lance un son à l'arrêt.
     /// Marche aussi verrouillé (c'est du jeu). Sans effet sur une case vide ou une cue lumière.
     public func togglePlayStop(at position: GridPosition) {
+        if let pad = pad(at: position), pad.music != nil { return play(at: position) }  // un morceau : lecture / pause / reprise
         guard let pad = pad(at: position), pad.audio != nil else { return }
         switch playback[pad.id]?.state {
         case .playing: stop(at: position)
@@ -465,6 +503,7 @@ public final class ShowController {
     }
 
     public func stop(at position: GridPosition) {
+        if let pad = pad(at: position), pad.music != nil { return musicPlayer?.stop(padID: pad.id) ?? () }
         guard let pad = pad(at: position), pad.audio != nil else { return }
         commands.yield(.stop(pad.id))
     }
@@ -472,7 +511,15 @@ public final class ShowController {
     /// Arrête tous les sons de cette colonne **de la grille affichée** (joués ou en pause), avec le fondu d'arrêt habituel.
     /// Sans effet sur une colonne lumière ou une colonne sans son qui joue. Marche aussi verrouillé : c'est du jeu.
     public func stopColumn(_ column: Int) {
-        guard (0..<PadGrid.size).contains(column), currentGrid.columns[column].kind.hasAudio else { return }
+        guard (0..<PadGrid.size).contains(column) else { return }
+        if currentGrid.columns[column].kind == .music {
+            // Le morceau en cours, s'il vient de cette colonne : fondu de sortie.
+            for case let pad? in currentGrid.columns[column].slots where pad.id == musicPlayer?.currentPad {
+                musicPlayer?.stop(padID: pad.id)
+            }
+            return
+        }
+        guard currentGrid.columns[column].kind.hasAudio else { return }
         for case let pad? in currentGrid.columns[column].slots where playback[pad.id] != nil {
             commands.yield(.stop(pad.id))
         }
@@ -481,12 +528,13 @@ public final class ShowController {
     /// Colonnes dont le bouton « stop » est actif : les colonnes son de la grille affichée (celles de lumière n'en ont pas).
     /// Le bouton de l'interface et la LED rouge du contrôleur suivent cet ensemble.
     public var stopButtonColumns: Set<Int> {
-        Set(currentGrid.columns.indices.filter { currentGrid.columns[$0].kind.hasAudio })
+        Set(currentGrid.columns.indices.filter { currentGrid.columns[$0].kind.hasAudio || currentGrid.columns[$0].kind == .music })
     }
 
     /// « Tout arrêter » (Échap).
     public func stopAll() {
         commands.yield(.stopAll)
+        musicPlayer?.stopAll()
     }
 
     /// Fader d'une colonne de la grille affichée, déplacé **à l'écran**. Niveau borné à 0…1. Un fader physique qui

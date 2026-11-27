@@ -47,6 +47,16 @@ public struct MusicTrack: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Où en est un morceau d'un pad dans la bibliothèque de Music.
+public enum MusicTrackAvailability: Equatable, Sendable {
+    /// Sur ce Mac (téléchargé ou fichier importé) : il jouera sans Internet.
+    case downloaded
+    /// Dans le nuage : Internet nécessaire.
+    case cloud
+    /// Plus dans la bibliothèque : « Remplacer le morceau ».
+    case missing
+}
+
 /// Lire la bibliothèque d'Apple Music (une implémentation réelle par AppleScript, une fausse pour les tests).
 public protocol MusicLibraryReading: Sendable {
     func status() async -> MediaVolumeStatus
@@ -58,6 +68,8 @@ public protocol MusicLibraryReading: Sendable {
     func download(tracks ids: [String], inPlaylist playlist: String) async throws
     /// Ouvre l'app Music (bouton « Ouvrir Music », déverrouillé seulement).
     func openMusic() async
+    /// La disponibilité de ces morceaux (ceux des pads), par identifiant.
+    func availability(of ids: [String]) async throws -> [String: MusicTrackAvailability]
 }
 
 /// La bibliothèque réelle, lue par AppleScript. Ne lance jamais Music : tout est refusé s'il est fermé.
@@ -157,6 +169,32 @@ public actor AppleMusicLibrary: MusicLibraryReading {
             end repeat
             """
         _ = try await MusicScripting.run(script) { _ in 0 }
+    }
+
+    public func availability(of ids: [String]) async throws -> [String: MusicTrackAvailability] {
+        let ids = Array(Set(ids.filter(MusicTrackRef.isValidPersistentID))).sorted()
+        guard MusicScripting.isRunning, !ids.isEmpty else { return [:] }
+        let list = ids.map { "\"\($0)\"" }.joined(separator: ", ")
+        let script = """
+            set lbOut to {}
+            repeat with lbWanted in {\(list)}
+                set lbFound to (every track of library playlist 1 whose persistent ID is (lbWanted as text))
+                if lbFound is {} then
+                    set end of lbOut to ""
+                else
+                    set end of lbOut to class of item 1 of lbFound
+                end if
+            end repeat
+            return lbOut
+            """
+        return try await MusicScripting.run(script) { result in
+            var out: [String: MusicTrackAvailability] = [:]
+            for (id, item) in zip(ids, result.listItems) {
+                if item.descriptorType != typeType { out[id] = .missing; continue }
+                out[id] = Self.isLocal(trackClass: item.typeCodeValue) == false ? .cloud : .downloaded
+            }
+            return out
+        }
     }
 
     public func openMusic() async {

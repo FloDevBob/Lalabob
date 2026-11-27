@@ -54,7 +54,7 @@ struct InspectorView: View {
                     MusicHeader(position: position, pad: pad, track: track)
                         .frame(height: Self.headerHeight)
                     Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
-                    MusicDetails(pad: pad, track: track)
+                    MusicDetails(position: position, pad: pad, track: track)
                 } else {
                     LightHeader(position: position, pad: pad)
                         .frame(height: Self.headerHeight)
@@ -133,14 +133,50 @@ private struct TintSwatch: View {
 }
 
 /// Pad lumière : titre | (espace) Tester + note envoyée | couleur, actions.
-/// Pad Apple Music : titre et sous-titre, morceau d'origine, couleur et actions (la lecture arrive à l'étape 3).
+/// Pad Apple Music : lecture / pause et stop, temps, titre et sous-titre, morceau d'origine, couleur et actions.
 private struct MusicHeader: View {
+    @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad
     let track: MusicTrackRef
 
     var body: some View {
+        let event = controller.playback[pad.id]
+        let isPlaying: Bool = if case .playing = event?.state { true } else { false }
         HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Button {
+                    controller.togglePlayStop(at: position)
+                } label: {
+                    (isPlaying ? Icon.pauseFill : Icon.playFill).view(size: 15)
+                        .frame(width: 36, height: 36)
+                        .background(pad.tint.vividColor, in: .circle)
+                        .foregroundStyle(pad.tint.surfaceColor)
+                }
+                .buttonStyle(.plain)
+                .help(isPlaying ? "Pause (Espace)" : "Jouer dans Apple Music (Espace)")
+                .accessibilityLabel(isPlaying ? "Pause" : "Lecture")
+                Button {
+                    controller.stop(at: position)
+                } label: {
+                    Icon.stopFill.view(size: 13)
+                        .frame(width: 32, height: 32)
+                        .background(Color.white.opacity(0.08), in: .circle)
+                }
+                .buttonStyle(.plain)
+                .disabled(event == nil)
+                .help("Arrêter en fondu")
+                .accessibilityLabel("Arrêter")
+            }
+            .padding(4)
+            .background(Color.black.opacity(0.3), in: .capsule)
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.06)))
+            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                Text("\(AudioLibrary.formatDuration(MusicDetails.elapsed(event))) / \(AudioLibrary.formatDuration(track.duration))")
+                    .font(Typography.mono)
+                    .foregroundStyle(Surface.textSecondary)
+            }
+            HeaderDivider()
             TitleFields(position: position, pad: pad)
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 2) {
@@ -153,31 +189,67 @@ private struct MusicHeader: View {
             .font(.system(size: 11.5))
             .foregroundStyle(Surface.textTertiary)
             .layoutPriority(-1)
-            HeaderDivider()
-            ColorPopoverButton(position: position, pad: pad)
-            PadActionsMenu(position: position, hasPad: true)
+            if !controller.isLocked {
+                HeaderDivider()
+                ColorPopoverButton(position: position, pad: pad)
+                PadActionsMenu(position: position, hasPad: true)
+            }
         }
         .padding(.horizontal, 14)
     }
 }
 
-/// Bande du bas d'un pad Apple Music : pochette (vignette à la teinte du pad en attendant la vraie), durée, et ce qui
-/// n'existe pas pour un morceau protégé.
+/// Bande du bas d'un pad Apple Music : pochette, barre de position (cliquer ou glisser pour aller à un moment du morceau),
+/// et ce qui n'existe pas pour un morceau protégé.
 private struct MusicDetails: View {
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
     let pad: Pad
     let track: MusicTrackRef
 
+    static func elapsed(_ event: PlaybackEvent?) -> TimeInterval {
+        switch event?.state {
+        case .playing(let startedAt): max(0, ProcessInfo.processInfo.systemUptime - startedAt)
+        case .paused(let elapsed): elapsed
+        default: 0
+        }
+    }
+
     var body: some View {
+        let event = controller.playback[pad.id]
         HStack(alignment: .center, spacing: 16) {
             RoundedRectangle(cornerRadius: 10)
                 .fill(pad.tint.surfaceColor)
                 .overlay { Icon.music.view(size: 34).foregroundStyle(pad.tint.labelColor.opacity(0.8)) }
                 .frame(width: 116, height: 116)
+                .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
                 .accessibilityLabel("Pochette de \(track.album.isEmpty ? track.title : track.album)")
             VStack(alignment: .leading, spacing: 10) {
-                Text("Durée : \(AudioLibrary.formatDuration(track.duration))")
-                    .font(Typography.mono)
-                    .foregroundStyle(Surface.textSecondary)
+                GeometryReader { proxy in
+                    TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+                        let fraction = track.duration > 0 ? min(1, Self.elapsed(event) / track.duration) : 0
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 10).fill(Surface.well)
+                            Rectangle().fill(pad.tint.vividColor.opacity(0.25)).frame(width: proxy.size.width * fraction)
+                            Rectangle().fill(.white).frame(width: 2).padding(.vertical, 4).offset(x: proxy.size.width * fraction - 1)
+                            if event == nil {
+                                Text("Jouez le morceau, puis cliquez pour aller à un moment précis")
+                                    .font(.system(size: 11)).foregroundStyle(Surface.textTertiary).padding(.leading, 10)
+                            }
+                        }
+                        .clipShape(.rect(cornerRadius: 10))
+                    }
+                    .contentShape(.rect)
+                    .gesture(DragGesture(minimumDistance: 0).onEnded { value in
+                        guard proxy.size.width > 0, track.duration > 0 else { return }
+                        controller.seekMusic(at: position, to: max(0, min(1, value.location.x / proxy.size.width)) * track.duration)
+                    })
+                }
+                .frame(height: 34)
+                .interactiveCursor(.link, enabled: event != nil)
+                .accessibilityElement()
+                .accessibilityLabel("Position dans le morceau")
+                .accessibilityValue("\(AudioLibrary.formatDuration(Self.elapsed(event))) sur \(AudioLibrary.formatDuration(track.duration))")
                 IconLabel("Fondus, élagage et volume du pad : non disponibles pour un morceau Apple Music. Volume général : 9e fader.", icon: .warning, size: 13)
                     .font(.system(size: 11.5))
                     .foregroundStyle(Surface.textTertiary)

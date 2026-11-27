@@ -484,3 +484,11 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   playlist, vignette, ce qui n'est pas disponible). 13 tests (fausse bibliothèque). **Rien n'a été essayé avec la vraie app Music** :
   les scripts AppleScript (`AppleMusicLibrary`) n'ont pas de test automatique. **Pas encore** : lecture (étape 3), onglet Internet,
   extraits, vraies pochettes (étape 4).
+- **Étape 3 — lecture (27/11/2026, branche `j11/grilles-apple-music-lecture`)** ✅ code. `AppleMusicPlayer` (AppleScript : `play … with once`,
+  pause, reprise, stop, position, état ; scripts compilés et lecture d'état vérifiées sur le vrai Music), `MusicPlaybackCoordinator` (un morceau à
+  la fois pour toute l'app ; ré-appui = pause / reprise ; autre pad = fondu enchaîné de 1 s par le volume de Music ; stop de colonne = fondu de 1 s ;
+  Échap = fondu de 0,3 s ; fin du morceau ou changement de morceau dans Music détectés 4×/s ; le 9e fader change la cible d'un fondu en cours ;
+  Music fermé / morceau introuvable → bandeau). L'état est publié comme celui d'un son : lueur, progression, LED qui pulse, bouton stop rouge des
+  colonnes Music sur l'APC. Contrôleur : un appui sur un pad Music le joue (verrouillé aussi). Disponibilité des pads (☁ nuage, « Introuvable »)
+  relue à l'affichage d'une grille Apple Music (script vérifié). Panneau du bas : lecture / pause, stop, temps, barre de position cliquable.
+  9 tests (faux lecteur). **Pas essayé en vrai** : lancer un morceau, fondu enchaîné à l'oreille, fin détectée.

@@ -110,6 +110,7 @@ struct DocumentWindow: View {
     let document: LalabobDocument
     @Environment(\.midiSession) private var midiSession
     @Environment(\.appearsActive) private var appearsActive
+    @Environment(MusicPlaybackCoordinator.self) private var musicPlayer
     @State private var controller: ShowController?
     @State private var showsMissingAudio = false
     @State private var showsPairingReset = false
@@ -131,6 +132,7 @@ struct DocumentWindow: View {
                     show: document.mirror.current, audioDirectory: document.workingAudio, isLocked: document.opensLocked)
                 let mirror = document.mirror
                 created.onShowChange = { mirror.update($0) }
+                created.musicPlayer = musicPlayer
                 controller = created
                 showsMissingAudio = !document.missingAudio.isEmpty
                 // Deux alertes ne s'affichent pas en même temps : celle des appairages suit celle des sons manquants.

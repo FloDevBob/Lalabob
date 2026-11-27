@@ -312,6 +312,7 @@ public final class ControllerSession {
                         ?? ShowController.ControllerPress(
                             playsSound: false, relaysLight: PadGrid.defaultLightColumns.contains(position.column))
                     if press.playsSound { attachedController?.pressFromController(at: position) }
+                    if press.playsMusic { attachedController?.pressMusicFromController(at: position) }
                     if press.relaysLight { relayPad(position, pressed: true, driver: active.driver) }
                     attachedController?.pairingPress(at: position)
                 case .padReleased(let position):
@@ -321,6 +322,11 @@ public final class ControllerSession {
                 case .columnStop(let column):
                     attachedController?.stopColumn(column)
                 case .auxiliaryFader(let value):
+                    // Le lecteur Apple Music suit la cible ; pendant un de ses fondus, c'est lui qui écrit le volume.
+                    if let music = attachedController?.musicPlayer {
+                        music.faderMoved(percent: MediaVolumeRelay.percent(forFader: value))
+                        if music.isFading { continue }
+                    }
                     if let volumeRelay { Task { await volumeRelay.faderMoved(to: value) } }
                 case .gridSelect(let index):
                     attachedController?.selectGrid(at: index + (shiftHeld ? 8 : 0))

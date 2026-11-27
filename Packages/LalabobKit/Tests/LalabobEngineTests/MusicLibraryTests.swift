@@ -33,6 +33,12 @@ actor FakeMusicLibrary: MusicLibraryReading {
         }
     }
     func openMusic() async { opened += 1 }
+    func availability(of ids: [String]) async throws -> [String: MusicTrackAvailability] {
+        let all = content.values.flatMap { $0 }
+        return Dictionary(uniqueKeysWithValues: ids.map { id in
+            (id, all.first { $0.id == id }.map { $0.isDownloaded == false ? .cloud : .downloaded } ?? .missing)
+        })
+    }
 }
 
 @MainActor
@@ -126,6 +132,13 @@ struct MusicLibraryTests {
         let library = MusicLibraryController(library: fake)
         await library.refresh()
         #expect(library.visibleRows.count <= 2)
+    }
+
+    @Test("Disponibilité des pads : téléchargé, nuage, introuvable")
+    func availability() async {
+        let (library, _) = await makeLibrary()
+        await library.refreshAvailability(of: ["0A", "0C", "ZZ"])
+        #expect(library.padAvailability == ["0A": .downloaded, "0C": .cloud, "ZZ": .missing])
     }
 
     @Test("AppleScript : guillemets et barres obliques échappés, contrôles retirés")

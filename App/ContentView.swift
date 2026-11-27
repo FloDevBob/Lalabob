@@ -7,6 +7,7 @@ import SwiftUI
 /// Verrouillé (cadenas), la bibliothèque et l'inspecteur disparaissent : il ne reste que le jeu.
 struct ContentView: View {
     @Environment(ShowController.self) private var controller
+    @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsLibrary = true
@@ -62,6 +63,11 @@ struct ContentView: View {
             try? await Task.sleep(for: .seconds(3))
             controller.dismissLockNotice()
         }
+        .task(id: musicTrackIDs) {
+            // Grille Apple Music : quels morceaux des pads sont dans le nuage ou introuvables (☁, « Introuvable »).
+            guard !musicTrackIDs.isEmpty else { return }
+            await musicLibrary?.refreshAvailability(of: musicTrackIDs)
+        }
         .onAppear { controller.undoManager = undoManager }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { controller.undoManager = undoManager }
     }
@@ -112,12 +118,17 @@ struct ContentView: View {
 
 extension ContentView {
     /// La bibliothèque est ouverte (et le spectacle déverrouillé : verrouillé, il n'y a pas de bibliothèque).
+    /// Les morceaux des pads de la grille affichée (grille Apple Music).
+    private var musicTrackIDs: Set<String> {
+        Set(controller.currentGrid.columns.flatMap { $0.slots.compactMap { $0?.music?.persistentID } })
+    }
+
     fileprivate var libraryIsVisible: Bool { showsLibrary && !controller.isLocked }
 
     /// Verrouillé, le panneau ne s'affiche que pour un son (les cases vides et les cues n'ont rien à y piloter).
     fileprivate func showsInspector(for position: GridPosition) -> Bool {
         guard controller.isLocked else { return true }
-        guard let pad = controller.pad(at: position), pad.audio != nil else { return false }
+        guard let pad = controller.pad(at: position), pad.audio != nil || pad.music != nil else { return false }
         return true
     }
 

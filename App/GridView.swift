@@ -440,6 +440,7 @@ struct PadView: View {
     @Environment(\.gridDensity) private var density
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(ShowController.self) private var controller
+    @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
     let position: GridPosition
     let kind: ColumnKind
     /// La grille dont on affiche la case (celle de la page à l'écran, pas forcément la grille courante pendant un défilement).
@@ -682,7 +683,10 @@ struct PadView: View {
             Spacer(minLength: 0)
             if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
             if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
-            if pad.audio != nil, pad.light != nil {
+            if pad.music != nil {
+                musicAvailabilityBadge(pad)
+                musicButton(pad, event: event)
+            } else if pad.audio != nil, pad.light != nil {
                 mixedCapsule(pad, event: event, state: lightState)
             } else {
                 if pad.audio != nil { playStopButton(pad, event: event) }
@@ -797,6 +801,51 @@ struct PadView: View {
         .buttonStyle(.plain)
         .interactiveCursor(.link)
         .help(isPlaying ? "Arrêter ce son" : event?.state.isPaused == true ? "Reprendre ce son" : "Lancer ce son")
+    }
+
+    /// Pad Apple Music : un bouton rond lecture / pause (le morceau ne s'arrête qu'au stop de colonne, à Échap ou à sa fin).
+    private func musicButton(_ pad: Pad, event: PlaybackEvent?) -> some View {
+        let isPlaying: Bool = if case .playing = event?.state { true } else { false }
+        let size = Self.buttonSize(for: density)
+        return Button {
+            controller.togglePlayStop(at: position)
+        } label: {
+            (isPlaying ? Icon.pauseFill : Icon.playFill).view(size: size * 0.5)
+                .frame(width: size, height: size)
+                .background(isPlaying ? pad.tint.vividColor : pad.tint.labelColor.opacity(0.18), in: .circle)
+                .foregroundStyle(isPlaying ? pad.tint.surfaceColor : pad.tint.labelColor)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help(isPlaying ? "Mettre le morceau en pause" : event?.state.isPaused == true ? "Reprendre le morceau" : "Jouer le morceau dans Apple Music")
+        .accessibilityLabel(isPlaying ? "Pause" : "Lecture")
+    }
+
+    /// Morceau dans le nuage (Internet nécessaire) ou plus dans la bibliothèque de Music.
+    @ViewBuilder
+    private func musicAvailabilityBadge(_ pad: Pad) -> some View {
+        switch pad.music.flatMap({ musicLibrary?.padAvailability[$0.persistentID] }) {
+        case .cloud:
+            Text("☁")
+                .font(.system(size: 11, weight: .semibold))
+                .padding(.horizontal, 5)
+                .background(Surface.lightAccent.opacity(0.18), in: .rect(cornerRadius: 6))
+                .foregroundStyle(Surface.lightAccent)
+                .help("Dans le nuage : Internet nécessaire pour le jouer. Téléchargez-le dans Music avant la représentation.")
+                .accessibilityLabel("Dans le nuage")
+        case .missing:
+            Text("Introuvable")
+                .font(.system(size: 9.5, weight: .bold))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(Color.red.opacity(0.22), in: .rect(cornerRadius: 6))
+                .foregroundStyle(Color(red: 1, green: 0.6, blue: 0.63))
+                .help("Ce morceau n'est plus dans la bibliothèque de Music : remplacez-le (glissez-en un autre sur le pad).")
+                .accessibilityLabel("Morceau introuvable")
+        default:
+            EmptyView()
+        }
     }
 
     /// Pad son et lumière : une capsule avec le bouton lecture / stop et l'ampoule (22 pt chacun, 26 sur un grand pad), l'un au-dessus

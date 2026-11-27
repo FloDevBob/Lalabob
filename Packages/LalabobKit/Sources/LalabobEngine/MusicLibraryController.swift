@@ -27,6 +27,8 @@ public final class MusicLibraryController {
     public private(set) var searchResults: [MusicTrack] = []
     public var onlyDownloaded = false
     public private(set) var selectedTrackIDs: Set<String> = []
+    /// Disponibilité des morceaux posés sur les pads (téléchargé, nuage, introuvable), par identifiant.
+    public private(set) var padAvailability: [String: MusicTrackAvailability] = [:]
     @ObservationIgnored private var anchor: String?
 
     /// Au plus ce nombre de résultats de recherche.
@@ -99,6 +101,12 @@ public final class MusicLibraryController {
             searchResults = []
             status = Self.status(for: error)
         }
+    }
+
+    /// Relit la disponibilité des morceaux des pads (à l'ouverture d'une grille Apple Music et après un dépôt).
+    public func refreshAvailability(of ids: Set<String>) async {
+        guard !ids.isEmpty, await library.status() == .running else { return }
+        if let found = try? await library.availability(of: Array(ids)) { padAvailability.merge(found) { $1 } }
     }
 
     public func openMusic() async {

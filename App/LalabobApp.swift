@@ -38,6 +38,8 @@ struct LalabobApp: App {
     @State private var preview = PreviewController()
     /// La bibliothèque d'Apple Music (panneau des grilles Apple Music), partagée par toutes les fenêtres.
     @State private var musicLibrary = MusicLibraryController(library: AppleMusicLibrary())
+    /// Le lecteur des pads Apple Music : Music n'a qu'un lecteur, partagé par toutes les fenêtres.
+    @State private var musicPlayer = MusicPlaybackCoordinator(player: AppleMusicPlayer())
     /// Une seule session MIDI pour l'app, rattachée à la fenêtre active.
     @State private var midiSession = ControllerSession.live()
 
@@ -51,6 +53,7 @@ struct LalabobApp: App {
                 .environment(library)
                 .environment(preview)
                 .environment(musicLibrary)
+                .environment(musicPlayer)
                 .environment(\.midiSession, midiSession)
                 .preferredColorScheme(.dark)
                 .frame(minWidth: 1320, minHeight: 720)  // bibliothèque (273) + 8 colonnes de même largeur tiennent sans être coupées
