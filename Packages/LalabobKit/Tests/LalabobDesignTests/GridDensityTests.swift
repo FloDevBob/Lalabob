@@ -20,10 +20,10 @@ struct GridDensityTests {
     }
 
     @Test func theFaderTrackNeverChangesWhilePadsHaveRoomToShrink() {
-        // Tant que les pads n'ont pas atteint leur minimum, seuls eux s'adaptent : la piste du fader reste à 108 pt.
+        // Tant que les pads n'ont pas atteint leur minimum, seuls eux s'adaptent : la piste du fader reste à 98 pt.
         let atMinimum = GridDensity.fixedHeight + 8 * GridDensity.minimumPadHeight + GridDensity.regular.faderTrackHeight
         for available in stride(from: atMinimum, through: 1600, by: 25) {
-            #expect(GridDensity.fitting(availableHeight: available).faderTrackHeight == 108)
+            #expect(GridDensity.fitting(availableHeight: available).faderTrackHeight == 98)
         }
     }
 
@@ -37,7 +37,7 @@ struct GridDensityTests {
 
     @Test func theRegularSizesStillExistAsTheDefault() {
         #expect(GridDensity.regular.padHeight == Metrics.padHeight)
-        #expect(GridDensity.regular.faderTrackHeight == 108)
+        #expect(GridDensity.regular.faderTrackHeight == 98)
     }
 
     @Test(arguments: [620, 600, 560, 540] as [CGFloat])
