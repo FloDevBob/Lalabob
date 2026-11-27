@@ -163,6 +163,8 @@ public final class ShowController {
         /// Aperçu d'un réglage du pad (panneau du bas), sans fondu ; `endPreview` rend la lumière d'avant.
         case preview(Pad.ID, LightLook)
         case endPreview
+        /// Les points du pad : allume cet état, ou l'éteint en fondu s'il est déjà celui qui éclaire.
+        case toggle(Pad)
         /// Jouer l'état lumineux du pad ; `force` : même s'il est déjà joué (bouton Essayer), sans tenir compte de
         /// « nouvel appui ».
         case press(Pad, force: Bool)
@@ -525,6 +527,13 @@ public final class ShowController {
         guard let pad = pad(at: position), pad.audio != nil else { return }
         commands.yield(.trigger(pad.id))
         if isLocked { selection = position }
+    }
+
+    /// Les points d'un pad lumière (mode Projecteurs) : un clic allume l'état, un second l'éteint en fondu, quel que soit « Nouvel appui ».
+    /// Marche verrouillé (c'est du jeu). Sans effet hors mode Projecteurs ou sur une case qui n'est pas une lumière.
+    public func toggleLight(at position: GridPosition) {
+        guard isDMXLighting, position.isValid, let pad = pad(at: position), pad.light != nil else { return }
+        dmxHandler?(.toggle(pad))
     }
 
     /// Appui sur un pad lumière du contrôleur en mode DMX : son état part vers la console, quel que soit le mode de l'écran.

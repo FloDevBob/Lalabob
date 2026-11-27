@@ -21,7 +21,7 @@ De gauche à droite : bouton masquer la bibliothèque · logo « Lalabob » + no
 **onglets de grilles** au centre (pastille numérotée 1…n, nom, nombre de sons ; bouton +). Le **canal LightKey** de la grille n'est pas affiché
 en permanence (décision du 25/11/2026, trop de place) : clic droit sur l'onglet › « Canal LightKey » (avec confirmation) ; l'infobulle de l'onglet le rappelle ·
 (**Réglages du spectacle**, menu Spectacle, ⌥⌘, , déverrouillé : interrupteur « Colonnes lumière communes à toutes les grilles », canal commun,
-confirmation qui liste ce qui est mis de côté grille par grille ; une colonne commune porte un petit badge ambré « Commune » dans son en-tête) ·
+confirmation qui liste ce qui est mis de côté grille par grille) ·
 **sélecteur de contrôleur** (nom du modèle + pastille verte « Connecté ») · **sélecteur de sortie audio** (à ajouter) ·
 **cadenas** Verrouillé / Déverrouillé (⌘L, remplace la bascule Édition / Live de la maquette) · bouton rouge **Tout arrêter** (raccourci Échap).
 

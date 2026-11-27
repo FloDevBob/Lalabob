@@ -79,9 +79,9 @@ struct ColumnView: View {
     private func lightValueText(_ column: Column) -> String {
         let percent = Int((column.level * 100).rounded())
         guard controller.isDMXLighting else { return "Intensité \(percent) %" }
-        // Mode Projecteurs : le fader a un rôle (Général, Couleurs, Strobo), écrit sur la carte.
+        // Mode Projecteurs : le fader a un rôle (Intensité, Couleurs, Strobo), écrit sur la carte.
         let role = DMXFaderRole.role(ofColumn: index, in: controller.currentGrid)
-        return role == .none ? "Sans rôle" : "\(role.title) \(percent) %"
+        return "\(percent) %"
     }
 
     @Environment(ShowController.self) private var controller
@@ -176,17 +176,6 @@ struct ColumnView: View {
                 // Pastille de type : note (son), projecteur (lumière), les deux (son et lumière) ; un bouton déverrouillé.
                 ColumnKindPill(index: index, kind: column.kind, name: column.name)
                 ColumnTitle(index: index, name: column.name, renameTrigger: renameRequest)
-                if controller.show.isSharedLightColumn(index) {
-                    // Colonne lumière commune à toutes les grilles (Réglages du spectacle).
-                    Text("Commune")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(Surface.lightAccent)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .overlay { Capsule().strokeBorder(Surface.lightAccent.opacity(0.4)) }
-                        .help("Commune à toutes les grilles : la même dans chaque onglet (Spectacle › Réglages du spectacle…)")
-                        .accessibilityLabel("Commune à toutes les grilles")
-                }
                 Spacer(minLength: 0)
                 Text("\(index + 1)")
                     .font(Typography.mono)
@@ -238,23 +227,24 @@ struct ColumnView: View {
                     }
                 } else {
                     let role = controller.isDMXLighting ? DMXFaderRole.role(ofColumn: index, in: controller.currentGrid) : nil
-                    HStack(alignment: .top, spacing: 8) {
-                        VerticalFader(
-                            name: column.name,
-                            level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
-                            valueText: lightValueText(column),
-                            defaultLevel: 1,
-                            hardwareMarker: controller.waitingFaders[index]
-                        ) {
+                    VerticalFader(
+                        name: column.name,
+                        level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
+                        valueText: lightValueText(column),
+                        defaultLevel: 1,
+                        hardwareMarker: controller.waitingFaders[index]
+                    ) {
+                        if let role {
+                            // Mode Projecteurs (piste C de la maquette) : le rôle du fader ; la carte Intensité porte la mini-barre.
+                            DMXFaderAccessory(column: index, role: role)
+                        } else {
                             Icon.sun.view(size: 16)
                                 .foregroundStyle(Surface.lightAccent)
                                 .opacity(0.25 + 0.75 * column.level)
                                 .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
                         }
-                        .opacity(role == DMXFaderRole.none ? 0.5 : 1)
-                        // La carte dont le fader est Général porte la mini-barre : les 4 projecteurs et le Noir.
-                        if role == .general { DMXHeadsBar() }
                     }
+                    .opacity(role == DMXFaderRole.none ? 0.5 : 1)
                     .contextMenu { if role != nil, !controller.isLocked { faderRoleMenu(current: role ?? .none) } }
                 }
             }
@@ -719,7 +709,16 @@ struct PadView: View {
                 mixedCapsule(pad, event: event, state: lightState)
             } else {
                 if pad.audio != nil { playStopButton(pad, event: event) }
-                if pad.light != nil { cueButton(pad, state: lightState) }
+                if let summary = lookSummary(pad) {
+                    // Mode Projecteurs : les points des projecteurs SONT le bouton (clic = allumer, second clic = éteindre).
+                    ProjectorToggle(
+                        summary: summary, tint: pad.tint, isOn: lightState == .on, compact: density.padHeight < 44,
+                        action: {
+                            if controller.isPairingLights, !controller.isLocked { controller.pairingSend(at: position) } else { controller.toggleLight(at: position) }
+                        })
+                } else if pad.light != nil {
+                    cueButton(pad, state: lightState)
+                }
             }
         }
         .foregroundStyle(pad.tint.labelColor)
@@ -744,15 +743,6 @@ struct PadView: View {
                 .allowsHitTesting(false)
         }
         .overlay(alignment: .bottom) { progressBar(event, color: vivid) }
-        .overlay(alignment: .bottomTrailing) {
-            // Repère des projecteurs (mode Projecteurs) : seulement si la hauteur du pad le permet sous le bouton rond.
-            if pad.audio == nil, density.padHeight >= 44, let summary = lookSummary(pad) {
-                LookDotsView(summary: summary)
-                    .padding(.trailing, Self.horizontalInset)
-                    .padding(.bottom, 4)
-                    .allowsHitTesting(false)
-            }
-        }
         .overlay {
             RoundedRectangle(cornerRadius: Metrics.padCornerRadius).stroke(vivid.opacity(outline), lineWidth: 2)
         }
@@ -1220,91 +1210,176 @@ extension PlaybackState {
 }
 
 
-/// Repère des projecteurs d'un pad lumière (J14, étape 4b) : un point par projecteur à sa couleur (plus pâle si l'intensité est
-/// basse, gris si éteint), ⇄ pour une alternance, ϟ pour du strobo, « P3 » / « MIC » pour un programme ou « sur le son ».
-struct LookDotsView: View {
+/// Les points des projecteurs d'un pad lumière (mode Projecteurs) : c'est le bouton du pad. Un clic allume l'état, un second
+/// l'éteint en fondu. **Allumé** : points pleins qui rayonnent, pastille teintée de la couleur du pad, filet clair.
+/// **Éteint** : points creux (simples anneaux gris), pastille sombre. La forme change, pas seulement la couleur : l'état se lit
+/// sans distinguer les couleurs. Un projecteur éteint dans l'état lui-même est un anneau très sombre.
+struct ProjectorToggle: View {
     let summary: LightLookSummary
+    let tint: Tint
+    let isOn: Bool
+    let compact: Bool
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 3) {
-            switch summary.kind {
-            case .colors, .alternate:
-                if summary.kind == .alternate { flag("⇄") }
-                ForEach(Array(summary.dots.enumerated()), id: \.offset) { _, dot in
-                    Circle().fill(fill(dot)).frame(width: 6, height: 6)
+        Button(action: action) {
+            HStack(spacing: 5) {
+                switch summary.kind {
+                case .colors, .alternate:
+                    if summary.kind == .alternate { flag("⇄") }
+                    ForEach(Array(summary.dots.enumerated()), id: \.offset) { _, dot in point(dot) }
+                    if summary.hasStrobe { flag("ϟ") }
+                case .program(let number):
+                    rainbow
+                    flag("P\(number)")
+                case .sound:
+                    rainbow
+                    flag("MIC")
                 }
-                if summary.hasStrobe { flag("ϟ") }
-            case .program(let number):
-                rainbow
-                flag("P\(number)")
-            case .sound:
-                rainbow
-                flag("MIC")
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, compact ? 6 : 9)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.black.opacity(0.5))
+                    .overlay { if isOn { RoundedRectangle(cornerRadius: 12).fill(tint.vividColor.opacity(0.22)) } }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(isOn ? tint.vividColor.opacity(0.67) : Color.white.opacity(0.08), lineWidth: 1)
+            }
+            .contentShape(.rect(cornerRadius: 12))
         }
-        .accessibilityHidden(true)
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help(isOn ? "Éteindre cette lumière en fondu" : "Allumer cette lumière : \(summary.subtitle)")
+        .accessibilityLabel("Lumière")
+        .accessibilityValue(isOn ? "Allumée" : "Éteinte")
+        .accessibilityHint("Allume ou éteint cette lumière")
     }
 
-    private func fill(_ dot: LightLookSummary.Dot) -> Color {
-        guard dot.isOn else { return Color.white.opacity(0.22) }
-        let rgb = dot.color.rgb
-        return Color(red: Double(rgb.red) / 255, green: Double(rgb.green) / 255, blue: Double(rgb.blue) / 255)
-            .opacity(0.4 + 0.6 * min(max(dot.intensity, 0), 1))
-    }
+    private var size: CGFloat { 10 }
 
-    private func flag(_ text: String) -> some View {
-        Text(text).font(.system(size: 8.5, weight: .bold)).opacity(0.85)
+    @ViewBuilder
+    private func point(_ dot: LightLookSummary.Dot) -> some View {
+        if !dot.isOn {
+            Circle().strokeBorder(Color(white: 0.23), lineWidth: 1.5).frame(width: size, height: size)
+        } else if isOn {
+            Circle()
+                .fill(Color(light: dot.color).opacity(0.45 + 0.55 * min(max(dot.intensity, 0), 1)))
+                .frame(width: size, height: size)
+                .shadow(color: Color(light: dot.color), radius: 3)
+        } else {
+            Circle().strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5).frame(width: size, height: size)
+        }
     }
 
     private var rainbow: some View {
-        RoundedRectangle(cornerRadius: 2)
-            .fill(LinearGradient(colors: [.red, .yellow, .green, .blue, .purple], startPoint: .leading, endPoint: .trailing))
-            .frame(width: 22, height: 5)
+        let gradient = LinearGradient(colors: [.red, .yellow, .green, .blue, .purple], startPoint: .leading, endPoint: .trailing)
+        return ZStack {
+            if isOn {
+                RoundedRectangle(cornerRadius: 4).fill(gradient)
+            } else {
+                RoundedRectangle(cornerRadius: 4).strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5)
+            }
+        }
+        .frame(width: 34, height: 8)
+    }
+
+    private func flag(_ text: String) -> some View {
+        Text(text).font(.system(size: 9, weight: .bold)).foregroundStyle(Surface.textPrimary).opacity(isOn ? 1 : 0.6)
     }
 }
 
-
-/// Mini-barre de la carte **Général** (mode Projecteurs, J14 étape 4d) : les projecteurs tels que la barre les montre
-/// (couleur et intensité réelles, fondus compris), un clic en allume ou coupe un en fondu sans toucher au pad, un bouton Noir,
-/// et le tempo quand une alternance joue.
-struct DMXHeadsBar: View {
+/// À droite du fader d'une colonne lumière en mode Projecteurs (piste C de la maquette) : le **rôle** du fader dans une pastille
+/// ambrée (clic ou clic droit = le changer), et, sur la carte **Intensité**, la mini-barre : les 4 projecteurs tels que la barre
+/// les montre (fondus compris), un clic en coupe ou rallume un en fondu sans toucher au pad, le bouton **Noir**, et le tempo
+/// quand une alternance joue.
+struct DMXFaderAccessory: View {
     @Environment(ShowController.self) private var controller
     @Environment(DMXSession.self) private var dmx
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let column: Int
+    let role: DMXFaderRole
+
+    private static func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color { Color(red: r / 255, green: g / 255, blue: b / 255) }
+    private static let red = Color(red: 1, green: 0.36, blue: 0.4)
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: 7) {
+            rolePill
+            if role == .general { miniBar }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var rolePill: some View {
+        let label = Text(role.title)
+            .font(.system(size: 10.5, weight: .semibold))
+            .lineLimit(1)
+            .padding(.horizontal, 7)
+            .frame(height: 20)
+            .background(Surface.lightAccent.opacity(0.08), in: .capsule)
+            .overlay { Capsule().stroke(Surface.lightAccent.opacity(0.35)) }
+            .foregroundStyle(role == .none ? Surface.textTertiary : Self.rgb(255, 242, 199))
+        return Group {
+            if controller.isLocked {
+                label
+            } else {
+                Menu {
+                    ForEach(DMXFaderRole.allCases, id: \.self) { choice in
+                        Button((choice == role ? "✓ " : "") + choice.title) { controller.setFaderRole(column: column, to: choice) }
+                    }
+                } label: { label }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+            }
+        }
+        .help(controller.isLocked ? "Ce que règle ce fader : \(role.title)" : "Ce que règle ce fader : \(role.title) (cliquer pour le changer)")
+    }
+
+    private var miniBar: some View {
+        VStack(alignment: .leading, spacing: 5) {
             TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
                 let time = DMXClock.now()
                 let colors = dmx.console?.headColors(at: time) ?? []
-                VStack(spacing: 5) {
-                    ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
-                        head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 3) {
+                        ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
+                            head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
+                        }
                     }
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 4)
+                    .background(Self.rgb(38, 40, 46), in: .rect(cornerRadius: 6))
+                    .overlay { RoundedRectangle(cornerRadius: 6).stroke(Self.rgb(58, 61, 69)) }
                     if let info = dmx.console?.alternationInfo(at: time) {
-                        VStack(spacing: 1) {
+                        HStack(spacing: 4) {
                             Circle().fill(Surface.lightAccent).frame(width: 6, height: 6)
                                 .opacity(info.onBeat && !reduceMotion ? 1 : 0.25)
-                            Text("⇄ \(Int(info.bpm.rounded()))")
-                                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                            Text("⇄ \(Int(info.bpm.rounded())) BPM")
+                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Surface.textSecondary)
                         }
                         .help("Alternance : tempo du son en cours (sinon tempo de repli)")
+                        .accessibilityElement(children: .ignore)
                         .accessibilityLabel("Alternance à \(Int(info.bpm.rounded())) battements par minute")
                     }
                 }
             }
             Button("Noir") { controller.blackout() }
                 .buttonStyle(.plain)
-                .font(.system(size: 10.5, weight: .bold))
-                .frame(width: 38, height: 20)
-                .background(Color.black.opacity(0.55), in: .capsule)
-                .overlay { Capsule().stroke(Color.white.opacity(0.18)) }
-                .foregroundStyle(Surface.textPrimary)
+                .font(.system(size: 10.5, weight: .semibold))
+                .padding(.horizontal, 10)
+                .frame(height: 20)
+                .background(Self.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                .overlay { RoundedRectangle(cornerRadius: 6).stroke(Self.red.opacity(0.5), lineWidth: 1) }
+                .foregroundStyle(Self.rgb(255, 225, 226))
                 .interactiveCursor(.link)
                 .help("Éteindre toute la barre en fondu (bouton rond de l'APC)")
         }
-        .frame(width: 38)
     }
 
     private func head(_ index: Int, rgb: RGB?) -> some View {
@@ -1312,11 +1387,11 @@ struct DMXHeadsBar: View {
         let fill = rgb.map { Color(red: Double($0.red) / 255, green: Double($0.green) / 255, blue: Double($0.blue) / 255) } ?? .clear
         return Button { dmx.toggleHead(index) } label: {
             Circle()
-                .fill(Surface.well)
-                .overlay { Circle().fill(fill) }
-                .overlay { Circle().stroke(Color.white.opacity(isOn ? 0.35 : 0.12), lineWidth: 1.5) }
-                .frame(width: 22, height: 22)
-                .opacity(isOn ? 1 : 0.5)
+                .fill(Self.rgb(18, 19, 23))
+                .overlay { Circle().fill(fill).padding(3) }
+                .overlay { Circle().stroke(Self.rgb(74, 77, 85), lineWidth: 1) }
+                .frame(width: 16, height: 16)
+                .opacity(isOn ? 1 : 0.45)
         }
         .buttonStyle(.plain)
         .interactiveCursor(.link)

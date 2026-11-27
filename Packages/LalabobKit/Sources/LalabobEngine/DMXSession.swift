@@ -150,6 +150,14 @@ public final class DMXSession {
             console.play(shown, pad: nil, at: time)
         case .endPreview:
             return
+        case .toggle(let pad):
+            cancelPreview()
+            let look = pad.light?.look ?? Self.fallbackLook(for: pad, headCount: console.rig.profile.headCount)
+            if console.activePad == pad.id {
+                console.fadeToBlack(duration: look.fadeIn, at: time)
+            } else {
+                console.play(look, pad: pad.id, at: time)
+            }
         case .press(let pad, let force):
             cancelPreview()  // un appui ou un Noir pendant l'aperçu l'emporte
             let look = pad.light?.look ?? Self.fallbackLook(for: pad, headCount: console.rig.profile.headCount)

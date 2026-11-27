@@ -141,4 +141,31 @@ struct DMXPreviewTests {
         rig.clock.time += 5
         #expect(head1(rig) == [255, 0, 0])
     }
+
+    @Test("Les points d'un pad : un clic allume, un second éteint en fondu, même en « laisse allumé »")
+    func toggleLight() {
+        let rig = session.makeRig()
+        #expect(rig.controller.pad(at: red0)?.lightRetrigger == .turnOnOnly)
+        rig.controller.toggleLight(at: red0)
+        rig.clock.time += 5
+        #expect(head1(rig) == [255, 0, 0])
+        #expect(rig.controller.dmxActivePad == session.redPad.id)
+        rig.controller.toggleLight(at: red0)
+        #expect(rig.controller.dmxActivePad == nil)
+        rig.clock.time += 5
+        #expect(head1(rig) == [0, 0, 0])
+    }
+
+    @Test("Les points marchent verrouillé ; sans effet en mode LightKey ou sur un son")
+    func toggleLightLockedAndRefused() {
+        let locked = session.makeRig(locked: true)
+        locked.controller.toggleLight(at: red0)
+        #expect(locked.controller.dmxActivePad == session.redPad.id)
+        let lightKey = session.makeRig(mode: .lightKey)
+        lightKey.controller.toggleLight(at: red0)
+        #expect(lightKey.session.console == nil)
+        let rig = session.makeRig()
+        rig.controller.toggleLight(at: GridPosition(column: 0, row: 0))
+        #expect(rig.controller.dmxActivePad == nil)
+    }
 }

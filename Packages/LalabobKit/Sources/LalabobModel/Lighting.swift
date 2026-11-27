@@ -28,7 +28,7 @@ public struct LightingSettings: Codable, Sendable, Equatable {
 
 /// Rôle du fader d'une colonne lumière en mode Projecteurs (plan J14, piste C).
 public enum DMXFaderRole: String, Codable, Sendable, CaseIterable {
-    /// Gradateur général de la barre.
+    /// Intensité de toute la barre (le gradateur général).
     case general
     /// Rotation des couleurs sur la roue.
     case colors
@@ -39,7 +39,7 @@ public enum DMXFaderRole: String, Codable, Sendable, CaseIterable {
 
     public var title: String {
         switch self {
-        case .general: "Général"
+        case .general: "Intensité"
         case .colors: "Couleurs"
         case .strobeSpeed: "Strobo"
         case .none: "Aucun"
