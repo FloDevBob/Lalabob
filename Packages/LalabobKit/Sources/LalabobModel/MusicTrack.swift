@@ -90,7 +90,9 @@ extension Show {
     /// fonction récente reste lisible par une app plus ancienne. 4 s'il sert au DMX (mode, appareil réglé ou état lumineux),
     /// 3 s'il contient une grille Apple Music ou un pad Music, sinon 2.
     public var requiredFormatVersion: Int {
-        let usesDMX = lighting != LightingSettings() || allPads.contains { $0.light?.look != nil }
+        let usesDMX =
+            lighting != LightingSettings() || allPads.contains { $0.light?.look != nil }
+            || grids.contains { ($0.columns + $0.parkedColumns.map(\.column)).contains { $0.faderRole != nil } }
         if usesDMX { return 4 }
         let usesMusic = grids.contains { grid in
             grid.kind == .appleMusic || grid.columns.contains { $0.kind == .music }

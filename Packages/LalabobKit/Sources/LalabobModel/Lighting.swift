@@ -24,6 +24,29 @@ public struct LightingSettings: Codable, Sendable, Equatable {
     }
 }
 
+// MARK: - Rôle du fader d'une colonne lumière
+
+/// Rôle du fader d'une colonne lumière en mode Projecteurs (plan J14, piste C).
+public enum DMXFaderRole: String, Codable, Sendable, CaseIterable {
+    /// Gradateur général de la barre.
+    case general
+    /// Rotation des couleurs sur la roue.
+    case colors
+    /// Vitesse du strobo réglée en direct.
+    case strobeSpeed
+    /// Ce fader ne règle rien.
+    case none
+
+    public var title: String {
+        switch self {
+        case .general: "Général"
+        case .colors: "Couleurs"
+        case .strobeSpeed: "Strobo"
+        case .none: "Aucun"
+        }
+    }
+}
+
 // MARK: - Couleurs
 
 /// Une couleur de la roue : **teinte** (0 à moins de 360°) et **saturation** (0 = blanc, 1 = le plus intense).

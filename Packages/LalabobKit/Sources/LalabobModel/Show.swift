@@ -260,10 +260,13 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     public var isFaderPaired: Bool
     /// Filtre DJ de la colonne son (`FilterCurve`), de −1 (passe-bas) à +1 (passe-haut) ; 0 = neutre, son intact.
     public var filter: Double
+    /// Colonne lumière, mode Projecteurs : ce que règle son fader (clic droit sur la carte). `nil` = le rôle par défaut, selon
+    /// l'ordre des colonnes lumière de la grille (1re : Général, 2e : Couleurs, les suivantes : aucun). Absent des anciens fichiers.
+    public var faderRole: DMXFaderRole?
 
     public init(
         id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?], isFaderPaired: Bool = false,
-        filter: Double = 0
+        filter: Double = 0, faderRole: DMXFaderRole? = nil
     ) {
         self.id = id
         self.name = name
@@ -272,9 +275,10 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
         self.slots = slots
         self.isFaderPaired = isFaderPaired
         self.filter = filter
+        self.faderRole = faderRole
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired, filter }
+    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired, filter, faderRole }
 
     /// Les spectacles d'avant l'appairage des faders n'ont pas `isFaderPaired` : ils s'ouvrent non appairés.
     /// Ceux d'avant le filtre de colonne n'ont pas `filter` : ils s'ouvrent au neutre.
@@ -287,6 +291,7 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
         slots = try container.decode([Pad?].self, forKey: .slots)
         isFaderPaired = try container.decodeIfPresent(Bool.self, forKey: .isFaderPaired) ?? false
         filter = try container.decodeIfPresent(Double.self, forKey: .filter) ?? 0
+        faderRole = try container.decodeIfPresent(DMXFaderRole.self, forKey: .faderRole)
     }
 
     public static func empty(name: String, kind: ColumnKind) -> Column {

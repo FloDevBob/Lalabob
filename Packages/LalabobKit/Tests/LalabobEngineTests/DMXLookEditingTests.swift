@@ -98,3 +98,98 @@ struct DMXLookEditingTests {
         #expect(!rig.controller.toggleFavoriteColor(LightColor(hue: 355, saturation: 0.5)))
     }
 }
+
+/// Rôle des faders des colonnes lumière (étape 4d).
+@MainActor
+@Suite("Rôle des faders lumière")
+struct DMXFaderRoleTests {
+    let session = DMXSessionTests()
+
+    @Test("Par défaut : 1re colonne lumière = Général, 2e = Couleurs")
+    func defaults() {
+        let rig = session.makeRig()
+        let grid = rig.controller.currentGrid
+        #expect(DMXFaderRole.roles(for: grid) == [6: .general, 7: .colors])
+    }
+
+    @Test("Changer le rôle de la 2e colonne en Strobo, d'une seule annulation")
+    func changeRole() {
+        let rig = session.makeRig()
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        rig.controller.undoManager = undo
+        #expect(rig.controller.setFaderRole(column: 7, to: .strobeSpeed))
+        #expect(DMXFaderRole.roles(for: rig.controller.currentGrid)[7] == .strobeSpeed)
+        undo.undo()
+        #expect(DMXFaderRole.roles(for: rig.controller.currentGrid)[7] == .colors)
+    }
+
+    @Test("Aucun : le fader ne règle plus rien")
+    func noRole() {
+        let rig = session.makeRig()
+        #expect(rig.controller.setFaderRole(column: 7, to: .none))
+        #expect(DMXFaderRole.roles(for: rig.controller.currentGrid)[7] == nil)
+    }
+
+    @Test("Une colonne qui prend un rôle déjà tenu reprend son niveau : la lumière ne bouge pas")
+    func adoptsLevel() {
+        let rig = session.makeRig()
+        rig.controller.setLightFader(column: 6, level: 0.4)  // Général à 40 %
+        #expect(rig.controller.setFaderRole(column: 7, to: .general))
+        #expect(rig.controller.currentGrid.columns[7].level == 0.4)
+        // Même rôle = même réglage : bouger l'un bouge l'autre.
+        rig.controller.setLightFader(column: 7, level: 0.9)
+        #expect(rig.controller.currentGrid.columns[6].level == 0.9)
+    }
+
+    @Test("Une colonne son n'a pas de rôle ; verrouillé, refusé")
+    func refused() {
+        let rig = session.makeRig()
+        #expect(!rig.controller.setFaderRole(column: 0, to: .general))
+        let locked = session.makeRig(locked: true)
+        #expect(!locked.controller.setFaderRole(column: 7, to: .none))
+    }
+
+    @Test("La console suit le rôle choisi : fader 7 réglé en Strobo")
+    func consoleFollowsRole() {
+        let rig = session.makeRig()
+        rig.controller.setFaderRole(column: 7, to: .strobeSpeed)
+        rig.controller.setLightFader(column: 7, level: 0.5)
+        #expect(rig.session.console?.strobeOverride == 0.5)
+    }
+}
+
+@Suite("Tempo de l'alternance affiché")
+struct AlternationInfoTests {
+    func console(playing content: LightLook.Content?) -> LightConsole {
+        var console = LightConsole(rig: DMXRig(address: 1))
+        if let content { console.play(LightLook(fadeIn: 0, content: content), pad: UUID(), at: 0) }
+        return console
+    }
+
+    @Test("Alternance au tempo de repli : 120 BPM, le point bat sur le temps")
+    func fallbackTempo() {
+        let red = LightColor(hue: 0, saturation: 1)
+        let content = LightLook.Content.alternate(
+            AlternateLook(a: red, b: .white, every: .beat, switchFade: 0, fallbackBPM: 120))
+        let console = console(playing: content)
+        #expect(console.alternationInfo(at: 0.1)?.bpm == 120)
+        #expect(console.alternationInfo(at: 0.1)?.onBeat == true)  // le temps dure 0,5 s
+        #expect(console.alternationInfo(at: 0.4)?.onBeat == false)
+    }
+
+    @Test("Le tempo du son en cours prime sur le repli")
+    func soundTempoWins() {
+        let content = LightLook.Content.alternate(
+            AlternateLook(a: .white, b: .white, every: .beat, switchFade: 0, fallbackBPM: 120))
+        var console = console(playing: content)
+        console.beatClock = LightConsole.BeatClock(bpm: 90, origin: 0)
+        #expect(console.alternationInfo(at: 10)?.bpm == 90)
+    }
+
+    @Test("Hors alternance : rien à afficher")
+    func notAlternating() {
+        #expect(console(playing: nil).alternationInfo(at: 1) == nil)
+        #expect(console(playing: .soundActive(sensitivity: 0.5)).alternationInfo(at: 1) == nil)
+    }
+}

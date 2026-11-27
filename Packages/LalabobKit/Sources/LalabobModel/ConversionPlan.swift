@@ -129,7 +129,10 @@ extension Column {
         } else if !self.kind.hasAudio {
             column.level = 0.8
         }
-        if self.kind == .light, kind != .light { column.isFaderPaired = false }
+        if self.kind == .light, kind != .light {
+            column.isFaderPaired = false
+            column.faderRole = nil  // le rôle d'un fader de projecteurs n'a plus de sens
+        }
         return column
     }
 }

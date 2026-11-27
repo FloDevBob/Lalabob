@@ -153,6 +153,17 @@ public struct LightConsole: DMXFrameSource, Equatable {
         return frame
     }
 
+    /// Quand une alternance joue : son tempo (celui du son en cours, sinon le tempo de repli) et si l'on est sur un temps
+    /// (pour le point qui bat sur la carte Général). `nil` pour tout autre état.
+    public func alternationInfo(at time: Double) -> (bpm: Double, onBeat: Bool)? {
+        guard case .look(let look, _, let start) = scene, case .alternate(let alternate) = look.content else { return nil }
+        let bpm = min(max(beatClock?.bpm ?? alternate.fallbackBPM, 20), 400)
+        let elapsed = beatClock.map { time + rig.lightLead - $0.origin } ?? max(time - start, 0)
+        let beat = 60 / bpm
+        let phase = (elapsed / beat).truncatingRemainder(dividingBy: 1)
+        return (bpm, (phase < 0 ? phase + 1 : phase) < 0.3)
+    }
+
     /// Couleur de chaque projecteur telle que la barre la montre (gradateur compris), pour la mini-barre de l'écran.
     /// Un programme de la barre choisit ses couleurs lui-même : elles sont alors inconnues (noires ici).
     public func headColors(at time: Double) -> [RGB] {
@@ -284,20 +295,24 @@ public struct LightConsole: DMXFrameSource, Equatable {
     private static func byte(_ value: Double) -> UInt8 { value.isNaN ? 0 : UInt8(min(max(value, 0), 255).rounded()) }
 }
 
-/// Rôle du fader d'une colonne lumière en mode Projecteurs (plan J14, piste C).
-public enum DMXFaderRole: String, Sendable, CaseIterable {
-    /// Gradateur général de la barre.
-    case general
-    /// Rotation des couleurs sur la roue.
-    case colors
-    /// Vitesse du strobo réglée en direct.
-    case strobeSpeed
-
-    /// Rôles des faders des colonnes lumière d'une grille, par défaut : la 1re colonne lumière est **Général**, la 2e
-    /// **Couleurs**, les suivantes n'ont pas de rôle (absentes). Choisir un autre rôle viendra avec l'interface (étape 4).
+extension DMXFaderRole {
+    /// Rôle du fader de chaque colonne lumière d'une grille (clé = numéro de colonne ; « Aucun » absent). Une colonne sans rôle
+    /// choisi prend celui de son rang parmi les colonnes lumière : la 1re est **Général**, la 2e **Couleurs**, les suivantes
+    /// n'ont pas de rôle. Deux colonnes au même rôle règlent la même chose.
     public static func roles(for grid: PadGrid) -> [Int: DMXFaderRole] {
         let lightColumns = grid.columns.indices.filter { grid.columns[$0].kind == .light }
-        return Dictionary(uniqueKeysWithValues: zip(lightColumns, [DMXFaderRole.general, .colors]))
+        var result: [Int: DMXFaderRole] = [:]
+        for (rank, index) in lightColumns.enumerated() {
+            let fallback: DMXFaderRole = rank == 0 ? .general : rank == 1 ? .colors : .none
+            let role = grid.columns[index].faderRole ?? fallback
+            if role != .none { result[index] = role }
+        }
+        return result
+    }
+
+    /// Rôle effectif d'une colonne (`.none` si elle n'a pas de rôle ou n'est pas une colonne lumière).
+    public static func role(ofColumn column: Int, in grid: PadGrid) -> DMXFaderRole {
+        roles(for: grid)[column] ?? .none
     }
 }
 
@@ -308,9 +323,11 @@ extension Show {
     mutating func alignDMXFaders(from grid: Int, column: Int) {
         guard grids.indices.contains(grid), let role = DMXFaderRole.roles(for: grids[grid])[column] else { return }
         let level = grids[grid].columns[column].level
-        for index in grids.indices where index != grid {
-            guard let target = DMXFaderRole.roles(for: grids[index]).first(where: { $0.value == role })?.key else { continue }
-            grids[index].columns[target].level = level
+        for index in grids.indices {
+            for (target, targetRole) in DMXFaderRole.roles(for: grids[index]) where targetRole == role {
+                if index == grid, target == column { continue }
+                grids[index].columns[target].level = level  // même rôle = même réglage, dans cette grille comme dans les autres
+            }
         }
     }
 

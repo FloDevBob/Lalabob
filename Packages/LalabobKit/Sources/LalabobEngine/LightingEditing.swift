@@ -78,4 +78,30 @@ extension ShowController {
             return true
         }
     }
+
+    // MARK: - Rôle des faders lumière (étape 4d)
+
+    /// Choisit ce que règle le fader d'une colonne lumière de la grille affichée (Général, Couleurs, Strobo, Aucun). La colonne
+    /// reprend le niveau déjà réglé pour ce rôle, pour que la lumière ne bouge pas. Une annulation ; refusé verrouillé.
+    @discardableResult
+    public func setFaderRole(column: Int, to role: DMXFaderRole) -> Bool {
+        commit("Rôle du fader") { show, grid in
+            guard show.grids[grid].columns.indices.contains(column), show.grids[grid].columns[column].kind == .light,
+                DMXFaderRole.role(ofColumn: column, in: show.grids[grid]) != role
+            else { return false }
+            show.grids[grid].columns[column].faderRole = role
+            if role != .none {
+                // Le niveau déjà réglé pour ce rôle (dans cette grille d'abord, puis dans les autres).
+                let ordered = [grid] + show.grids.indices.filter { $0 != grid }
+                for index in ordered {
+                    let holder = DMXFaderRole.roles(for: show.grids[index]).first { $0.value == role && !(index == grid && $0.key == column) }
+                    if let holder {
+                        show.grids[grid].columns[column].level = show.grids[index].columns[holder.key].level
+                        break
+                    }
+                }
+            }
+            return true
+        }
+    }
 }

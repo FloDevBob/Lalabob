@@ -1,4 +1,5 @@
 import AppKit
+import LalabobDMX
 import LalabobDesign
 import LalabobEngine
 import LalabobModel
@@ -76,13 +77,31 @@ struct ColumnView: View {
     @State private var renameRequest = 0
     /// « Intensité 75 % » : l'intensité des projecteurs de la colonne (le CC MIDI n'est pas affiché, voir docs/LEXIQUE.md).
     private func lightValueText(_ column: Column) -> String {
-        "Intensité \(Int((column.level * 100).rounded())) %"
+        let percent = Int((column.level * 100).rounded())
+        guard controller.isDMXLighting else { return "Intensité \(percent) %" }
+        // Mode Projecteurs : le fader a un rôle (Général, Couleurs, Strobo), écrit sur la carte.
+        let role = DMXFaderRole.role(ofColumn: index, in: controller.currentGrid)
+        return role == .none ? "Sans rôle" : "\(role.title) \(percent) %"
     }
 
     @Environment(ShowController.self) private var controller
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let index: Int
     let onPress: () -> Void
+
+    /// Clic droit sur la carte d'un fader lumière (mode Projecteurs) : ce que règle ce fader.
+    @ViewBuilder
+    private func faderRoleMenu(current: DMXFaderRole) -> some View {
+        Section("Ce que règle ce fader") {
+            ForEach(DMXFaderRole.allCases, id: \.self) { role in
+                Button {
+                    controller.setFaderRole(column: index, to: role)
+                } label: {
+                    Text((role == current ? "✓ " : "") + role.title)
+                }
+            }
+        }
+    }
 
     /// Petit bouton « stop » à côté du volume d'une colonne son : arrête tous les sons de la colonne. Sur l'APC mini mk2,
     /// le bouton rond rouge sous la colonne fait la même chose. Les colonnes lumière n'en ont pas.
@@ -218,18 +237,25 @@ struct ColumnView: View {
                         )
                     }
                 } else {
-                    VerticalFader(
-                        name: column.name,
-                        level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
-                        valueText: lightValueText(column),
-                        defaultLevel: 1,
-                        hardwareMarker: controller.waitingFaders[index]
-                    ) {
-                        Icon.sun.view(size: 16)
-                            .foregroundStyle(Surface.lightAccent)
-                            .opacity(0.25 + 0.75 * column.level)
-                            .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
+                    let role = controller.isDMXLighting ? DMXFaderRole.role(ofColumn: index, in: controller.currentGrid) : nil
+                    HStack(alignment: .top, spacing: 8) {
+                        VerticalFader(
+                            name: column.name,
+                            level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
+                            valueText: lightValueText(column),
+                            defaultLevel: 1,
+                            hardwareMarker: controller.waitingFaders[index]
+                        ) {
+                            Icon.sun.view(size: 16)
+                                .foregroundStyle(Surface.lightAccent)
+                                .opacity(0.25 + 0.75 * column.level)
+                                .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
+                        }
+                        .opacity(role == DMXFaderRole.none ? 0.5 : 1)
+                        // La carte dont le fader est Général porte la mini-barre : les 4 projecteurs et le Noir.
+                        if role == .general { DMXHeadsBar() }
                     }
+                    .contextMenu { if role != nil, !controller.isLocked { faderRoleMenu(current: role ?? .none) } }
                 }
             }
             .padding(.vertical, 10)
@@ -1219,5 +1245,68 @@ struct LookDotsView: View {
         RoundedRectangle(cornerRadius: 2)
             .fill(LinearGradient(colors: [.red, .yellow, .green, .blue, .purple], startPoint: .leading, endPoint: .trailing))
             .frame(width: 22, height: 5)
+    }
+}
+
+
+/// Mini-barre de la carte **Général** (mode Projecteurs, J14 étape 4d) : les projecteurs tels que la barre les montre
+/// (couleur et intensité réelles, fondus compris), un clic en allume ou coupe un en fondu sans toucher au pad, un bouton Noir,
+/// et le tempo quand une alternance joue.
+struct DMXHeadsBar: View {
+    @Environment(ShowController.self) private var controller
+    @Environment(DMXSession.self) private var dmx
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(spacing: 5) {
+            TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
+                let time = DMXClock.now()
+                let colors = dmx.console?.headColors(at: time) ?? []
+                VStack(spacing: 5) {
+                    ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
+                        head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
+                    }
+                    if let info = dmx.console?.alternationInfo(at: time) {
+                        VStack(spacing: 1) {
+                            Circle().fill(Surface.lightAccent).frame(width: 6, height: 6)
+                                .opacity(info.onBeat && !reduceMotion ? 1 : 0.25)
+                            Text("⇄ \(Int(info.bpm.rounded()))")
+                                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                                .foregroundStyle(Surface.textSecondary)
+                        }
+                        .help("Alternance : tempo du son en cours (sinon tempo de repli)")
+                        .accessibilityLabel("Alternance à \(Int(info.bpm.rounded())) battements par minute")
+                    }
+                }
+            }
+            Button("Noir") { controller.blackout() }
+                .buttonStyle(.plain)
+                .font(.system(size: 10.5, weight: .bold))
+                .frame(width: 38, height: 20)
+                .background(Color.black.opacity(0.55), in: .capsule)
+                .overlay { Capsule().stroke(Color.white.opacity(0.18)) }
+                .foregroundStyle(Surface.textPrimary)
+                .interactiveCursor(.link)
+                .help("Éteindre toute la barre en fondu (bouton rond de l'APC)")
+        }
+        .frame(width: 38)
+    }
+
+    private func head(_ index: Int, rgb: RGB?) -> some View {
+        let isOn = dmx.console?.isHeadOn(index) ?? true
+        let fill = rgb.map { Color(red: Double($0.red) / 255, green: Double($0.green) / 255, blue: Double($0.blue) / 255) } ?? .clear
+        return Button { dmx.toggleHead(index) } label: {
+            Circle()
+                .fill(Surface.well)
+                .overlay { Circle().fill(fill) }
+                .overlay { Circle().stroke(Color.white.opacity(isOn ? 0.35 : 0.12), lineWidth: 1.5) }
+                .frame(width: 22, height: 22)
+                .opacity(isOn ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help("Projecteur \(index + 1) : cliquer pour l'allumer ou le couper en fondu (le pad ne change pas)")
+        .accessibilityLabel("Projecteur \(index + 1)")
+        .accessibilityValue(isOn ? "allumé" : "coupé")
     }
 }
