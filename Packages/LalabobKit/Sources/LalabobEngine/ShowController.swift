@@ -481,7 +481,7 @@ public final class ShowController {
 
     public func togglePause(at position: GridPosition) {
         if let pad = pad(at: position), pad.music != nil {
-            if playback[pad.id]?.state.isActive == true { musicPlayer?.press(pad, owner: self) }
+            if playback[pad.id]?.state.isActive == true { musicPlayer?.togglePause(pad, owner: self) }
             return
         }
         guard let pad = pad(at: position), pad.audio != nil else { return }
@@ -492,6 +492,10 @@ public final class ShowController {
     /// (ou cue lumière envoyée). Marche aussi verrouillé : c'est du jeu, pas de l'édition.
     public func togglePlaybackOfSelection() {
         guard let position = selection, let pad = pad(at: position) else { return }
+        if pad.music != nil {  // un morceau : pause / reprise ; arrêté, il démarre
+            musicPlayer?.togglePause(pad, owner: self)
+            return
+        }
         if pad.audio != nil, playback[pad.id]?.state.isActive == true {
             commands.yield(.togglePause(pad.id))
         } else {
@@ -502,7 +506,7 @@ public final class ShowController {
     /// Bouton lecture / stop d'un pad son : arrête un son qui joue, reprend un son en pause, lance un son à l'arrêt.
     /// Marche aussi verrouillé (c'est du jeu). Sans effet sur une case vide ou une cue lumière.
     public func togglePlayStop(at position: GridPosition) {
-        if let pad = pad(at: position), pad.music != nil { return play(at: position) }  // un morceau : lecture / pause / reprise
+        if let pad = pad(at: position), pad.music != nil { return play(at: position) }  // un morceau : lecture / stop (ou reprise s'il est en pause)
         guard let pad = pad(at: position), pad.audio != nil else { return }
         switch playback[pad.id]?.state {
         case .playing: stop(at: position)

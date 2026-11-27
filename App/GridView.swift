@@ -803,14 +803,14 @@ struct PadView: View {
         .help(isPlaying ? "Arrêter ce son" : event?.state.isPaused == true ? "Reprendre ce son" : "Lancer ce son")
     }
 
-    /// Pad Apple Music : un bouton rond lecture / pause (le morceau ne s'arrête qu'au stop de colonne, à Échap ou à sa fin).
+    /// Pad Apple Music : un bouton rond lecture / stop, comme un appui sur le pad (stop en fondu de 1 s ; en pause : reprise).
     private func musicButton(_ pad: Pad, event: PlaybackEvent?) -> some View {
         let isPlaying: Bool = if case .playing = event?.state { true } else { false }
         let size = Self.buttonSize(for: density)
         return Button {
             controller.togglePlayStop(at: position)
         } label: {
-            (isPlaying ? Icon.pauseFill : Icon.playFill).view(size: size * 0.5)
+            (isPlaying ? Icon.stopFill : Icon.playFill).view(size: size * 0.5)
                 .frame(width: size, height: size)
                 .background(isPlaying ? pad.tint.vividColor : pad.tint.labelColor.opacity(0.18), in: .circle)
                 .foregroundStyle(isPlaying ? pad.tint.surfaceColor : pad.tint.labelColor)
@@ -818,8 +818,8 @@ struct PadView: View {
         }
         .buttonStyle(.plain)
         .interactiveCursor(.link)
-        .help(isPlaying ? "Mettre le morceau en pause" : event?.state.isPaused == true ? "Reprendre le morceau" : "Jouer le morceau dans Apple Music")
-        .accessibilityLabel(isPlaying ? "Pause" : "Lecture")
+        .help(isPlaying ? "Arrêter le morceau (fondu)" : event?.state.isPaused == true ? "Reprendre le morceau" : "Jouer le morceau dans Apple Music, depuis le début")
+        .accessibilityLabel(isPlaying ? "Arrêter" : "Lecture")
     }
 
     /// Morceau dans le nuage (Internet nécessaire) ou plus dans la bibliothèque de Music.

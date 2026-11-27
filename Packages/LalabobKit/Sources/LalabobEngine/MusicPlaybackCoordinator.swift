@@ -62,6 +62,11 @@ public final class MusicPlaybackCoordinator {
     public private(set) var isFading = false
 
     @ObservationIgnored private var currentTrackID: String?
+    /// Instant (uptime) du dernier départ, et lectures de suite qui disent le morceau fini (voir `poll`).
+    @ObservationIgnored private var startedAt: TimeInterval = 0
+    @ObservationIgnored private var endReadings = 0
+    /// Délai après un départ pendant lequel une fin annoncée par Music n'est pas crue.
+    public var startGrace: TimeInterval = 1.5
     @ObservationIgnored private var duration: TimeInterval = 0
     @ObservationIgnored private var position: TimeInterval = 0
     /// Volume demandé par le 9e fader (0 à 100), `nil` tant qu'il n'a pas bougé.
@@ -154,8 +159,22 @@ public final class MusicPlaybackCoordinator {
 
     // MARK: Gestes
 
-    /// Appui sur un pad Apple Music (contrôleur, double-clic, bouton du pad, Espace, Retour).
+    /// Appui sur un pad Apple Music (contrôleur, double-clic, bouton du pad) — décision du 27/11/2026 : un morceau qui joue
+    /// **s'arrête** (fondu de 1 s) ; en pause, il **reprend** ; arrêté, il **repart du début**.
     public func press(_ pad: Pad, owner: ShowController) {
+        guard let track = pad.music else { return }
+        if pad.id == currentPad, self.owner === owner {
+            switch state {
+            case .playing: return stopCurrent(fade: stopFadeDuration)
+            case .paused: return resume()
+            case .stopped: break
+            }
+        }
+        start(padID: pad.id, track: track, owner: owner)
+    }
+
+    /// Pause / reprise (barre du bas, Espace) ; un morceau arrêté démarre.
+    public func togglePause(_ pad: Pad, owner: ShowController) {
         guard let track = pad.music else { return }
         if pad.id == currentPad, self.owner === owner {
             switch state {
@@ -237,6 +256,8 @@ public final class MusicPlaybackCoordinator {
             guard gen == generation else { return }
             currentPad = padID
             currentTrackID = track.persistentID
+            startedAt = ProcessInfo.processInfo.systemUptime
+            endReadings = 0
             duration = track.duration
             position = 0
             state = .playing
@@ -330,13 +351,23 @@ public final class MusicPlaybackCoordinator {
     }
 
     private func poll() async {
-        guard currentPad != nil, !isFading, let snapshot = try? await player.snapshot() else { return }
-        guard currentPad != nil else { return }
-        // Fin du morceau, ou Music joue autre chose (quelqu'un a changé de morceau dans Music) : le pad s'éteint.
+        guard currentPad != nil, !isFading else { return }
+        let gen = generation
+        let expected = currentTrackID
+        guard let snapshot = try? await player.snapshot() else { return }
+        // Bug du 27/11/2026 : une réponse partie avant un autre geste (changement de morceau, pause…) et revenue après est
+        // périmée ; la prendre au mot éteignait le nouveau pad alors que Music le jouait. On l'ignore.
+        guard gen == generation, expected == currentTrackID, currentPad != nil else { return }
+        // Fin du morceau, ou Music joue autre chose (quelqu'un a changé de morceau dans Music) : le pad s'éteint. Mais juste après
+        // un départ, Music annonce encore un instant l'ancien morceau ou « arrêté » : on attend `startGrace`, et deux lectures
+        // de suite qui le disent.
         if snapshot.state == .stopped || snapshot.trackID != currentTrackID {
-            if snapshot.state == .stopped || !snapshot.trackID.isEmpty { clear(publishing: true) }
+            guard ProcessInfo.processInfo.systemUptime - startedAt > startGrace else { return }
+            endReadings += 1
+            if endReadings >= 2, snapshot.state == .stopped || !snapshot.trackID.isEmpty { clear(publishing: true) }
             return
         }
+        endReadings = 0
         await checkBridgeHealth(position: snapshot.position, playing: snapshot.state == .playing)
         let drift = abs(snapshot.position - expectedPosition)
         let changed = snapshot.state != state

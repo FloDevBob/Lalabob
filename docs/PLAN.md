@@ -518,3 +518,9 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   l'agrégat (et non celle annoncée par la capture), entrées de la sortie (ex. MOTU M2) sautées avant le son capté, lecture du tampon à **vitesse
   ajustée** (±1 %, interpolation) au lieu de sauts, avance de ≈ 65 ms, capture relancée au changement de sortie ; **diagnostic** dans le panneau
   (fréquences, coupures, sauts). 3 tests de plus. À réessayer.
+- **Lecture : arrêt au ré-appui, bug de synchro (27/11/2026, branche `j11/lecture-arret-synchro`)** ✅ code. (1) **Bug** (retour d'essai : en enchaînant,
+  un morceau lancé restait affiché arrêté alors que Music le jouait) : une lecture de l'état de Music partie avant un changement de morceau et revenue
+  après éteignait le nouveau pad (et arrêtait le suivi) ; de même, juste après `play`, Music annonce un instant l'ancien morceau. Corrigé : réponse
+  périmée ignorée (numéro de geste et morceau attendu), délai de grâce de 1,5 s après un départ, deux lectures de suite pour conclure à la fin. Deux
+  tests reproduisent le bug. (2) **Comportement** (décision du 27/11) : appui sur un morceau qui joue = **arrêt** en fondu de 1 s, appui suivant =
+  départ au début ; en pause, un appui le **reprend** ; la pause est dans la barre du bas et sur Espace ; bouton du pad = lecture / stop.

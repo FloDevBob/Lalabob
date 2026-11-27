@@ -146,7 +146,8 @@ private struct MusicHeader: View {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
                 Button {
-                    controller.togglePlayStop(at: position)
+                    controller.togglePause(at: position)  // la pause n'existe qu'ici (et Espace) ; arrêté, le morceau démarre
+                    if event == nil { controller.togglePlayStop(at: position) }
                 } label: {
                     (isPlaying ? Icon.pauseFill : Icon.playFill).view(size: 15)
                         .frame(width: 36, height: 36)

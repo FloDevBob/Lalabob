@@ -35,7 +35,7 @@ Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien :
 - **Remplir** (déverrouillé, **Music ouvert**) : panneau de gauche, dossiers et playlists ; Maj-clic / ⌘-clic pour plusieurs morceaux, glisser
   sur une colonne Music : ils se rangent vers le bas puis dans la colonne suivante. ▶ = extrait de 30 s (sans toucher à Music). Onglet
   **Internet** : chercher dans tout Apple Music, « Ajouter… » ouvre le morceau dans Music (cliquer + pour l'ajouter à la bibliothèque).
-- **Jouer** : appui (ou double-clic) = le morceau joue dans Music ; ré-appui = pause / reprise ; un autre pad = fondu enchaîné ; ■ de la colonne =
+- **Jouer** : appui (ou double-clic) = le morceau joue dans Music ; ré-appui = **arrêt** en fondu (1 s), l'appui suivant repart du début ; **pause** : barre du bas ou Espace (un appui sur un morceau en pause le reprend) ; un autre pad = fondu enchaîné ; ■ de la colonne =
   fondu de sortie ; Échap arrête tout. **Un seul morceau à la fois.** Volume : 9e fader de l'APC (volume général de Music).
 - **Avant la représentation** : **télécharger** les morceaux (☁ sur un pad = Internet nécessaire ; « Télécharger les N » dans le panneau).
   « Introuvable » = le morceau n'est plus dans la bibliothèque : en glisser un autre.

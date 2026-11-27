@@ -13,7 +13,7 @@ pads. En scène, un appui (contrôleur ou double-clic) lance le morceau dans l'a
 | Technique | **Apple Events** : Lalabob pilote l'app Music ouverte (pas de compte développeur). MusicKit plus tard, peut-être |
 | Contenu d'une grille Music | Colonnes **Music** + colonnes **lumière** possibles (cues sur le canal LightKey de la grille). Pas de colonne son |
 | Un 2ᵉ pad Music pendant qu'un morceau joue | **Fondu enchaîné** (≈ 1 s) : l'ancien descend, le nouveau démarre et remonte |
-| Ré-appui sur le pad qui joue | **Pause / reprise** |
+| Ré-appui sur le pad qui joue | **Arrêt** en fondu de 1 s ; l'appui suivant repart du début (27/11/2026, remplace « pause / reprise ») ; pause : barre du bas et Espace ; appui sur un morceau en pause = reprise |
 | Fin du morceau | **Silence** : Music n'enchaîne pas la suite de la playlist (`play … with once`) |
 | Pré-écoute dans le panneau | **Extrait de 30 s** d'Apple (internet), joué par Lalabob sur sa pré-écoute, sans toucher à Music |
 | Dépôt de plusieurs morceaux | Depuis la case visée **vers le bas, puis colonne Music suivante** ; cases occupées sautées ; ordre de la playlist |

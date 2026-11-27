@@ -128,7 +128,7 @@ enum HelpContent {
                 "**Créer** : bouton + des onglets › Apple Music (⌥⌘T). Une note rose marque l'onglet.",
                 "**Remplir** : déverrouillé, choisissez une playlist à gauche, sélectionnez des morceaux (Maj-clic, ⌘-clic) et glissez-les sur une colonne Music.",
                 "**Écouter avant** : ▶ joue un extrait de 30 s sans toucher à Music. L'onglet **Internet** cherche dans tout Apple Music ; « Ajouter… » ouvre le morceau dans Music pour l'ajouter.",
-                "**Jouer** : un appui lance le morceau, un autre le met en pause, encore un le reprend. Un autre pad enchaîne en fondu. ■ sous la colonne arrête en fondu, Échap arrête tout.",
+                "**Jouer** : un appui lance le morceau, un autre l'arrête (fondu d'une seconde) ; l'appui suivant repart du début. La **pause** est dans la barre du bas (et Espace) ; un appui sur un morceau en pause le reprend. Un autre pad enchaîne en fondu. ■ sous la colonne arrête en fondu, Échap arrête tout.",
             ]),
             .bullets([
                 "**Volume** : celui de Music, réglé par le 9e fader de l'APC. Pas de volume par pad, pas de fondus ni d'élagage (morceaux protégés).",

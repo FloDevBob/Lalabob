@@ -19,6 +19,17 @@ actor FakeMusicPlayer: MusicPlayerControlling {
     private(set) var resumes = 0
     private(set) var stops = 0
 
+    /// Retards de Music relevés en vrai : une lecture d'état partie avant un changement de morceau revient après (`snapshotDelay`),
+    /// et juste après `play`, Music annonce encore un instant l'ancien morceau (`staleAfterPlay` lectures).
+    var snapshotDelay: Duration?
+    var staleAfterPlay = 0
+    private var previousSnap = MusicPlayerSnapshot(state: .stopped)
+    private var staleLeft = 0
+    func simulateLag(delay: Duration? = nil, staleAfterPlay: Int = 0) {
+        snapshotDelay = delay
+        self.staleAfterPlay = staleAfterPlay
+    }
+
     func configure(running: Bool = true, library: Set<String>) {
         self.running = running
         self.library = library
@@ -28,6 +39,8 @@ actor FakeMusicPlayer: MusicPlayerControlling {
     func play(trackID: String) async throws -> Bool {
         guard library.contains(trackID) else { return false }
         plays.append(trackID)
+        previousSnap = snap
+        staleLeft = staleAfterPlay
         snap = MusicPlayerSnapshot(state: .playing, trackID: trackID, position: 0)
         return true
     }
@@ -35,7 +48,15 @@ actor FakeMusicPlayer: MusicPlayerControlling {
     func resume() async throws { resumes += 1; snap.state = .playing }
     func stop() async throws { stops += 1; snap = MusicPlayerSnapshot(state: .stopped) }
     func seek(to seconds: TimeInterval) async throws { snap.position = seconds }
-    func snapshot() async throws -> MusicPlayerSnapshot { snap }
+    func snapshot() async throws -> MusicPlayerSnapshot {
+        if staleLeft > 0 {
+            staleLeft -= 1
+            return previousSnap
+        }
+        let taken = snap
+        if let snapshotDelay { try? await Task.sleep(for: snapshotDelay) }
+        return taken
+    }
     func volume() async throws -> Int? { currentVolume }
     func setVolume(_ percent: Int) async throws { currentVolume = percent; volumes.append(percent) }
 }
@@ -63,14 +84,15 @@ struct MusicPlaybackTests {
         music.stopAllFadeDuration = 0.05
         music.rampStep = 0.01
         music.pollInterval = .milliseconds(20)
+        music.startGrace = 0.2
         controller.musicPlayer = music
         return (controller, music, fake)
     }
 
     private func state(_ controller: ShowController, _ pad: Pad) -> PlaybackState? { controller.playback[pad.id]?.state }
 
-    @Test("Double-clic (verrouillé) : le morceau part une fois ; ré-appui : pause ; encore : reprise")
-    func playPauseResume() async {
+    @Test("Appui : le morceau part ; ré-appui : arrêt en fondu ; encore : départ au début (décision du 27/11/2026)")
+    func pressStopsThenRestarts() async {
         let (controller, music, fake) = await makeRig()
         controller.audition(at: Self.a)
         #expect(await waitUntil { await fake.plays == ["0A"] })
@@ -78,11 +100,28 @@ struct MusicPlaybackTests {
         if case .playing? = state(controller, first) {} else { Issue.record("le pad doit être en lecture") }
         #expect(controller.playback[first.id]?.duration == 160)
         controller.audition(at: Self.a)
+        #expect(await waitUntil { await fake.stops == 1 })
+        #expect(await waitUntil { await controller.playback[self.first.id] == nil })
+        #expect(await fake.pauses == 0)
+        controller.audition(at: Self.a)
+        #expect(await waitUntil { await fake.plays == ["0A", "0A"] })  // repart du début
+    }
+
+    @Test("Pause seulement par la barre du bas ou Espace ; un appui sur le pad en pause le reprend")
+    func pauseFromBarThenPress() async {
+        let (controller, music, fake) = await makeRig()
+        controller.selection = Self.a
+        controller.togglePlaybackOfSelection()  // Espace : arrêté → départ
+        #expect(await waitUntil { await music.state == .playing })
+        controller.togglePause(at: Self.a)  // barre du bas : pause
         #expect(await waitUntil { await fake.pauses == 1 })
         #expect(await waitUntil { if case .paused? = await self.state(controller, self.first) { true } else { false } })
-        controller.audition(at: Self.a)
+        controller.audition(at: Self.a)  // appui sur le pad en pause : reprise
         #expect(await waitUntil { await fake.resumes == 1 })
         #expect(await waitUntil { await music.state == .playing })
+        controller.togglePlaybackOfSelection()  // Espace : pause
+        #expect(await waitUntil { await fake.pauses == 2 })
+        #expect(await fake.stops == 0)
     }
 
     @Test("Un autre pad pendant un morceau : fondu enchaîné (le volume descend à 0 puis remonte), l'ancien pad s'éteint")
@@ -175,5 +214,35 @@ struct MusicPlaybackTests {
         _ = await waitUntil { await controller.connectedController == .apcMiniMK2 }
         await transport.receive([.noteOn(channel: 0, note: 56, velocity: 127)], from: ControllerSessionTests.apcSource.id)  // case (0, 0)
         #expect(await waitUntil { await fake.plays == ["0A"] })
+    }
+
+    // MARK: Bug du 27/11/2026 : un morceau lancé en enchaînant reste affiché « arrêté » alors que Music le joue.
+
+    @Test("Enchaîner : une lecture d'état partie avant le changement de morceau, revenue après, n'éteint pas le nouveau pad")
+    func inFlightSnapshot() async {
+        let (controller, music, fake) = await makeRig()
+        music.crossfadeDuration = 0
+        await fake.simulateLag(delay: .milliseconds(60))
+        controller.audition(at: Self.a)
+        #expect(await waitUntil { await music.currentPad == self.first.id })
+        try? await Task.sleep(for: .milliseconds(40))  // une lecture d'état est en route
+        controller.audition(at: Self.b)
+        #expect(await waitUntil { await fake.plays == ["0A", "0B"] })
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(music.currentPad == second.id)
+        #expect(controller.playback[second.id] != nil)
+    }
+
+    @Test("Juste après le départ, Music annonce encore l'ancien morceau : le nouveau pad reste en lecture")
+    func staleRightAfterPlay() async {
+        let (controller, music, fake) = await makeRig()
+        await fake.simulateLag(staleAfterPlay: 3)
+        controller.audition(at: Self.a)
+        #expect(await waitUntil { await music.currentPad == self.first.id })
+        controller.audition(at: Self.b)  // a joue : un appui sur b enchaîne
+        #expect(await waitUntil { await fake.plays == ["0A", "0B"] })
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(music.currentPad == second.id)
+        #expect(controller.playback[second.id] != nil)
     }
 }
