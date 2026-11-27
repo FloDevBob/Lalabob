@@ -529,7 +529,7 @@ ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s 
   (fréquences, coupures, sauts). 3 tests de plus. À réessayer.
 - **Pont audio, fidélité (28/11/2026, branche `j11/pont-audio-fidelite`, retour d'essai : écho et son « pas exactement le même »)** ✅ code, **non essayé à l'oreille**.
   (1) Lecture du tampon **à vitesse fixe**, sans interpolation (la vitesse ajustée faisait onduler la hauteur et ternissait les aigus ; l'horloge est déjà suivie par la capture) ;
-  (2) **tous les processus audio de Music** captés (relevé : Music n'en a qu'un ; `bundleIDs` essayé puis retiré). **Cause de l'écho à l'essai : Audio Hijack captait aussi Music** (deux copies ; et la capture de Lalabob devenait muette, d'où l'option coupée) : aucune autre app ne doit capter Music ;
+  (2) **tous les processus audio de Music** captés (relevé : Music n'en a qu'un ; `bundleIDs` essayé puis retiré). **Cause de l'écho à l'essai : Audio Hijack captait aussi Music** (deux copies ; et la capture de Lalabob devenait muette, d'où l'option coupée) : aucune autre app ne doit capter Music, **avertissement** dans le panneau si Audio Hijack / Loopback / SoundSource / Piezo est ouvert (`CaptureAppConflicts`) ;
   (3) avance 65 → ~43 ms. Tests : sinusoïde identique à la sortie du tampon, vitesse fixe. **À essayer** : ☐ plus d'écho ni de reverb ☐ comparer avec Music direct ☐ diagnostic « N processus captés » ☐ Audio Hijack fermé, option réactivée
   ☐ fader de colonne à fond bas : plus aucun son de Music (sinon, une fuite reste) ☐ coupures / sauts toujours à 0.
 - **Lecture : arrêt au ré-appui, bug de synchro (27/11/2026, branche `j11/lecture-arret-synchro`)** ✅ code. (1) **Bug** (retour d'essai : en enchaînant,

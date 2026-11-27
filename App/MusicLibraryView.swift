@@ -67,6 +67,20 @@ struct MusicLibraryView: View {
                     .textSelection(.enabled)
                 }
             }
+            if musicPlayer.isBridgeEnabled {
+                // Autre app de capture ouverte (Audio Hijack…) : relu chaque seconde, disparaît quand on la ferme.
+                Group {
+                    if let warning = musicPlayer.bridgeWarning {
+                        Text(warning).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .task {
+                    while !Task.isCancelled {
+                        musicPlayer.refreshCaptureConflicts()
+                        try? await Task.sleep(for: .seconds(1))
+                    }
+                }
+            }
             if let problem = musicPlayer.bridgeProblem {
                 Text(problem).font(.system(size: 11)).foregroundStyle(Surface.lightAccent).fixedSize(horizontal: false, vertical: true)
             }

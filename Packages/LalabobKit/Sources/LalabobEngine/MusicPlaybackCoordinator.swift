@@ -38,10 +38,13 @@ public final class MusicPlaybackCoordinator {
     public private(set) var isBridging = false
     /// Pourquoi le pont n'a pas pu servir (affiché dans le panneau) ; `nil` si tout va bien.
     public private(set) var bridgeProblem: String?
+    /// Une autre app de capture est ouverte (Audio Hijack…) : avertissement affiché dans le panneau, le pont démarre quand même.
+    public private(set) var bridgeWarning: String?
     /// Le tampon entre la capture et le moteur.
     @ObservationIgnored public let ring = AudioRingBuffer(capacity: 32_768, latencyFrames: 2_048)  // ≈ 43 ms d’avance à 48 kHz
     @ObservationIgnored private let capture: any MusicAudioCapturing
     @ObservationIgnored private let musicPID: @MainActor () -> pid_t?
+    @ObservationIgnored private let runningBundleIDs: @MainActor () -> [String]
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var bridgeRate: Double = 48_000
     @ObservationIgnored private var bridgeStartedAt: TimeInterval = 0
@@ -83,13 +86,23 @@ public final class MusicPlaybackCoordinator {
         player: any MusicPlayerControlling, capture: any MusicAudioCapturing = ProcessAudioBridge(), defaults: UserDefaults = .standard,
         musicPID: @escaping @MainActor () -> pid_t? = {
             NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Music").first?.processIdentifier
+        },
+        runningBundleIDs: @escaping @MainActor () -> [String] = {
+            NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier)
         }
     ) {
         self.player = player
         self.capture = capture
         self.defaults = defaults
         self.musicPID = musicPID
+        self.runningBundleIDs = runningBundleIDs
         self.isBridgeEnabled = defaults.bool(forKey: Self.bridgeDefaultsKey)
+        refreshCaptureConflicts()
+    }
+
+    /// Relit les apps ouvertes : une app de capture (Audio Hijack…) avec l'option active donne un avertissement.
+    public func refreshCaptureConflicts() {
+        bridgeWarning = isBridgeEnabled ? CaptureAppConflicts.warning(for: CaptureAppConflicts.names(in: runningBundleIDs())) : nil
     }
 
     // MARK: Pont audio
@@ -99,6 +112,7 @@ public final class MusicPlaybackCoordinator {
         isBridgeEnabled = enabled
         defaults.set(enabled, forKey: Self.bridgeDefaultsKey)
         bridgeProblem = nil
+        refreshCaptureConflicts()
         Task {
             if enabled {
                 if await startBridge(), let pad = currentPad {
@@ -115,6 +129,7 @@ public final class MusicPlaybackCoordinator {
     private func startBridge() async -> Bool {
         guard isBridgeEnabled else { return false }
         if isBridging { return true }
+        refreshCaptureConflicts()
         guard let pid = musicPID() else { return false }
         do {
             let info = try await capture.start(pid: pid, outputUID: pendingOwnerOutput ?? owner?.selectedOutputUID, into: ring)
@@ -383,9 +398,14 @@ public final class MusicPlaybackCoordinator {
         if ring.secondsSinceLastWrite > bridgeStaleLimit {
             await stopBridge(reason: "La capture du son de Music s'est arrêtée : Music joue directement.")
         } else if position > bridgeSilenceLimit, ring.secondsSinceLastSound > bridgeSilenceLimit {
-            await stopBridge(reason: "Le son de Music arrive muet dans Lalabob (une autre app capte-t-elle Music, comme Audio Hijack ? morceau protégé ?) : Music joue directement. Option désactivée.")
+            let culprits = CaptureAppConflicts.names(in: runningBundleIDs())
+            let cause = culprits.isEmpty
+                ? "une autre app capte-t-elle Music, comme Audio Hijack ? morceau protégé ?"
+                : "\(ListFormatter.localizedString(byJoining: culprits)) capte sans doute Music"
+            await stopBridge(reason: "Le son de Music arrive muet dans Lalabob (\(cause)) : Music joue directement. Option désactivée.")
             isBridgeEnabled = false
             defaults.set(false, forKey: Self.bridgeDefaultsKey)
+            refreshCaptureConflicts()  // le message nomme déjà l'app : pas d'avertissement en double
         }
     }
 

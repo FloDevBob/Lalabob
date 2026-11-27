@@ -33,7 +33,7 @@ struct MusicBridgeTests {
         let audio: RecordingAudioEngine
     }
 
-    private func makeRig(bridge: Bool = true, refuse: Bool = false) async -> Rig {
+    private func makeRig(bridge: Bool = true, refuse: Bool = false, runningApps: [String] = []) async -> Rig {
         var grid = PadGrid.emptyAppleMusic(name: "M")
         grid[GridPosition(column: 0, row: 0)] = first
         grid[GridPosition(column: 1, row: 0)] = second
@@ -46,7 +46,8 @@ struct MusicBridgeTests {
         let capture = FakeCapture()
         if refuse { await capture.refuse() }
         let music = MusicPlaybackCoordinator(
-            player: player, capture: capture, defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, musicPID: { 42 })
+            player: player, capture: capture, defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, musicPID: { 42 },
+            runningBundleIDs: { runningApps })
         music.crossfadeDuration = 0.1
         music.stopFadeDuration = 0.05
         music.stopAllFadeDuration = 0.05
@@ -139,5 +140,52 @@ struct MusicBridgeTests {
         rig.music.setBridgeEnabled(false)
         #expect(await waitUntil { await rig.capture.stops == 1 })
         #expect(!rig.music.isBridging)
+    }
+
+    @Test("Audio Hijack ouvert : avertissement dès l'activation, le pont démarre quand même")
+    func warnsAboutAudioHijack() async {
+        let rig = await makeRig(runningApps: ["com.apple.Music", "com.rogueamoeba.audiohijack"])
+        #expect(rig.music.bridgeWarning?.contains("Audio Hijack") == true)
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.music.isBridging })
+    }
+
+    @Test("Aucune app de capture : pas d'avertissement ; option coupée : avertissement retiré")
+    func noWarning() async {
+        let clean = await makeRig(runningApps: ["com.apple.Music", "com.apple.finder"])
+        #expect(clean.music.bridgeWarning == nil)
+        let hijacked = await makeRig(runningApps: ["com.rogueamoeba.audiohijack"])
+        hijacked.music.setBridgeEnabled(false)
+        #expect(hijacked.music.bridgeWarning == nil)
+    }
+
+    @Test("Le son capté reste muet avec Audio Hijack ouvert : le message le nomme")
+    func silenceNamesTheCulprit() async {
+        let rig = await makeRig(runningApps: ["com.rogueamoeba.audiohijack"])
+        rig.music.bridgeGrace = 0
+        rig.music.bridgeSilenceLimit = 0.1
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.player.plays == ["0A"] })
+        #expect(await waitUntil { await rig.music.isBridging })
+        try? await rig.player.seek(to: 5)
+        let zeros = [Float](repeating: 0, count: 256)
+        let feeder = Task {
+            while !Task.isCancelled {
+                zeros.withUnsafeBufferPointer { p in rig.music.ring.write(left: p.baseAddress!, right: p.baseAddress!, frames: 256) }
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+        }
+        defer { feeder.cancel() }
+        #expect(await waitUntil { await rig.capture.stops == 1 })
+        #expect(!rig.music.isBridgeEnabled)
+        #expect(rig.music.bridgeProblem?.contains("Audio Hijack") == true)
+    }
+
+    @Test("Détection : identifiants connus, casse et agents compris ; les autres apps ignorées")
+    func detection() {
+        #expect(CaptureAppConflicts.names(in: ["com.rogueamoeba.AudioHijack"]) == ["Audio Hijack"])
+        #expect(CaptureAppConflicts.names(in: ["com.rogueamoeba.audiohijack.agent", "com.rogueamoeba.audiohijack"]) == ["Audio Hijack"])
+        #expect(CaptureAppConflicts.names(in: ["com.rogueamoeba.Loopback", "com.rogueamoeba.soundsource"]) == ["Loopback", "SoundSource"])
+        #expect(CaptureAppConflicts.names(in: ["com.apple.Music", "com.rogueamoeba.farrago"]).isEmpty)
     }
 }

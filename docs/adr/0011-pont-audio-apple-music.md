@@ -36,6 +36,9 @@ macOS (`CATapDescription`, macOS 14.2+) peut **rendre Music muet** pendant qu'on
 - **Cause réelle de l'écho à l'essai** : **Audio Hijack** captait aussi Music et le renvoyait vers la sortie (deux copies décalées). Avec deux
   captures du même processus, celle de Lalabob recevait du silence et coupait l'option (« morceau protégé ? »). Règle d'usage : aucune autre
   app ne doit capter Music quand l'option est active ; le message le dit.
+- **Avertissement** (28/11/2026) : Audio Hijack, Loopback, SoundSource ou Piezo ouverts (`CaptureAppConflicts`, identifiant d'app ;
+  seul Audio Hijack vérifié sur le Mac) → avertissement dans le panneau, relu chaque seconde ; le pont démarre quand même ; si le son arrive muet,
+  le message nomme l'app.
 - Avance ramenée de 65 à ~43 ms (2 048 trames à 48 kHz). Diagnostic du panneau : « N processus captés ».
 - Si l'écho persiste : piste de l'ADR à écrire, rendre le son directement vers la sortie dans la fonction de rappel de l'appareil agrégé
   (sans tampon), au prix de refaire fader, filtre et vumètre hors AVAudioEngine.
