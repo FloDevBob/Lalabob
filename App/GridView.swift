@@ -139,7 +139,7 @@ struct ColumnView: View {
                 .padding(.horizontal, 6)
                 .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight + 20, alignment: .topLeading)
         } else if column.kind.hasAudio || column.kind == .music {  // son, mixte, ou Music par le pont audio
-            HStack(alignment: .top, spacing: 8) {
+            FaderCardRow(faderWidth: 58, minCompanion: 44) {
                 VerticalFader(
                     name: column.name,
                     level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
@@ -147,17 +147,15 @@ struct ColumnView: View {
                 ) {
                     LevelMeter(column: index).frame(width: 14)
                 }
-                // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne. Il prend
-                // la place qui reste, centré, et grandit avec la carte.
-                FaderCompanion { space in
-                    RotaryKnob(
-                        name: column.name,
-                        accent: accentColor(of: column),
-                        value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
-                        onReset: { controller.resetColumnFilter(index) },
-                        size: clampSize(min(space.width * 0.55, space.height - 44), 28, 56)
-                    )
-                }
+            } companion: { space in
+                // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
+                RotaryKnob(
+                    name: column.name,
+                    accent: accentColor(of: column),
+                    value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
+                    onReset: { controller.resetColumnFilter(index) },
+                    size: clampSize(min(space.width - 6, space.height - 44), 28, 56)
+                )
             }
         } else {
             lightContent(column, role: role)
@@ -171,25 +169,24 @@ struct ColumnView: View {
         switch role {
         case .general?:
             // Intensité lumineuse : la barre des 4 projecteurs à la place du potard, le tempo dessous.
-            HStack(alignment: .top, spacing: 6) {
+            FaderCardRow(faderWidth: 44, minCompanion: 62) {
                 VerticalFader(name: column.name, level: level, valueText: lightValueText(column), defaultLevel: 1,
                     hardwareMarker: controller.waitingFaders[index]) { EmptyView() }
-                FaderCompanion { space in
-                    VStack(spacing: 8) {
-                        DMXHeadsBar(lampSize: clampSize(space.width * 0.7 / 4.6, 12, 20))
-                        DMXTempo()
-                    }
+            } companion: { space in
+                VStack(spacing: 8) {
+                    DMXHeadsBar(lampSize: clampSize((space.width - 8) / 4.6, 12, 20))
+                    DMXTempo()
                 }
             }
         case .colors?:
             // Couleurs : le rail est un arc-en-ciel recalé sur la couleur du pad ; la couleur en cours à droite.
             let info = colorFaderInfo(level: column.level)
-            HStack(alignment: .top, spacing: 6) {
+            FaderCardRow(faderWidth: 50, minCompanion: 50) {
                 VerticalFader(name: column.name, level: level, valueText: info.value, defaultLevel: 1,
                     hardwareMarker: controller.waitingFaders[index], trackStyle: AnyShapeStyle(info.track), handleColor: info.current) { EmptyView() }
-                FaderCompanion { space in
-                    let diameter = clampSize(min(space.width * 0.45, space.height - 50), 24, 44)
-                    VStack(spacing: 5) {
+            } companion: { space in
+                let diameter = clampSize(min(space.width - 8, space.height - 50), 24, 44)
+                VStack(spacing: 5) {
                         Circle()
                             .fill(info.current)
                             .overlay { Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 2) }
@@ -200,7 +197,6 @@ struct ColumnView: View {
                             .foregroundStyle(Surface.textPrimary)
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
-                    }
                 }
             }
         default:
@@ -1516,23 +1512,32 @@ struct DMXTempo: View {
 }
 
 
-/// La place à droite du fader dans le caisson d'une carte : ce qui accompagne le fader (potard, projecteurs, couleur) y est
-/// **centré** en hauteur sur le bloc du fader et **grandit** avec la place disponible, sans dépasser une taille raisonnable
-/// (de l'air autour). Les tailles bornées laissent le coin libre pour le bouton Stop / Noir.
-struct FaderCompanion<Content: View>: View {
+/// Une ligne de carte de fader : le fader (et sa valeur dessous) et ce qui l'accompagne (potard, projecteurs, couleur), **centrés
+/// ensemble** dans le caisson avec un écart qui suit la place, comme dans la maquette. L'accompagnement grandit avec la carte,
+/// sans dépasser une taille raisonnable ; il est centré en hauteur sur le bloc du fader.
+struct FaderCardRow<Fader: View, Companion: View>: View {
     @Environment(\.gridDensity) private var density
-    @ViewBuilder let content: (CGSize) -> Content
+    /// Largeur approximative du bloc du fader (piste, vumètre, valeur), pour répartir la place qui reste.
+    let faderWidth: CGFloat
+    /// Largeur minimale de l'accompagnement (la barre des 4 projecteurs ne tient pas en dessous).
+    let minCompanion: CGFloat
+    @ViewBuilder let fader: () -> Fader
+    @ViewBuilder let companion: (CGSize) -> Companion
 
-    /// La hauteur du bloc du fader : la piste plus la ligne de la valeur dessous. L'élément est centré sur toute cette hauteur,
-    /// en laissant de l'air (il ne grandit pas jusqu'aux bords).
     private var blockHeight: CGFloat { density.faderTrackHeight + 20 }
 
     var body: some View {
         GeometryReader { geometry in
-            content(geometry.size)
-                .frame(width: geometry.size.width, height: geometry.size.height)
+            let free = max(geometry.size.width - faderWidth, 0)
+            let width = clampSize(free * 0.55, minCompanion, 110)
+            let gap = clampSize(free * 0.12, 6, 24)
+            HStack(alignment: .top, spacing: gap) {
+                fader()
+                companion(CGSize(width: width, height: blockHeight))
+                    .frame(width: width, height: blockHeight)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
-        .frame(maxWidth: .infinity)
         .frame(height: blockHeight)
     }
 }
