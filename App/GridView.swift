@@ -122,6 +122,27 @@ struct ColumnView: View {
         .accessibilityLabel("Arrêter la colonne \(index + 1)")
     }
 
+    /// Bouton rond « Noir » de la carte Intensité (mode Projecteurs), au même endroit et de la même taille que le stop d'une
+    /// colonne son : éteint toute la barre en fondu. Un anneau creux dans un rond sombre, comme les points éteints des pads.
+    private var blackoutButton: some View {
+        Button {
+            controller.blackout()
+        } label: {
+            Circle()
+                .strokeBorder(Color.white, lineWidth: 1.5)
+                .frame(width: 11, height: 11)
+                .frame(width: 28, height: 28)
+                .background(Color.black.opacity(0.85), in: .circle)
+                .overlay { Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) }
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .padding(6)
+        .interactiveCursor(.link)
+        .help("Noir : éteindre toute la barre en fondu (bouton rond de l'APC)")
+        .accessibilityLabel("Noir")
+    }
+
     /// Couleur d'une colonne son : la teinte vive de son premier pad (gris neutre si elle est vide).
     private func accentColor(of column: Column) -> Color {
         column.slots.lazy.compactMap { $0 }.first?.tint.vividColor ?? Surface.textSecondary
@@ -171,6 +192,8 @@ struct ColumnView: View {
 
     var body: some View {
         let column = controller.currentGrid.columns[index]
+        let dmxRole: DMXFaderRole? = controller.isDMXLighting && column.kind == .light
+            ? DMXFaderRole.role(ofColumn: index, in: controller.currentGrid) : nil
         VStack(spacing: Metrics.padSpacing) {
             HStack(spacing: 8) {
                 // Pastille de type : note (son), projecteur (lumière), les deux (son et lumière) ; un bouton déverrouillé.
@@ -226,25 +249,29 @@ struct ColumnView: View {
                         )
                     }
                 } else {
-                    let role = controller.isDMXLighting ? DMXFaderRole.role(ofColumn: index, in: controller.currentGrid) : nil
-                    VerticalFader(
-                        name: column.name,
-                        level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
-                        valueText: lightValueText(column),
-                        defaultLevel: 1,
-                        hardwareMarker: controller.waitingFaders[index]
-                    ) {
-                        if let role {
-                            // Mode Projecteurs (piste C de la maquette) : le rôle du fader ; la carte Intensité porte la mini-barre.
-                            DMXFaderAccessory(column: index, role: role)
-                        } else {
-                            Icon.sun.view(size: 16)
-                                .foregroundStyle(Surface.lightAccent)
-                                .opacity(0.25 + 0.75 * column.level)
-                                .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
+                    let role = dmxRole
+                    // Même disposition qu'une colonne son : fader (valeur dessous), puis à la place du vumètre les 4 projecteurs
+                    // (carte Intensité), à la place du potard le rôle du fader et le tempo ; le Noir est dans le coin, comme le stop.
+                    HStack(alignment: .top, spacing: 8) {
+                        VerticalFader(
+                            name: column.name,
+                            level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
+                            valueText: lightValueText(column),
+                            defaultLevel: 1,
+                            hardwareMarker: controller.waitingFaders[index]
+                        ) {
+                            if role == .general {
+                                DMXHeadsColumn()
+                            } else {
+                                Icon.sun.view(size: 16)
+                                    .foregroundStyle(Surface.lightAccent)
+                                    .opacity(0.25 + 0.75 * column.level)
+                                    .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
+                            }
                         }
+                        .opacity(role == DMXFaderRole.none ? 0.5 : 1)
+                        if let role { DMXRoleColumn(column: index, role: role) }
                     }
-                    .opacity(role == DMXFaderRole.none ? 0.5 : 1)
                     .contextMenu { if role != nil, !controller.isLocked { faderRoleMenu(current: role ?? .none) } }
                 }
             }
@@ -256,7 +283,9 @@ struct ColumnView: View {
                     .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
             )
             .overlay { faderPairingOverlay(column) }
-            .overlay(alignment: .bottomTrailing) { if column.kind.hasAudio || column.kind == .music { stopColumnButton } }
+            .overlay(alignment: .bottomTrailing) {
+                if column.kind.hasAudio || column.kind == .music { stopColumnButton } else if dmxRole == .general { blackoutButton }
+            }
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)
@@ -1320,24 +1349,63 @@ private nonisolated struct MicGlyph: Shape {
     }
 }
 
-/// À droite du fader d'une colonne lumière en mode Projecteurs (piste C de la maquette) : le **rôle** du fader dans une pastille
-/// ambrée (clic ou clic droit = le changer), et, sur la carte **Intensité**, la mini-barre : les 4 projecteurs tels que la barre
-/// les montre (fondus compris), un clic en coupe ou rallume un en fondu sans toucher au pad, le bouton **Noir**, et le tempo
-/// quand une alternance joue.
-struct DMXFaderAccessory: View {
+/// Les 4 projecteurs de la carte **Intensité** (mode Projecteurs), à la place du vumètre d'une colonne son : un par ligne,
+/// tels que la barre les montre (fondus compris). Un clic en coupe ou rallume un en fondu sans toucher au pad ; la pastille
+/// des pads le reflète.
+struct DMXHeadsColumn: View {
+    @Environment(DMXSession.self) private var dmx
+    @Environment(\.gridDensity) private var density
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
+            let colors = dmx.console?.headColors(at: DMXClock.now()) ?? []
+            let count = dmx.console?.rig.profile.headCount ?? 4
+            VStack(spacing: 0) {
+                ForEach(0..<count, id: \.self) { index in
+                    if index > 0 { Spacer(minLength: 2) }
+                    head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
+                }
+            }
+            .padding(.vertical, 3)
+            .padding(.horizontal, 3)
+            .frame(height: density.faderTrackHeight)
+            .background(Color(red: 0.15, green: 0.16, blue: 0.18), in: RoundedRectangle(cornerRadius: 8))
+            .overlay { RoundedRectangle(cornerRadius: 8).stroke(Color(red: 0.23, green: 0.24, blue: 0.27), lineWidth: 1) }
+        }
+    }
+
+    private func head(_ index: Int, rgb: RGB?) -> some View {
+        let isOn = dmx.console?.isHeadOn(index) ?? true
+        let fill = rgb.map { Color(red: Double($0.red) / 255, green: Double($0.green) / 255, blue: Double($0.blue) / 255) } ?? .clear
+        return Button { dmx.toggleHead(index) } label: {
+            Circle()
+                .fill(Color(red: 0.07, green: 0.08, blue: 0.09))
+                .overlay { Circle().fill(fill).padding(3) }
+                .overlay { Circle().stroke(Color(red: 0.29, green: 0.3, blue: 0.33), lineWidth: 1) }
+                .frame(width: 15, height: 15)
+                .opacity(isOn ? 1 : 0.45)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help("Projecteur \(index + 1) : cliquer pour l'allumer ou le couper en fondu (le pad ne change pas)")
+        .accessibilityLabel("Projecteur \(index + 1)")
+        .accessibilityValue(isOn ? "allumé" : "coupé")
+    }
+}
+
+/// À la place du potard d'une colonne son : le **rôle** du fader (Intensité, Couleurs, Strobo, Aucun) dans une pastille ambrée
+/// (clic ou clic droit = le changer) et, quand une alternance joue sur la carte Intensité, son tempo avec un point qui bat.
+struct DMXRoleColumn: View {
     @Environment(ShowController.self) private var controller
     @Environment(DMXSession.self) private var dmx
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let column: Int
     let role: DMXFaderRole
 
-    private static func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color { Color(red: r / 255, green: g / 255, blue: b / 255) }
-    private static let red = Color(red: 1, green: 0.36, blue: 0.4)
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 8) {
             rolePill
-            if role == .general { miniBar }
+            if role == .general { tempo }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -1345,13 +1413,14 @@ struct DMXFaderAccessory: View {
 
     private var rolePill: some View {
         let label = Text(role.title)
-            .font(.system(size: 10.5, weight: .semibold))
+            .font(.system(size: 10, weight: .semibold))
             .lineLimit(1)
-            .padding(.horizontal, 7)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 6)
             .frame(height: 20)
-            .background(Surface.lightAccent.opacity(0.08), in: .capsule)
-            .overlay { Capsule().stroke(Surface.lightAccent.opacity(0.35)) }
-            .foregroundStyle(role == .none ? Surface.textTertiary : Self.rgb(255, 242, 199))
+            .background(Surface.lightAccent.opacity(0.08), in: Capsule())
+            .overlay { Capsule().stroke(Surface.lightAccent.opacity(0.35), lineWidth: 1) }
+            .foregroundStyle(role == .none ? Surface.textTertiary : Color(red: 1, green: 0.95, blue: 0.78))
         return Group {
             if controller.isLocked {
                 label
@@ -1369,63 +1438,21 @@ struct DMXFaderAccessory: View {
         .help(controller.isLocked ? "Ce que règle ce fader : \(role.title)" : "Ce que règle ce fader : \(role.title) (cliquer pour le changer)")
     }
 
-    private var miniBar: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
-                let time = DMXClock.now()
-                let colors = dmx.console?.headColors(at: time) ?? []
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 3) {
-                        ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
-                            head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
-                        }
-                    }
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 4)
-                    .background(Self.rgb(38, 40, 46), in: .rect(cornerRadius: 6))
-                    .overlay { RoundedRectangle(cornerRadius: 6).stroke(Self.rgb(58, 61, 69)) }
-                    if let info = dmx.console?.alternationInfo(at: time) {
-                        HStack(spacing: 4) {
-                            Circle().fill(Surface.lightAccent).frame(width: 6, height: 6)
-                                .opacity(info.onBeat && !reduceMotion ? 1 : 0.25)
-                            Text("⇄ \(Int(info.bpm.rounded())) BPM")
-                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Surface.textSecondary)
-                        }
-                        .help("Alternance : tempo du son en cours (sinon tempo de repli)")
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Alternance à \(Int(info.bpm.rounded())) battements par minute")
-                    }
+    @ViewBuilder
+    private var tempo: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
+            if let info = dmx.console?.alternationInfo(at: DMXClock.now()) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Circle().fill(Surface.lightAccent).frame(width: 6, height: 6)
+                        .opacity(info.onBeat && !reduceMotion ? 1 : 0.25)
+                    Text("⇄ \(Int(info.bpm.rounded()))")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Surface.textSecondary)
                 }
+                .help("Alternance : tempo du son en cours (sinon tempo de repli)")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Alternance à \(Int(info.bpm.rounded())) battements par minute")
             }
-            Button("Noir") { controller.blackout() }
-                .buttonStyle(.plain)
-                .font(.system(size: 10.5, weight: .semibold))
-                .padding(.horizontal, 10)
-                .frame(height: 20)
-                .background(Self.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
-                .overlay { RoundedRectangle(cornerRadius: 6).stroke(Self.red.opacity(0.5), lineWidth: 1) }
-                .foregroundStyle(Self.rgb(255, 225, 226))
-                .interactiveCursor(.link)
-                .help("Éteindre toute la barre en fondu (bouton rond de l'APC)")
         }
-    }
-
-    private func head(_ index: Int, rgb: RGB?) -> some View {
-        let isOn = dmx.console?.isHeadOn(index) ?? true
-        let fill = rgb.map { Color(red: Double($0.red) / 255, green: Double($0.green) / 255, blue: Double($0.blue) / 255) } ?? .clear
-        return Button { dmx.toggleHead(index) } label: {
-            Circle()
-                .fill(Self.rgb(18, 19, 23))
-                .overlay { Circle().fill(fill).padding(3) }
-                .overlay { Circle().stroke(Self.rgb(74, 77, 85), lineWidth: 1) }
-                .frame(width: 16, height: 16)
-                .opacity(isOn ? 1 : 0.45)
-        }
-        .buttonStyle(.plain)
-        .interactiveCursor(.link)
-        .help("Projecteur \(index + 1) : cliquer pour l'allumer ou le couper en fondu (le pad ne change pas)")
-        .accessibilityLabel("Projecteur \(index + 1)")
-        .accessibilityValue(isOn ? "allumé" : "coupé")
     }
 }
