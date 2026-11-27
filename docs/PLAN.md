@@ -573,9 +573,10 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
   **Banc d'essai DMX** dans l'app (Fenêtre ▸ Banc d'essai DMX) : `DMXTestBench` (Engine) + `App/DMXBenchView.swift` — état du boîtier, choix du
   boîtier (mémorisé sur ce Mac, `dmxPortSerial`, repris par la console à l'étape 3), adresse (1…498, mémorisée), « 4 projecteurs en blanc », Noir,
   un curseur par canal (noms du manuel). La sortie ne tourne que fenêtre ouverte ; fermer arrête le signal sans noir (la barre garde sa couleur).
-  Tests : 25 (`LalabobDMXTests`, faux port et octets du relevé) + 5 (`DMXTestBenchTests`) ; tout le package vert (751). App compilée ; **non lancée**
-  (une autre instance de Lalabob tournait), donc l'accès au port en bac à sable n'est pas vérifié.
-  **À essayer** : ☐ Fenêtre ▸ Banc d'essai DMX : « Boîtier USB-DMX AU0483EN · signal envoyé » (sinon : le bac à sable refuse-t-il `/dev` ?)
+  Tests : 25 (`LalabobDMXTests`, faux port et octets du relevé) + 5 (`DMXTestBenchTests`) ; tout le package vert (751). App compilée et lancée :
+  **le bac à sable laisse ouvrir le boîtier** (« Boîtier USB-DMX AU0483EN · signal envoyé »), adresse 50 et « 4 projecteurs en blanc » envoyés
+  sans erreur (barre non regardée par l'agent).
+  **À essayer** : ☑ Fenêtre ▸ Banc d'essai DMX : « Boîtier USB-DMX AU0483EN · signal envoyé » (27/11/2026)
   ☐ adresse 50, « 4 projecteurs en blanc », chaque curseur conforme au tableau ☐ débrancher le boîtier pendant l'envoi : « en erreur », aucun son
   coupé ; le rebrancher : la lumière revient seule ☐ LightKey ou `banc-dmx` ouvert en même temps : « Resource busy » affiché, pas de plantage
   ☐ régularité à l'œil (pas de scintillement) avec l'interface chargée.
