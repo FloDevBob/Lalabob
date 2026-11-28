@@ -7,6 +7,7 @@ import SwiftUI
 /// Verrouillé (cadenas), la bibliothèque et l'inspecteur disparaissent : il ne reste que le jeu.
 struct ContentView: View {
     @Environment(ShowController.self) private var controller
+    @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showsLibrary = true
@@ -62,6 +63,11 @@ struct ContentView: View {
             try? await Task.sleep(for: .seconds(3))
             controller.dismissLockNotice()
         }
+        .task(id: musicTrackIDs) {
+            // Grille Apple Music : quels morceaux des pads sont dans le nuage ou introuvables (☁, « Introuvable »).
+            guard !musicTrackIDs.isEmpty else { return }
+            await musicLibrary?.refreshAvailability(of: musicTrackIDs)
+        }
         .onAppear { controller.undoManager = undoManager }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { controller.undoManager = undoManager }
     }
@@ -74,8 +80,10 @@ struct ContentView: View {
                 if libraryIsVisible {
                     // Un seul bloc (bibliothèque + filet) : il glisse depuis la gauche en entrant et en sortant.
                     HStack(spacing: 0) {
-                        LibraryView()
-                            .frame(width: 272)
+                        Group {
+                            if controller.currentGrid.kind == .appleMusic { MusicLibraryView() } else { LibraryView() }
+                        }
+                        .frame(width: 272)
                         Divider().overlay(Color.white.opacity(0.06))
                     }
                     .transition(.move(edge: .leading).combined(with: .opacity))
@@ -110,12 +118,17 @@ struct ContentView: View {
 
 extension ContentView {
     /// La bibliothèque est ouverte (et le spectacle déverrouillé : verrouillé, il n'y a pas de bibliothèque).
+    /// Les morceaux des pads de la grille affichée (grille Apple Music).
+    private var musicTrackIDs: Set<String> {
+        Set(controller.currentGrid.columns.flatMap { $0.slots.compactMap { $0?.music?.persistentID } })
+    }
+
     fileprivate var libraryIsVisible: Bool { showsLibrary && !controller.isLocked }
 
     /// Verrouillé, le panneau ne s'affiche que pour un son (les cases vides et les cues n'ont rien à y piloter).
     fileprivate func showsInspector(for position: GridPosition) -> Bool {
         guard controller.isLocked else { return true }
-        guard let pad = controller.pad(at: position), pad.audio != nil else { return false }
+        guard let pad = controller.pad(at: position), pad.audio != nil || pad.music != nil else { return false }
         return true
     }
 
@@ -160,7 +173,7 @@ extension ContentView {
     grid.columns[2] = Column.empty(name: "Éclairage", kind: .light)
     grid.columns[6] = Column.empty(name: "Sons", kind: .audio)
     grid[GridPosition(column: 2, row: 0)] = Pad(
-        title: "Plein feu", subtitle: "Cue", tint: .ambre,
+        title: "Plein feu", subtitle: "Lumière", tint: .ambre,
         light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     grid[GridPosition(column: 6, row: 0)] = Pad(
         title: "Rire", subtitle: "Public", tint: .vert, audio: AudioClip(fileName: "rire.wav"))
@@ -181,7 +194,7 @@ extension ContentView {
     let sound = AudioClip(fileName: "essai.wav")
     // Colonne mixte : son seul, cue seule, son et lumière, « en attente de son », puis deux cases vides (« Son » / « Cue »).
     grid[GridPosition(column: 0, row: 0)] = Pad(title: "Pluie", subtitle: "Son seul", tint: .ciel, audio: sound)
-    grid[GridPosition(column: 0, row: 1)] = Pad(title: "Face", subtitle: "Cue seule", tint: .blanc, light: cue)
+    grid[GridPosition(column: 0, row: 1)] = Pad(title: "Face", subtitle: "Lumière seule", tint: .blanc, light: cue)
     grid[GridPosition(column: 0, row: 2)] = Pad(title: "Aube", subtitle: "Son et lumière", tint: .ambre, audio: sound, light: cue)
     grid[GridPosition(column: 0, row: 3)] = Pad(title: "Orage", subtitle: "Son et lumière", tint: .azur, audio: sound, light: .blank)
     grid[GridPosition(column: 0, row: 4)] = Pad(title: "À venir", subtitle: "En attente de son", tint: .rose, light: cue, awaitsSound: true)
@@ -207,7 +220,7 @@ extension ContentView {
         title: "Rire", subtitle: "Public", tint: .ambre, audio: AudioClip(fileName: "rire.wav"))
     for (index, title) in ["Plein feu", "Noir", "Ambiance"].enumerated() {
         grid[GridPosition(column: 6, row: index)] = Pad(
-            title: title, subtitle: "Cue", tint: [.orange, .azur, .rose][index],
+            title: title, subtitle: "Lumière", tint: [.orange, .azur, .rose][index],
             light: LightCue(output: MIDIMessageSpec(kind: .note, channel: 0, number: 0)))
     }
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]))

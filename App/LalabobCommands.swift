@@ -10,11 +10,13 @@ extension FocusedValues {
 /// ⌘X, ⌘C, ⌘V et ⌫ passent par la grille (`onCopyCommand`…), pour ne pas gêner les champs de texte.
 struct LalabobCommands: Commands {
     static let benchWindowID = "lighting-bench"
+    static let dmxBenchWindowID = "dmx-bench"
     static let helpWindowID = "help"
 
     @FocusedValue(\.showController) private var controller
     @FocusedValue(\.showSettingsPresented) private var showSettings
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openDocument) private var openDocument
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
@@ -26,10 +28,16 @@ struct LalabobCommands: Commands {
         CommandGroup(replacing: .help) {
             Button("Aide de Lalabob") { openWindow(id: Self.helpWindowID) }
                 .keyboardShortcut("?", modifiers: .command)
+            Divider()
+            Button("Visite guidée") { openWindow(id: Tour.windowID) }
+            Button("Ouvrir le spectacle d'entraînement") {
+                Task { await Tour.openTrainingShow(with: openDocument) }
+            }
         }
         CommandGroup(after: .windowArrangement) {
             Button("Banc d'essai lumière") { openWindow(id: Self.benchWindowID) }
                 .keyboardShortcut("l", modifiers: [.command, .option])
+            Button("Banc d'essai DMX") { openWindow(id: Self.dmxBenchWindowID) }
         }
         CommandMenu("Spectacle") {
             Button(controller?.isLocked == true ? "Déverrouiller" : "Verrouiller") { controller?.isLocked.toggle() }
@@ -39,10 +47,24 @@ struct LalabobCommands: Commands {
             Button("Réglages du spectacle…") { showSettings?.wrappedValue = true }
                 .keyboardShortcut(",", modifiers: [.command, .option])
                 .disabled(showSettings == nil || controller?.isLocked != false)
+            Divider()
+            // En attendant les Réglages du spectacle complets (J14, étape 4) : de quoi essayer la barre.
+            Toggle(
+                "Projecteurs pilotés par Lalabob",
+                isOn: Binding(
+                    get: { controller?.isDMXLighting == true },
+                    set: { controller?.setLightingMode($0 ? .dmx : .lightKey) })
+            )
+            .disabled(controller == nil || controller?.isLocked != false)
+            Button("Noir") { controller?.blackout() }
+                .disabled(controller?.isDMXLighting != true)
         }
         CommandMenu("Grilles") {
             Button("Nouvelle grille") { controller?.addGrid() }
                 .keyboardShortcut("t")
+                .disabled(controller?.isLocked != false)
+            Button("Nouvelle grille Apple Music") { controller?.addGrid(kind: .appleMusic) }
+                .keyboardShortcut("t", modifiers: [.command, .option])
                 .disabled(controller?.isLocked != false)
             Divider()
             ForEach(1...9, id: \.self) { number in

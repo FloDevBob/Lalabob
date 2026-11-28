@@ -23,6 +23,9 @@ public struct APCMiniMK2Driver: ControllerDriver {
 
     static let firstFaderCC: UInt8 = 48
     static let masterFaderCC: UInt8 = 56
+    /// Le message que lisait `midi_applemusic_volume.py` : CC 7, canal 3 (0-indexé : 2).
+    static let scriptFaderCC: UInt8 = 7
+    static let scriptFaderChannel: UInt8 = 2
 
     public var connectionMessages: [MIDIEvent] {
         ledMessages(Dictionary(uniqueKeysWithValues: GridPosition.all.map { ($0, LEDState.off) }))
@@ -79,7 +82,11 @@ public struct APCMiniMK2Driver: ControllerDriver {
         case let .noteOff(_, note, _):
             if note == Self.shiftNote { return .shift(pressed: false) }
             return position(forNote: note).map { .padReleased($0) }
-        case let .controlChange(_, controller, value):
+        case let .controlChange(channel, controller, value):
+            // 9e fader : CC 56 canal 1 (réglage d'usine) ou CC 7 canal 3 (celui que lisait l'ancien script Python). ⚠︎ à départager sur le matériel.
+            if (channel == 0 && controller == Self.masterFaderCC) || (channel == Self.scriptFaderChannel && controller == Self.scriptFaderCC) {
+                return .auxiliaryFader(value: Double(value) / 127)
+            }
             guard controller >= Self.firstFaderCC, controller < Self.masterFaderCC else { return nil }
             return .columnFader(column: Int(controller - Self.firstFaderCC), value: Double(value) / 127)
         case .systemExclusive:

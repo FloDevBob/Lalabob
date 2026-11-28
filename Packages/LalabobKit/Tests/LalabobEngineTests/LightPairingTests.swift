@@ -86,7 +86,7 @@ struct LightPairingTests {
         #expect(controller.selection == Self.first)  // une cue non appairée reste une case à appairer
         #expect(controller.confirmPairing())
         #expect(controller.isPaired(at: Self.first))
-        #expect(controller.pad(at: Self.first)?.title == "Nouvelle cue")
+        #expect(controller.pad(at: Self.first)?.title == "Nouvelle lumière")
         #expect(!controller.confirmPairing())  // déjà appairée : rien de plus
     }
 

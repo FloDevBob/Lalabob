@@ -32,6 +32,8 @@ public enum Surface {
     public static let emptyPadStroke = Color.white.opacity(0.11)
     public static let lightZone = Color(hex: 0xFFC93D).opacity(0.035)
     public static let lightAccent = Color(hex: 0xFFC93D)
+    /// Apple Music : onglets, colonnes et pastilles des grilles Apple Music.
+    public static let musicAccent = Color(hex: 0xFF5A8C)
     /// Boucle activée (bouton de transport).
     public static let loopAccent = Color(hex: 0x3DDC6E)
 }
@@ -57,7 +59,7 @@ public enum Typography {
 
 /// Hauteurs de la grille qui s'adaptent à la fenêtre. Les **pads** absorbent toute la hauteur disponible : plus hauts
 /// quand la fenêtre l'est (jusqu'à `maximumPadHeight`), plus bas quand elle l'est moins. La **piste des faders** garde
-/// sa taille (120 pt) ; elle ne rétrécit qu'en dernier recours, quand les pads ont atteint leur minimum lisible
+/// sa taille (98 pt) ; elle ne rétrécit qu'en dernier recours, quand les pads ont atteint leur minimum lisible
 /// (petite fenêtre, plein écran d'un portable). Sous ce minimum, la zone défile. Pure, donc testable.
 public struct GridDensity: Equatable, Sendable {
     public var padHeight: CGFloat
@@ -69,7 +71,7 @@ public struct GridDensity: Equatable, Sendable {
     }
 
     /// Les dimensions de la maquette (valeur par défaut avant la mesure de la fenêtre).
-    public static let regular = GridDensity(padHeight: Metrics.padHeight, faderTrackHeight: 120)
+    public static let regular = GridDensity(padHeight: Metrics.padHeight, faderTrackHeight: 98)
 
     /// En dessous, le titre et le sous-titre d'un pad ne tiennent plus.
     public static let minimumPadHeight: CGFloat = 38
@@ -77,9 +79,9 @@ public struct GridDensity: Equatable, Sendable {
     public static let maximumPadHeight: CGFloat = 110
     public static let minimumFaderTrackHeight: CGFloat = 64
 
-    /// Hauteur de tout ce qui n'est ni pad ni piste de fader : en-tête de colonne, espaces, carte de volume (marges,
+    /// Hauteur de tout ce qui n'est ni pad ni piste de fader : en-tête de colonne, espaces, carte de fader (titre, caisson, marges,
     /// valeur), marges de la grille.
-    public static let fixedHeight: CGFloat = 152
+    public static let fixedHeight: CGFloat = 170
 
     /// Densité qui tient dans `availableHeight` (la zone de la grille, sans l'en-tête de la fenêtre ni la barre du bas).
     public static func fitting(availableHeight: CGFloat) -> GridDensity {

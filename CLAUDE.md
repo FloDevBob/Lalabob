@@ -19,9 +19,10 @@ MIDI vers LightKey. Sécurité de scène avant tout : **le son ne doit jamais s'
   - `LalabobMIDI` : messages MIDI en valeurs, codec UMP, protocole `MIDITransport` ; tout l'accès CoreMIDI est isolé dans l'`actor` `CoreMIDISession`.
   - `ControllerDrivers` : un pilote = une `struct` pure qui conforme `ControllerDriver`. Pas d'état, pas d'E/S.
   - `LalabobAudio` : AVAudioEngine derrière `AudioEngineControlling`.
+  - `LalabobDMX` : trames DMX, boîtier USB-DMX (port série) derrière `DMXTransport` ; envoi continu sur un fil à lui (`DMXOutput`).
   - `LalabobEngine` : `ShowController` (`@MainActor @Observable`), seule source de vérité.
   - `LalabobDesign` : jetons visuels de la maquette ; c'est le seul module SwiftUI du package.
-- Dépendances autorisées : Model ← tout le monde ; Drivers → MIDI ; Engine → Model, Audio, MIDI, Drivers ;
+- Dépendances autorisées : Model ← tout le monde ; Drivers → MIDI ; DMX → Model ; Engine → Model, Audio, MIDI, Drivers, DMX ;
   App → Engine, Design. Jamais l'inverse.
 
 ## Règles de code

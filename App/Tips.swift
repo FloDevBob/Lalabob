@@ -28,7 +28,7 @@ enum Tips {
     static let all: [Tip] = [
         Tip(
             id: "pad", title: "C'est quoi, un pad ?",
-            text: "Un pad, c'est une case de la grille, comme les boutons lumineux de votre Launchpad. Il joue un son, ou envoie une commande à la lumière.",
+            text: "Un pad, c'est une case de la grille, comme les boutons lumineux de votre Launchpad. Il joue un son, ou allume une lumière.",
             keys: [], mode: .always),
         Tip(
             id: "cadenas", title: "Verrouillez pour jouer",
@@ -68,7 +68,7 @@ enum Tips {
             keys: [], mode: .unlockedOnly),
         Tip(
             id: "son-et-lumiere", title: "Un son et une lumière d'un seul appui",
-            text: "Cliquez sur le petit logo à gauche du nom d'une colonne pour la passer en « Son et lumière » : ses pads peuvent alors lancer un son, une commande lumière, ou les deux à la fois.",
+            text: "Cliquez sur le petit logo à gauche du nom d'une colonne pour la passer en « Son et lumière » : ses pads peuvent alors lancer un son, une lumière, ou les deux à la fois.",
             keys: [], mode: .unlockedOnly),
         Tip(
             id: "nouvel-appui", title: "Et si on rappuie sur un son en cours ?",
@@ -85,6 +85,18 @@ enum Tips {
         Tip(
             id: "filtre", title: "Le filtre d'une colonne de sons",
             text: "Le potard à côté du fader : au centre, le son est intact. Tournez à gauche pour ne garder que les graves, à droite pour ne garder que les aigus. Double-cliquez pour revenir au centre. Le réglage se fait même pendant la lecture.",
+            keys: [], mode: .always),
+        Tip(
+            id: "apple-music", title: "Des morceaux Apple Music sur vos pads",
+            text: "Créez une grille Apple Music avec le + des onglets, puis glissez des morceaux de vos playlists sur les pads. Un appui lance le morceau, un autre l'arrête.",
+            keys: [], mode: .unlockedOnly),
+        Tip(
+            id: "grille-controleur", title: "Changez de grille sans toucher l'ordinateur",
+            text: "Sur l'APC, les boutons à droite de la grille choisissent la grille (avec Shift pour les grilles 9 à 16). Sur le Launchpad, ce sont les deux premières flèches en haut. Aucun son ne s'arrête.",
+            keys: [], mode: .always),
+        Tip(
+            id: "noir", title: "Un Noir en un geste",
+            text: "En mode Projecteurs, le bouton rond sous une colonne lumière de l'APC éteint tout en douceur. Échap, lui, ne touche jamais à la lumière.",
             keys: [], mode: .always),
     ]
 

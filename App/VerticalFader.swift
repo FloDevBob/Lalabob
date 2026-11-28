@@ -13,6 +13,10 @@ struct VerticalFader<Accessory: View>: View {
     var valueText: String?
     var defaultLevel = 0.8
     var hardwareMarker: Double?
+    /// Rail dessiné autrement (le fader Couleurs : un arc-en-ciel) ; `nil` = rail sombre rempli jusqu'à la poignée.
+    var trackStyle: AnyShapeStyle?
+    /// Poignée colorée (la couleur en cours du fader Couleurs), cerclée de blanc ; `nil` = poignée blanche.
+    var handleColor: Color?
     @ViewBuilder var accessory: () -> Accessory
     @Environment(\.gridDensity) private var density
     @State private var isDragging = false
@@ -47,11 +51,16 @@ struct VerticalFader<Accessory: View>: View {
         GeometryReader { geometry in
             let travel = geometry.size.height - 20
             ZStack(alignment: .bottom) {
-                Capsule().fill(Surface.well).frame(width: 6)
-                Capsule().fill(Surface.textSecondary.opacity(0.5))
-                    .frame(width: 6, height: max(CGFloat(level) * travel + 10, 0))
+                if let trackStyle {
+                    Capsule().fill(trackStyle).frame(width: 10)
+                } else {
+                    Capsule().fill(Surface.panel).frame(width: 6)
+                    Capsule().fill(Surface.textSecondary.opacity(0.5))
+                        .frame(width: 6, height: max(CGFloat(level) * travel + 10, 0))
+                }
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(white: 0.82))
+                    .fill(handleColor ?? Color(white: 0.82))
+                    .overlay { if handleColor != nil { RoundedRectangle(cornerRadius: 6).strokeBorder(Color.white, lineWidth: 2) } }
                     .frame(width: 30, height: 20)
                     .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
                     .offset(y: -CGFloat(level) * travel)
@@ -86,6 +95,8 @@ struct VerticalFader<Accessory: View>: View {
 struct LevelMeter: View {
     @Environment(ShowController.self) private var controller
     let column: Int
+    /// Une autre source de crêtes (le son d'Apple Music capté) ; `nil` = le moteur de Lalabob.
+    var source: ColumnMeters? = nil
     @State private var smoothing = MeterSmoothing()
 
     private static let gradient = Gradient(stops: [
@@ -97,7 +108,7 @@ struct LevelMeter: View {
     ])
 
     var body: some View {
-        let meters = controller.meters
+        let meters = source ?? controller.meters
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { timeline in
             let levels = smoothing.update(
                 at: timeline.date.timeIntervalSinceReferenceDate,

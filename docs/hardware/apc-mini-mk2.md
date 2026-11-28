@@ -23,7 +23,7 @@ Les appuis arrivent en Note On sur le canal 1 (0 en interne).
 | Fader | CC | Usage dans Lalabob |
 | --- | --- | --- |
 | 1 à 8 | 48 à 55 ⚠︎ | Fader de la colonne correspondante (volume ou intensité) |
-| 9 (master) | 56 ⚠︎ | **Ignoré** : mappé dans un autre logiciel pour le volume d'Apple Music |
+| 9 (master) | 56 ⚠︎ (canal 1) ou CC 7 canal 3 (ancien script) | **Volume d'Apple Music** (ADR 0009) ; ne bouge aucune colonne. Les deux messages sont acceptés tant que le relevé n'est pas fait |
 
 macOS permet à plusieurs applications d'écouter le même contrôleur : Lalabob et le logiciel qui pilote
 Apple Music lisent l'APC en même temps sans se gêner.

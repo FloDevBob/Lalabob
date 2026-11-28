@@ -25,13 +25,18 @@ public struct Show: Codable, Sendable, Equatable {
     /// Version du format de fichier. À incrémenter à chaque changement incompatible, avec une migration à la lecture
     /// (`ShowPackage.decodeMigrating`). 2 : un pad a un son et / ou une cue (`Pad.audio`, `Pad.light`), voir ADR 0008.
     /// Les fichiers de version 1 se lisent et se réécrivent en version 2 ; une ancienne version de l'app ne lit pas la 2.
-    public static let currentFormatVersion = 2
+    /// 3 : grilles Apple Music (`PadGrid.kind`, `ColumnKind.music`, `Pad.music`) ; écrite seulement si le spectacle s'en sert
+    /// (`requiredFormatVersion`).
+    /// 4 : lumière autonome en DMX (`Show.lighting`, `LightCue.look`, ADR 0012) ; écrite seulement si le spectacle s'en sert.
+    public static let currentFormatVersion = 4
 
     public var formatVersion: Int
     public var name: String
     public var grids: [PadGrid]
     /// Option « Colonnes lumière communes à toutes les grilles » (`nil` = désactivée). Voir `SharedLight`.
     public var sharedLight: SharedLight?
+    /// Qui pilote la lumière (LightKey ou projecteurs en DMX) et l'appareil DMX. Absent des fichiers = LightKey.
+    public var lighting = LightingSettings()
 
     /// Un spectacle construit en mémoire (nouveau, tests) : chaque grille sans canal LightKey en reçoit un, dans l'ordre.
     public init(name: String, grids: [PadGrid]) {
@@ -39,11 +44,34 @@ public struct Show: Codable, Sendable, Equatable {
         self.name = name
         self.grids = grids
         assignLightChannels(toGrids: Array(grids.indices.filter { grids[$0].lightChannel == nil }))
+        self.formatVersion = requiredFormatVersion
     }
 
     /// Un spectacle neuf avec une grille vide.
     public static func new(name: String = "Nouveau spectacle") -> Show {
         Show(name: name, grids: [.empty(name: "Grille 1")])
+    }
+
+    private enum CodingKeys: String, CodingKey { case formatVersion, name, grids, sharedLight, lighting }
+
+    /// Les spectacles d'avant le DMX n'ont pas `lighting` : ils s'ouvrent en mode LightKey.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        name = try container.decode(String.self, forKey: .name)
+        grids = try container.decode([PadGrid].self, forKey: .grids)
+        sharedLight = try container.decodeIfPresent(SharedLight.self, forKey: .sharedLight)
+        lighting = try container.decodeIfPresent(LightingSettings.self, forKey: .lighting) ?? LightingSettings()
+    }
+
+    /// `lighting` n'est écrit que s'il diffère des valeurs par défaut : un spectacle sans DMX ne change pas d'un octet.
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(formatVersion, forKey: .formatVersion)
+        try container.encode(name, forKey: .name)
+        try container.encode(grids, forKey: .grids)
+        try container.encodeIfPresent(sharedLight, forKey: .sharedLight)
+        if lighting != LightingSettings() { try container.encode(lighting, forKey: .lighting) }
     }
 }
 
@@ -110,6 +138,8 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
 
     public var id: UUID
     public var name: String
+    /// Grille standard (sons et lumière) ou grille Apple Music. Absent des fichiers = standard.
+    public var kind: GridKind
     public var columns: [Column]
     /// Canal MIDI (1 à 16) sur lequel cette grille parle à LightKey : cues, faders lumière et retour d'état.
     /// `nil` = « Sans canal » : la lumière de cette grille n'envoie rien. Gardé quand on réordonne les onglets.
@@ -117,15 +147,19 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
     /// Colonnes mises de côté pendant que les colonnes lumière sont communes (voir `SharedLight`) ; vide sinon.
     public var parkedColumns: [ParkedColumn]
 
-    public init(id: UUID = UUID(), name: String, columns: [Column], lightChannel: Int? = nil, parkedColumns: [ParkedColumn] = []) {
+    public init(
+        id: UUID = UUID(), name: String, kind: GridKind = .standard, columns: [Column], lightChannel: Int? = nil,
+        parkedColumns: [ParkedColumn] = []
+    ) {
         self.id = id
         self.name = name
+        self.kind = kind
         self.columns = columns
         self.lightChannel = lightChannel
         self.parkedColumns = parkedColumns
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, columns, lightChannel, parkedColumns }
+    private enum CodingKeys: String, CodingKey { case id, name, kind, columns, lightChannel, parkedColumns }
 
     /// Les fichiers d'avant le canal par grille n'ont pas `lightChannel` : la grille se lit « sans canal » et
     /// `ShowPackage` lui en attribue un (migration). Un canal absent se distingue d'un « Sans canal » écrit (`null`).
@@ -133,6 +167,7 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
+        kind = try container.decodeIfPresent(GridKind.self, forKey: .kind) ?? .standard
         columns = try container.decode([Column].self, forKey: .columns)
         lightChannel = try container.decodeIfPresent(Int.self, forKey: .lightChannel)
         parkedColumns = try container.decodeIfPresent([ParkedColumn].self, forKey: .parkedColumns) ?? []
@@ -144,6 +179,7 @@ public struct PadGrid: Codable, Sendable, Equatable, Identifiable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
+        if kind != .standard { try container.encode(kind, forKey: .kind) }
         try container.encode(columns, forKey: .columns)
         try container.encode(lightChannel, forKey: .lightChannel)
         if !parkedColumns.isEmpty { try container.encode(parkedColumns, forKey: .parkedColumns) }
@@ -175,16 +211,22 @@ public enum ColumnKind: String, Codable, Sendable {
     case light
     /// Son et lumière : accepte des pads son, lumière, ou les deux à la fois ; fader de volume.
     case mixed
+    /// Morceaux d'Apple Music (grilles Apple Music seulement) : pas de fader (volume général de Music), un bouton stop.
+    case music
 
-    /// La colonne a un volume, un filtre, un vumètre et un bouton stop (sons).
-    public var hasAudio: Bool { self != .light }
+    /// La colonne a un volume, un filtre, un vumètre et un bouton stop (sons de Lalabob).
+    public var hasAudio: Bool { self == .audio || self == .mixed }
+
+    /// La colonne peut porter des cues LightKey (appairage, relais, retour d'état).
+    public var hasLight: Bool { self == .light || self == .mixed }
 
     /// La colonne accepte un pad de ce type : une colonne mixte accepte tout, les autres leur seul type.
     public func accepts(_ pad: PadKind) -> Bool {
         switch self {
-        case .mixed: true
+        case .mixed: pad != .music
         case .audio: pad == .audio
         case .light: pad == .light
+        case .music: pad == .music
         }
     }
 }
@@ -192,6 +234,8 @@ public enum ColumnKind: String, Codable, Sendable {
 /// Le type d'un pad, déduit de ses parties (`Pad.kind`).
 public enum PadKind: String, Codable, Sendable {
     case audio, light, mixed
+    /// Un morceau d'Apple Music (`Pad.music`).
+    case music
 }
 
 /// Ce que fait un nouvel appui sur un pad « son et lumière » dont la cue est déjà allumée dans LightKey (fiche 06).
@@ -216,10 +260,13 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
     public var isFaderPaired: Bool
     /// Filtre DJ de la colonne son (`FilterCurve`), de −1 (passe-bas) à +1 (passe-haut) ; 0 = neutre, son intact.
     public var filter: Double
+    /// Colonne lumière, mode Projecteurs : ce que règle son fader (clic droit sur la carte). `nil` = le rôle par défaut, selon
+    /// l'ordre des colonnes lumière de la grille (1re : Général, 2e : Couleurs, les suivantes : aucun). Absent des anciens fichiers.
+    public var faderRole: DMXFaderRole?
 
     public init(
         id: UUID = UUID(), name: String, kind: ColumnKind, level: Double = 0.8, slots: [Pad?], isFaderPaired: Bool = false,
-        filter: Double = 0
+        filter: Double = 0, faderRole: DMXFaderRole? = nil
     ) {
         self.id = id
         self.name = name
@@ -228,9 +275,10 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
         self.slots = slots
         self.isFaderPaired = isFaderPaired
         self.filter = filter
+        self.faderRole = faderRole
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired, filter }
+    private enum CodingKeys: String, CodingKey { case id, name, kind, level, slots, isFaderPaired, filter, faderRole }
 
     /// Les spectacles d'avant l'appairage des faders n'ont pas `isFaderPaired` : ils s'ouvrent non appairés.
     /// Ceux d'avant le filtre de colonne n'ont pas `filter` : ils s'ouvrent au neutre.
@@ -243,6 +291,7 @@ public struct Column: Codable, Sendable, Equatable, Identifiable {
         slots = try container.decode([Pad?].self, forKey: .slots)
         isFaderPaired = try container.decodeIfPresent(Bool.self, forKey: .isFaderPaired) ?? false
         filter = try container.decodeIfPresent(Double.self, forKey: .filter) ?? 0
+        faderRole = try container.decodeIfPresent(DMXFaderRole.self, forKey: .faderRole)
     }
 
     public static func empty(name: String, kind: ColumnKind) -> Column {
@@ -268,6 +317,8 @@ public struct Pad: Sendable, Equatable, Identifiable {
     public var awaitsSound: Bool
     /// Nouvel appui d'un pad son et lumière : voir `LightRetrigger`.
     public var lightRetrigger: LightRetrigger
+    /// Un morceau d'Apple Music (grilles Apple Music) : exclusif, un pad Music n'a ni son ni cue.
+    public var music: MusicTrackRef?
 
     public init(
         id: UUID = UUID(),
@@ -278,7 +329,8 @@ public struct Pad: Sendable, Equatable, Identifiable {
         audio: AudioClip? = nil,
         light: LightCue? = nil,
         awaitsSound: Bool = false,
-        lightRetrigger: LightRetrigger = .turnOnOnly
+        lightRetrigger: LightRetrigger = .turnOnOnly,
+        music: MusicTrackRef? = nil
     ) {
         self.id = id
         self.title = title
@@ -289,6 +341,12 @@ public struct Pad: Sendable, Equatable, Identifiable {
         self.light = light
         self.awaitsSound = awaitsSound
         self.lightRetrigger = lightRetrigger
+        self.music = music
+    }
+
+    /// Un pad Apple Music : titre et sous-titre pris du morceau.
+    public static func track(_ track: MusicTrackRef, tint: Tint, id: UUID = UUID()) -> Pad {
+        Pad(id: id, title: String(track.title.prefix(80)), subtitle: String(track.artist.prefix(80)), tint: tint, music: track)
     }
 
     /// Un pad son.
@@ -307,6 +365,7 @@ public struct Pad: Sendable, Equatable, Identifiable {
 
     /// Son, lumière, ou les deux : déduit des parties. « En attente de son » compte comme un pad mixte.
     public var kind: PadKind {
+        if music != nil { return .music }
         if audio != nil, light != nil { return .mixed }
         if light != nil { return awaitsSound ? .mixed : .light }
         return .audio
@@ -325,7 +384,7 @@ public struct Pad: Sendable, Equatable, Identifiable {
 extension Pad: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, title, subtitle, tint, ledIntensity
-        case audio, light, awaitsSound, lightRetrigger
+        case audio, light, awaitsSound, lightRetrigger, music
         /// Version 1 : `content` = `{"audio": {"clip": …}}` ou `{"light": {"cue": …}}`.
         case content
     }
@@ -345,6 +404,7 @@ extension Pad: Codable {
         ledIntensity = try container.decode(LEDIntensity.self, forKey: .ledIntensity)
         awaitsSound = try container.decodeIfPresent(Bool.self, forKey: .awaitsSound) ?? false
         lightRetrigger = try container.decodeIfPresent(LightRetrigger.self, forKey: .lightRetrigger) ?? .turnOnOnly
+        music = try container.decodeIfPresent(MusicTrackRef.self, forKey: .music)
 
         if container.contains(.content) {
             guard !container.contains(.audio), !container.contains(.light) else {
@@ -380,6 +440,7 @@ extension Pad: Codable {
         try container.encodeIfPresent(light, forKey: .light)
         if awaitsSound { try container.encode(true, forKey: .awaitsSound) }
         if lightRetrigger != .turnOnOnly { try container.encode(lightRetrigger, forKey: .lightRetrigger) }
+        try container.encodeIfPresent(music, forKey: .music)
     }
 }
 
@@ -397,6 +458,9 @@ public struct AudioClip: Codable, Sendable, Equatable {
     public var retrigger: RetriggerBehavior
     /// Gain propre au pad, en décibels.
     public var gainDB: Double
+    /// Tempo corrigé à la main (J14, étape 3b) ; `nil` = celui détecté (non enregistré). Absent des anciens fichiers,
+    /// ignoré par les anciennes versions de l'app.
+    public var tempo: SoundTempo?
 
     public init(
         fileName: String,
@@ -406,7 +470,8 @@ public struct AudioClip: Codable, Sendable, Equatable {
         fadeOut: TimeInterval? = nil,
         loops: Bool = false,
         retrigger: RetriggerBehavior = .restart,
-        gainDB: Double = 0
+        gainDB: Double = 0,
+        tempo: SoundTempo? = nil
     ) {
         self.fileName = fileName
         self.trimStart = trimStart
@@ -416,6 +481,7 @@ public struct AudioClip: Codable, Sendable, Equatable {
         self.loops = loops
         self.retrigger = retrigger
         self.gainDB = gainDB
+        self.tempo = tempo
     }
 }
 
@@ -434,15 +500,24 @@ public struct LightCue: Codable, Sendable, Equatable {
     /// La cue a été appairée à une cue de LightKey (mode « Appairage lumière », ADR 0006). Sert à repérer, en mode
     /// d'appairage, les cases libres ; LightKey seul sait vraiment ce qu'il y a derrière la note.
     public var isPaired: Bool
+    /// L'état lumineux joué en mode « Projecteurs pilotés par Lalabob » (DMX, ADR 0012). Une cue garde sa note MIDI et son
+    /// état : chaque mode lit sa partie, et changer de mode ne perd rien. Absent des anciens fichiers.
+    public var look: LightLook?
 
-    public init(output: MIDIMessageSpec, behavior: LightBehavior = .impulse, ledFeedback: Bool = true, isPaired: Bool = false) {
+    /// `output` vaut `MIDIMessageSpec.unassigned` pour une cue créée en mode DMX : elle n'est jamais envoyée à LightKey
+    /// tant qu'elle n'est pas appairée.
+    public init(
+        output: MIDIMessageSpec = .unassigned, behavior: LightBehavior = .impulse, ledFeedback: Bool = true,
+        isPaired: Bool = false, look: LightLook? = nil
+    ) {
         self.output = output
         self.behavior = behavior
         self.ledFeedback = ledFeedback
         self.isPaired = isPaired
+        self.look = look
     }
 
-    private enum CodingKeys: String, CodingKey { case output, behavior, ledFeedback, isPaired }
+    private enum CodingKeys: String, CodingKey { case output, behavior, ledFeedback, isPaired, look }
 
     /// Les spectacles enregistrés avant l'appairage n'ont pas `isPaired` : ils s'ouvrent comme non appairés.
     public init(from decoder: any Decoder) throws {
@@ -451,6 +526,7 @@ public struct LightCue: Codable, Sendable, Equatable {
         behavior = try container.decode(LightBehavior.self, forKey: .behavior)
         ledFeedback = try container.decode(Bool.self, forKey: .ledFeedback)
         isPaired = try container.decodeIfPresent(Bool.self, forKey: .isPaired) ?? false
+        look = try container.decodeIfPresent(LightLook.self, forKey: .look)
     }
 }
 
@@ -483,4 +559,7 @@ public struct MIDIMessageSpec: Codable, Sendable, Equatable {
         self.number = number
         self.value = value
     }
+
+    /// Note neutre d'une cue qui n'a pas (encore) de note LightKey.
+    public static let unassigned = MIDIMessageSpec(kind: .note, channel: 0, number: 0)
 }

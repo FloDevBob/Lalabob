@@ -56,7 +56,9 @@ public enum ShowPackage {
     public static func encode(_ show: Show) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        return try encoder.encode(show)
+        var written = show
+        written.formatVersion = show.requiredFormatVersion
+        return try encoder.encode(written)
     }
 
     /// Décode et valide. Toute donnée lue d'un fichier passe par ici avant usage.
@@ -76,9 +78,9 @@ public enum ShowPackage {
         } catch { throw .corrupt }
         let withoutChannel = probe.grids.indices.filter { !probe.grids[$0].hasLightChannel }
         let reset = withoutChannel.isEmpty ? [] : show.migrateToLightChannelPerGrid(gridsWithoutChannel: withoutChannel)
-        // Un fichier de version 1 (ou 2) est maintenant au format courant : il se réécrit en version 2. Une version inconnue
-        // (0, 3…) reste telle quelle et sera refusée par `validate()`.
-        if (1...Show.currentFormatVersion).contains(show.formatVersion) { show.formatVersion = Show.currentFormatVersion }
+        // Un fichier de version 1, 2 ou 3 est maintenant au format courant ; il se réécrit dans la plus petite version qui le
+        // contient (`requiredFormatVersion`). Une version inconnue (0, 4…) reste telle quelle et sera refusée par `validate()`.
+        if (1...Show.currentFormatVersion).contains(show.formatVersion) { show.formatVersion = show.requiredFormatVersion }
         do { try show.validate() } catch { throw .invalid(error) }
         return Decoded(show: show, lightPairingsReset: reset)
     }

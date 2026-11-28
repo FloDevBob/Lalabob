@@ -16,12 +16,16 @@ struct RotaryKnob: View {
     let accent: Color
     @Binding var value: Double
     let onReset: () -> Void
+    /// Diamètre imposé par la carte (il suit la place disponible) ; `nil` = taille d'après la hauteur de la piste.
+    var size: CGFloat? = nil
 
     @Environment(\.gridDensity) private var density
     @State private var dragStart: Double?
 
     /// Course de la souris (en points) pour aller du centre à une butée.
     private static let dragTravel: CGFloat = 100
+    /// Mouvement minimal (en points) avant qu'un appui devienne un réglage.
+    private static let dragThreshold: CGFloat = 2
     /// Pas des flèches du clavier et de VoiceOver.
     private static let step = 0.05
     /// Débattement de l'aiguille de part et d'autre du sommet.
@@ -29,7 +33,7 @@ struct RotaryKnob: View {
 
     /// Plus petit quand la piste des faders rétrécit (pads de hauteur minimale) : l'étiquette ne passe pas sous le
     /// bouton stop de la colonne.
-    private var diameter: CGFloat { density.faderTrackHeight < 90 ? 28 : 36 }
+    private var diameter: CGFloat { size ?? (density.faderTrackHeight < 90 ? 28 : 36) }
 
     private var position: Double { FilterCurve.clamped(value) }
     private var mode: FilterCurve.Mode { FilterCurve.mode(for: position) }
@@ -42,6 +46,9 @@ struct RotaryKnob: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { drag in
+                            // Un clic sans mouvement (dont chaque clic d'un double-clic) ne règle rien : sinon il réécrirait
+                            // l'ancienne valeur et interromprait le retour au neutre que le double-clic vient de lancer.
+                            if dragStart == nil, hypot(drag.translation.width, drag.translation.height) < Self.dragThreshold { return }
                             let start = dragStart ?? position
                             if dragStart == nil { dragStart = start }
                             let delta = (drag.translation.width - drag.translation.height) / Self.dragTravel
@@ -55,7 +62,7 @@ struct RotaryKnob: View {
                 .help("Filtre de \(name) : glisser vers le haut (coupe les basses) ou vers le bas (coupe les aigus) · double-clic : neutre")
             caption
         }
-        .frame(width: 42)
+        .frame(width: max(42, diameter + 6))
         .focusable()
         .onKeyPress(keys: [.leftArrow, .downArrow]) { _ in nudge(-Self.step) }
         .onKeyPress(keys: [.rightArrow, .upArrow]) { _ in nudge(Self.step) }

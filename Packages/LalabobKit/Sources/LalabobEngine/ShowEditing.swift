@@ -28,7 +28,7 @@ extension ShowController {
 
     /// Une cue lumière vierge. La note envoyée à LightKey est celle du contrôleur (ADR 0006) : le message stocké ne sert pas.
     static func blankLightPad() -> Pad {
-        Pad.cue(title: "Nouvelle cue", tint: .ambre, cue: .blank)
+        Pad.cue(title: "Nouvelle lumière", tint: .ambre, cue: .blank)
     }
 
     @discardableResult
@@ -296,16 +296,33 @@ extension ShowController {
 
     // MARK: - Onglets de grilles
 
-    public func addGrid() {
-        let name = "Grille \(show.grids.count + 1)"
-        let added = commit("Ajouter une grille") { show, _ in
+    /// Ajoute une grille à la fin et l'affiche : standard (sons et lumière) ou Apple Music.
+    public func addGrid(kind: GridKind = .standard) {
+        let name = kind == .appleMusic ? "Musiques \(show.grids.count + 1)" : "Grille \(show.grids.count + 1)"
+        let added = commit(kind == .appleMusic ? "Ajouter une grille Apple Music" : "Ajouter une grille") { show, _ in
             guard show.grids.count < Show.maximumGridCount else { return false }
-            var grid = show.adaptingNewGrid(.empty(name: name))  // colonnes lumière communes, si l'option est active
+            var grid = show.adaptingNewGrid(kind == .appleMusic ? .emptyAppleMusic(name: name) : .empty(name: name))  // colonnes lumière communes, si l'option est active
             grid.lightChannel = show.firstFreeLightChannel()  // nil au-delà de 16 : « Sans canal »
             show.grids.append(grid)
             return true
         }
         if added { selectGrid(at: show.grids.count - 1) }
+    }
+
+    /// Ce que coûterait le passage d'une grille à un autre type : les pads supprimés (vide = aucune confirmation à demander).
+    public func gridKindRemovedPads(at index: Int, to kind: GridKind) -> [Pad] {
+        guard show.grids.indices.contains(index) else { return [] }
+        return show.grids[index].padsRemoved(convertingTo: kind)
+    }
+
+    /// Change le type d'une grille (une annulation, refusé verrouillé). Les colonnes lumière restent telles quelles ; les
+    /// autres deviennent des colonnes du nouveau type, vidées de ce qui n'y rentre pas (sons ↔ morceaux).
+    public func setGridKind(at index: Int, to kind: GridKind) {
+        commit("Type de grille") { show, _ in
+            guard show.grids.indices.contains(index), show.grids[index].kind != kind else { return false }
+            show.grids[index] = show.grids[index].converted(to: kind)
+            return true
+        }
     }
 
     public func renameGrid(at index: Int, to name: String) {
@@ -320,7 +337,7 @@ extension ShowController {
     /// Change le canal LightKey d'une grille (`nil` = « Sans canal »). Refusé verrouillé, hors de 1…16, ou si une autre
     /// grille utilise déjà ce canal. Les appairages de la grille sont à refaire dans LightKey (l'interface le dit avant).
     public func setLightChannel(grid index: Int, channel: Int?) {
-        commit("Canal LightKey") { show, _ in
+        commit("Canal des lumières") { show, _ in
             guard show.grids.indices.contains(index) else { return false }
             if let channel {
                 guard Show.lightChannels.contains(channel), show.sharedLight?.channel != channel,
@@ -348,7 +365,7 @@ extension ShowController {
 
     /// Change le canal LightKey des colonnes communes (refusé s'il est pris par une grille, ou verrouillé).
     public func setSharedLightChannel(_ channel: Int) {
-        commit("Canal des colonnes communes") { show, _ in show.setSharedLightChannel(channel) }
+        commit("Canal des lumières communes") { show, _ in show.setSharedLightChannel(channel) }
     }
 
     // MARK: - Types de colonnes et de pads (fiche 06)
@@ -373,7 +390,13 @@ extension ShowController {
     public func columnKindProblem(_ column: Int, to kind: ColumnKind) -> String? {
         guard (0..<PadGrid.size).contains(column) else { return "Colonne introuvable." }
         let current = currentGrid.columns[column].kind
-        guard current != kind, show.sharedLight != nil else { return nil }
+        guard current != kind else { return nil }
+        if !currentGrid.kind.allows(kind) {
+            return currentGrid.kind == .appleMusic
+                ? "Une grille Apple Music n'a que des colonnes Music et lumière : changez le type de la grille (clic droit sur l'onglet) pour des sons."
+                : "Les colonnes Music n'existent que dans une grille Apple Music."
+        }
+        guard show.sharedLight != nil else { return nil }
         if show.isSharedLightColumn(column) {
             return "Cette colonne est commune à toutes les grilles : désactivez les colonnes lumière communes (Spectacle › Réglages du spectacle…) pour changer son type."
         }
@@ -420,12 +443,11 @@ extension ShowController {
     }
 
     /// « Nouvel appui » de la cue d'un pad son et lumière : n'envoyer la note que si LightKey dit la cue éteinte (`turnOnOnly`), ou à
-    /// chaque appui (`toggle`). Une annulation ; refusé verrouillé ; sans effet sur un pad sans son ou sans cue.
+    /// chaque appui (`toggle`). Une annulation ; refusé verrouillé ; sans effet sur un pad sans cue. En mode Projecteurs, un pad lumière seul s'en sert aussi (« laisse allumé » / « allume ou éteint »).
     @discardableResult
     public func setLightRetrigger(at position: GridPosition, to value: LightRetrigger) -> Bool {
         commit("Nouvel appui de la lumière") { show, grid in
-            guard position.isValid, var pad = show.grids[grid][position], pad.audio != nil, pad.light != nil,
-                pad.lightRetrigger != value
+            guard position.isValid, var pad = show.grids[grid][position], pad.light != nil, pad.lightRetrigger != value
             else { return false }
             pad.lightRetrigger = value
             show.grids[grid][position] = pad

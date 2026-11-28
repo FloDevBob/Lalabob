@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visite guidée de Lalabob</title>
+<meta name="description" content="Prendre en main Lalabob en cinq minutes, sur une copie de l'app qui joue de vrais sons.">
+<!-- Visite guidée de Lalabob. La copie de la fenêtre occupe tout l'écran ; l'élément à utiliser est mis en lumière, le
+     reste assombri, et une bulle le suit (consigne, résultat, Suivant). Même page dans l'app (Aide ▸ Visite guidée,
+     embarquée : sans Internet) et en ligne. La copie suit la vraie fenêtre (capture du 27/11/2026, 1320 × 752) : quand
+     l'interface change, cette copie doit suivre. Vocabulaire : docs/LEXIQUE.md. Sons : sons.js
+     (docs/tutoriel/sons/sons_visite.py). Fabriquée par docs/tutoriel/visite/ (voir README du tutoriel). -->
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #07080A; --panel: #15161B; --line: #343744; --fg: #ECEDF0; --soft: #AEB2BB; --dim: #8D919B;
+  --accent: #FFC93D; --ink: #111214; --ok: #3DDC6E; --danger: #E5484D;
+  --win: #0E0F12; --chrome: #121317; --well: #0B0C0F; --hair: rgba(255,255,255,.08);
+  --ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --round: ui-rounded, "SF Pro Rounded", "Fredoka", -apple-system, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--ui); display: flex; flex-direction: column; overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+kbd { font: 600 12px var(--ui); background: #24262D; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 0 6px; white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Chapitres, en haut */
+.vg-top { flex: none; display: flex; gap: 6px; padding: 10px 16px 8px; align-items: flex-end; }
+.vg-top button { flex: 1; min-width: 0; background: none; border: 0; padding: 0; text-align: left; }
+.vg-top span { display: block; font: 600 11.5px var(--ui); letter-spacing: .05em; text-transform: uppercase; color: var(--soft); opacity: .55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+.vg-top i { display: block; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.vg-top i b { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s cubic-bezier(.2,.8,.2,1); }
+.vg-top .cur span { opacity: 1; color: var(--accent); }
+.vg-top .past span { opacity: .9; }
+
+/* La copie, en plein écran */
+.vg-view { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.vg-stage { position: absolute; left: 0; top: 0; width: 1320px; height: 752px; transform-origin: 0 0; font: 13px/1.3 var(--ui); color: var(--fg); background: var(--win); border-radius: 12px; overflow: hidden; user-select: none; -webkit-user-select: none; box-shadow: 0 0 0 1px var(--hair); }
+.vg-stage button { border: 0; background: none; padding: 0; }
+.hd { position: absolute; left: 0; top: 0; right: 0; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 20px 0 14px; border-bottom: 1px solid var(--hair); background: var(--win); }
+.lights { display: flex; gap: 8px; margin-right: 34px; } .lights i { width: 12px; height: 12px; border-radius: 50%; background: #3A3B40; }
+.logo { font: 600 23px var(--round); letter-spacing: -.3px; }
+.show { color: var(--soft); font-size: 13px; margin-right: 10px; }
+.tab { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 6px; border-radius: 9px; color: var(--soft); font-size: 13.5px; }
+.tab.on { background: rgba(255,255,255,.07); color: var(--fg); font-weight: 600; }
+.tab .num { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.tab.on .num { background: var(--fg); color: var(--ink); }
+.tab small { color: var(--dim); font-size: 12px; }
+.hd .sp { flex: 1; }
+.ctl { display: flex; align-items: center; gap: 7px; color: var(--soft); font-size: 13px; }
+.ctl i { width: 8px; height: 8px; border-radius: 50%; background: #5A5D66; }
+.out { height: 24px; padding: 0 10px; border-radius: 6px; background: rgba(255,255,255,.08); display: flex; align-items: center; gap: 8px; font-size: 13px; width: 180px; justify-content: space-between; }
+.pair { color: #5D606A; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.lockb { height: 28px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--soft); }
+.lockb.open { color: var(--accent); background: rgba(255,201,61,.1); }
+.stopall { height: 26px; padding: 0 12px; border-radius: 7px; border: 1px solid rgba(255,255,255,.14) !important; display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.stopall.hot { background: var(--danger) !important; border-color: var(--danger) !important; }
+.stopall b { width: 12px; height: 12px; border: 1.6px solid currentColor; border-radius: 3px; }
+.grid { position: absolute; left: 20px; top: 70px; width: 1280px; display: grid; grid-template-columns: repeat(8, 153px); column-gap: 8px; transition: left .3s cubic-bezier(.2,.8,.2,1); }
+.ch { height: 28px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid rgba(255,255,255,.06); margin-bottom: 7px; }
+.ch.light { border-color: var(--accent); }
+.ch .ico { width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,.07); display: grid; place-items: center; color: var(--soft); }
+.ch.light .ico { background: rgba(255,201,61,.14); color: var(--accent); }
+.ch .nm { font-weight: 700; font-size: 13.5px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch .no { color: var(--dim); font-size: 12px; }
+.pads { display: flex; flex-direction: column; gap: 6px; }
+.pad { position: relative; height: 38px; border-radius: 12px; padding: 4px 34px 0 11px; overflow: hidden; cursor: default; }
+.pad.empty { border: 1.5px dashed rgba(255,255,255,.11); }
+.pad.empty.drop { border-color: rgba(255,255,255,.7); background: rgba(255,255,255,.04); }
+.pad .t { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25; }
+.pad .s { font-size: 11.5px; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.pad .pb { position: absolute; right: 7px; top: 8px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; }
+.pad.sel { box-shadow: inset 0 0 0 2px #fff; }
+.pad.play { box-shadow: inset 0 0 0 2px var(--v), 0 0 14px -2px var(--v); }
+.pad.play.sel { box-shadow: inset 0 0 0 2px var(--v), 0 0 14px -2px var(--v), 0 0 0 2px #fff; }
+.pad.paused { opacity: .7; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--v) 45%, transparent); }
+.pad .bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--v); width: 0; }
+.pad.paused .bar { opacity: .45; }
+.eq { position: absolute; right: 34px; top: 10px; display: flex; gap: 2px; align-items: flex-end; height: 12px; }
+.eq i { width: 2px; background: var(--v); border-radius: 1px; animation: eq .9s ease-in-out infinite alternate; }
+.eq i:nth-child(2) { animation-delay: -.3s; } .eq i:nth-child(3) { animation-delay: -.6s; }
+.pad.paused .eq i { animation-play-state: paused; }
+@keyframes eq { from { height: 3px; } to { height: 12px; } }
+.cards { position: absolute; left: 20px; top: 462px; width: 1280px; display: grid; grid-template-columns: repeat(8, 153px); column-gap: 8px; transition: left .3s cubic-bezier(.2,.8,.2,1); }
+.card { position: relative; height: 92px; border-radius: 14px; background: var(--panel); border: 1px solid var(--hair); }
+.fader { position: absolute; left: 22px; top: 10px; width: 30px; height: 62px; cursor: grab; }
+.fader::before { content: ""; position: absolute; left: 13px; top: 2px; bottom: 2px; width: 4px; border-radius: 2px; background: #4A4D55; }
+.fader b { position: absolute; left: 0; width: 30px; height: 18px; margin-top: -9px; border-radius: 6px; background: #E8E9EC; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.meter { position: absolute; left: 62px; top: 10px; height: 62px; display: flex; gap: 3px; }
+.meter i { position: relative; width: 4px; height: 100%; border-radius: 2px; background: #1E2026; overflow: hidden; }
+.meter i b { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(to top, #3DDC6E 0 82%, #FFC93D 82% 96%, #FF5C66 96%); background-size: 100% 62px; background-position: bottom; }
+.knob { position: absolute; left: 92px; top: 6px; width: 34px; height: 34px; cursor: grab; }
+.knob svg { display: block; }
+.klab { position: absolute; left: 76px; top: 42px; width: 66px; text-align: center; font-size: 11px; font-weight: 600; color: var(--soft); line-height: 1.15; }
+.db { position: absolute; left: 10px; bottom: 6px; width: 70px; text-align: center; font: 12px var(--mono); color: var(--soft); }
+.cstop { position: absolute; right: 10px; bottom: 6px; width: 28px; height: 28px; border-radius: 50%; background: var(--danger) !important; display: grid; place-items: center; }
+.cstop b { width: 10px; height: 10px; border-radius: 2px; background: #fff; }
+.card.lt .fader { left: 50px; }
+.card.lt .sun { position: absolute; left: 92px; top: 12px; color: var(--accent); }
+.card.lt .db { left: 0; width: 100%; }
+.bottom { position: absolute; left: 0; right: 0; top: 556px; height: 196px; border-top: 1px solid var(--hair); background: var(--chrome); }
+.idle { padding: 0 20px; }
+.idle .msg { height: 50px; display: flex; align-items: center; color: var(--dim); font-size: 13px; border-bottom: 1px solid var(--hair); margin: 0 -20px; padding: 0 20px; }
+.idle .ind { display: grid; grid-template-columns: 1fr 1fr 1fr 1.6fr; gap: 12px; padding-top: 14px; }
+.idle .ind > div { background: var(--panel); border: 1px solid var(--hair); border-radius: 12px; padding: 10px 14px; height: 112px; font-size: 12px; color: var(--soft); }
+.idle .ind small { display: block; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+.idle .ind strong { display: block; color: var(--fg); font-size: 16px; margin-bottom: 6px; }
+.tip { display: flex; gap: 12px; align-items: flex-start; }
+.tip .bulb { flex: none; width: 34px; height: 34px; border-radius: 8px; background: rgba(255,201,61,.12); display: grid; place-items: center; color: var(--accent); }
+.insp .top { height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--hair); }
+.cap { display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 6px; border-radius: 23px; background: rgba(0,0,0,.35); }
+.cap .pl { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; }
+.cap .sm { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--soft); }
+.cap .sm.on { color: var(--accent); background: rgba(255,201,61,.14); }
+.cap .lp.on { color: var(--ok); background: rgba(61,220,110,.12); }
+.cap .sep { width: 1px; height: 22px; background: var(--hair); }
+.time { font: 13px var(--mono); color: var(--soft); padding-right: 14px; border-right: 1px solid var(--hair); }
+.insp .ttl { font-weight: 700; font-size: 15px; } .insp .ttl small { font-weight: 400; color: var(--soft); font-size: 12.5px; margin-left: 6px; }
+.insp .file { margin-left: auto; font: 11.5px var(--mono); color: var(--dim); }
+.insp .dot { width: 16px; height: 16px; border-radius: 5px; }
+.insp .low { position: absolute; left: 0; right: 0; top: 53px; bottom: 0; display: flex; gap: 12px; padding: 10px 16px 12px 14px; }
+.gauge { width: 46px; flex: none; border-radius: 10px; background: var(--well); border: 1px solid var(--hair); position: relative; }
+.gauge::before { content: ""; position: absolute; left: 21px; top: 10px; bottom: 26px; width: 4px; border-radius: 2px; background: #3A3D45; }
+.gauge b { position: absolute; left: 8px; width: 30px; height: 8px; border-radius: 4px; background: #E8E9EC; top: 18px; }
+.gauge span { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 10.5px var(--mono); color: var(--soft); }
+.wave { position: relative; flex: 1; border-radius: 10px; background: var(--well); border: 1px solid var(--hair); overflow: hidden; }
+.wave canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.wave .head { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; left: 0; }
+.lib { position: absolute; left: 0; top: 56px; width: 272px; height: 500px; background: var(--chrome); border-right: 1px solid var(--hair); padding: 12px; transform: translateX(-280px); transition: transform .3s cubic-bezier(.2,.8,.2,1); z-index: 5; }
+.lib.on { transform: none; }
+.lib .search { height: 30px; border-radius: 8px; background: rgba(255,255,255,.06); color: var(--dim); display: flex; align-items: center; padding: 0 10px; font-size: 13px; margin-bottom: 12px; }
+.lib h5 { margin: 4px 4px 6px; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; }
+.lib .it { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px; cursor: grab; }
+.lib .it:hover { background: rgba(255,255,255,.05); }
+.lib .it .w { color: var(--v, #5B8CFF); }
+.lib .it .nmf { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib .it .d { margin-left: auto; font: 11.5px var(--mono); color: var(--dim); }
+.lib .it .u { width: 6px; height: 6px; border-radius: 50%; background: #2CCFC0; }
+.lib .foot { position: absolute; left: 12px; right: 12px; bottom: 12px; color: var(--dim); font-size: 12px; text-align: center; }
+.drag { position: fixed; z-index: 70; pointer-events: none; padding: 6px 12px; border-radius: 10px; background: #22479E; color: #DCE5FF; font-weight: 600; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,.5); transform: translate(-50%, -50%); }
+
+.pad.lit { box-shadow: inset 0 0 0 2px var(--v), 0 0 16px -2px var(--v); }
+.pad.lit .pb { background: var(--v); color: #111; }
+.pad.light .pb { color: var(--accent); }
+.pad.light.lit .pb { color: #111; }
+.card.lt .fader { left: 44px; cursor: grab; }
+.card.lt .sun { position: absolute; left: 92px; top: 14px; color: var(--accent); }
+.card.lt .db { left: 0; width: 100%; font: 12px var(--ui); }
+.toast { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); z-index: 30; background: #2A2C33; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 8px 14px; font-size: 13.5px; animation: vg-up .25s both; white-space: nowrap; }
+@keyframes vg-up { from { opacity: 0; transform: translate(-50%, 6px); } }
+
+/* Mise en lumière : un trou dans le voile sombre, cerclé d'ambre tant que le geste est à faire */
+.vg-spot { position: fixed; z-index: 40; pointer-events: none; border-radius: 12px; box-shadow: 0 0 0 200vmax rgba(4,5,7,.62); transition: left .35s cubic-bezier(.2,.8,.2,1), top .35s cubic-bezier(.2,.8,.2,1), width .35s cubic-bezier(.2,.8,.2,1), height .35s cubic-bezier(.2,.8,.2,1); }
+.vg-spot.go { outline: 2px solid var(--accent); outline-offset: 3px; animation: vg-glow 1.5s ease-in-out infinite; }
+@keyframes vg-glow { 50% { outline-color: rgba(255,201,61,.45); } }
+.vg-spot.none { box-shadow: 0 0 0 200vmax rgba(4,5,7,.72); }
+
+/* La bulle */
+.vg-bubble { position: fixed; z-index: 60; width: 330px; background: #1D1F25; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.55); transition: left .35s cubic-bezier(.2,.8,.2,1), top .35s cubic-bezier(.2,.8,.2,1); }
+.vg-bubble.center { width: 460px; padding: 22px 24px 18px; }
+.vg-bubble .eye { margin: 0 0 4px; font: 600 11.5px var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.vg-bubble h2 { margin: 0 0 6px; font: 700 18px/1.25 var(--round); }
+.vg-bubble.center h2 { font-size: 26px; margin-bottom: 10px; }
+.vg-bubble p { margin: 0 0 8px; color: #D5D8DF; font-size: 14.5px; }
+.vg-bubble ul { margin: 0 0 12px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: #D5D8DF; }
+.vg-bubble li::marker { color: var(--accent); }
+.vg-do { display: flex; gap: 8px; align-items: baseline; margin: 10px 0 2px; color: var(--accent); font-weight: 600; font-size: 14.5px; }
+.vg-or { margin: 2px 0 0 18px; color: var(--dim); font-size: 12.5px; }
+.vg-done { display: flex; gap: 8px; margin: 10px 0 2px; padding: 8px 10px; border-radius: 10px; background: rgba(61,220,110,.09); border: 1px solid rgba(61,220,110,.25); font-size: 14px; animation: vg-in .3s both; }
+.vg-done::before { content: "✓"; color: var(--ok); font-weight: 700; }
+@keyframes vg-in { from { opacity: 0; transform: translateY(4px); } }
+.vg-nav { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.vg-nav .back { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: transparent; }
+.vg-nav .go { flex: 1; height: 36px; border-radius: 10px; border: 0; background: var(--accent); color: var(--ink); font-weight: 700; }
+.vg-nav .go.pulse { animation: vg-pulse 1.2s ease-in-out infinite; }
+@keyframes vg-pulse { 50% { box-shadow: 0 0 0 6px rgba(255,201,61,.25); } }
+.vg-nav small { color: var(--dim); font-size: 12px; white-space: nowrap; }
+.vg-arrow { position: absolute; width: 14px; height: 14px; background: #1D1F25; border: 1px solid rgba(255,255,255,.14); transform: rotate(45deg); }
+.vg-scene { display: block; width: 100%; height: auto; margin: 4px 0 8px; border-radius: 10px; background: #0B0C10; }
+.vg-apc { display: grid; grid-template-columns: repeat(8, 13px); gap: 4px; padding: 9px; background: #1A1B20; border-radius: 10px; width: fit-content; border: 1px solid var(--hair); margin: 2px 0 8px; }
+.vg-apc i { width: 13px; height: 13px; border-radius: 3px; background: #2A2C33; }
+.vg-ghost { position: fixed; z-index: 70; pointer-events: none; width: 22px; height: 22px; transition: left .65s cubic-bezier(.3,.7,.2,1), top .65s cubic-bezier(.3,.7,.2,1); filter: drop-shadow(0 2px 4px #000); }
+.vg-ghost.tap { animation: vg-tap .3s ease-out; } @keyframes vg-tap { 50% { transform: scale(.75); } }
+.drag { position: fixed; z-index: 70; pointer-events: none; padding: 6px 12px; border-radius: 10px; background: #22479E; color: #DCE5FF; font-weight: 600; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,.5); transform: translate(-50%, -50%); }
+@media (prefers-reduced-motion: reduce) { *, *::before { animation-duration: .01s !important; transition-duration: .01s !important; } }
+</style>
+</head>
+<body>
+<nav class="vg-top" id="vg-top" aria-label="Chapitres de la visite"></nav>
+<div class="vg-view" id="vg-view"><div class="vg-stage" id="vg-stage" aria-label="Copie de la fenêtre de Lalabob"></div></div>
+<div class="vg-spot" id="vg-spot"></div>
+<div class="vg-bubble" id="vg-bubble" role="dialog" aria-live="polite"></div>
+<svg class="vg-ghost" id="vg-ghost" hidden viewBox="0 0 22 22"><path d="M3 2l15 8-6.5 1.8L9 18z" fill="#fff" stroke="#000" stroke-width="1.2"/></svg>
+<script src="sons.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const inApp = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.tour);
+const mmss = t => { t = Math.max(0, Math.floor(t)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+// Teintes de l'app (LalabobModel/Tint.swift) : fond, texte, couleur vive
+const TINT = { azur: ['#22479E', '#DCE5FF', '#5B8CFF'], orange: ['#8F4317', '#FFE6D4', '#FF8A3D'], violet: ['#5530A0', '#E8DEFF', '#A57CFF'],
+  rose: ['#8C2558', '#FFDDEB', '#FF5CA8'], ambre: ['#755A0E', '#FFF2C7', '#FFC93D'], rouge: ['#8C2B32', '#FFE1E2', '#FF5C66'],
+  blanc: ['#4A4D55', '#F4F5F7', '#F4F5F7'], graphite: ['#30333A', '#D3D6DD', '#9A9EA8'] };
+// La grille « Découverte » du spectacle d'entraînement. snd : son joué par la visite (les autres pads restent muets ici).
+const P = (t, s, snd, loop) => ({ t, s, snd, loop: !!loop });
+const L = (t, s, tint, noir) => ({ t, s, tint, light: 1, noir: !!noir });
+const COLS = [
+  { n: 'Ambiances', tint: 'azur', pads: [P('Pluie', 'Pluie douce', 'pluie', 1), P('Vent dans les arbres', "Brise d'été", 'vent', 1), P('Forêt la nuit', 'Grillons, nuit calme', 0, 1), P('Rue de ville', 'Passants, voitures', 0, 1), P('Café animé', 'Salle, vaisselle', 0, 1), P('Bord de mer', 'Vagues', 0, 1)] },
+  { n: 'Bruitages', tint: 'orange', pads: [P('Tonnerre', 'Grondement grave', 'tonnerre'), P('Porte qui claque', 'Claquement sec', 'porte'), P('Pas sur parquet', "Quelqu'un entre"), P('Verre brisé', 'Chute et éclats', 'verre'), P('Coups de feu', 'Au loin, trois coups'), P('Téléphone ancien', 'Sonnerie à cloche')] },
+  { n: 'Cinéma', tint: 'violet', pads: [P('Montée de tension', 'Suspense'), P('Coup de théâtre', 'Impact grave'), P('Whoosh', 'Passage rapide'), P('Battements de cœur', 'Angoisse', 0, 1), P('Horloge', 'Tic-tac lent', 0, 1)] },
+  { n: 'Public', tint: 'rose', pads: [P('Applaudissements', 'Salle de concert', 'applaudissements'), P('Rires', 'Public conquis', 'rires'), P('Murmures de salle', 'Avant le spectacle', 0, 1), P('« Oh ! »', 'Surprise du public')] },
+  { n: 'Transitions', tint: 'ambre', pads: [P('Cloche', 'Changement de scène', 'cloche'), P('Gong', 'Longue résonance'), P('Raté !', 'Jingle comique', 'rate')] },
+  { n: 'À vous', tint: 'azur', pads: [] },
+  { n: 'Lumière 1', light: 1, pads: [L('Plein feu', 'Toute la scène', 'ambre'), L('Douche bleue', 'Centre de la scène', 'azur'), L('Contre rouge', 'Fond de scène', 'rouge')] },
+  { n: 'Lumière 2', light: 1, pads: [L('Salle', 'Lumière du public', 'blanc'), L('Noir', 'Tout éteindre', 'graphite', 1)] },
+];
+const padId = (c, r) => c + '-' + r;
+const PAD = {};
+COLS.forEach((col, c) => col.pads.forEach((p, r) => { p.id = padId(c, r); p.c = c; p.r = r; p.tint = p.tint || col.tint; PAD[p.id] = p; }));
+const ID = { pluie: '0-0', vent: '0-1', tonnerre: '1-0', plein: '6-0' };
+const LIGHTS = Object.values(PAD).filter(p => p.light && !p.noir);
+
+// ---------- Son : un mélangeur par colonne (fader → filtre → vumètre), comme le moteur de l'app ----------
+let ctx = null, quiet = false;
+const BUF = {}, cols = [];
+function audio() {
+  if (!ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    for (let c = 0; c < 6; c++) {
+      const g = ctx.createGain(), lp = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), an = ctx.createAnalyser();
+      lp.type = 'lowpass'; hp.type = 'highpass'; lp.frequency.value = 20000; hp.frequency.value = 10; an.fftSize = 1024;
+      g.connect(lp); lp.connect(hp); hp.connect(an); an.connect(ctx.destination);
+      cols[c] = { g, lp, hp, an, data: new Float32Array(1024), peak: [0, 0] };
+      applyColumn(c);
+    }
+    const S0 = window.LALABOB_SONS || {};
+    Object.keys(S0).forEach(k => {
+      const bin = atob(S0[k]), u = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      const done = b => { BUF[k] = b; Object.values(S.voices).forEach(v => { if (v.snd === k && !v.src && !v.paused) startSource(v, v.offset); }); };
+      try { const p = ctx.decodeAudioData(u.buffer, done, () => {}); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    });
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+function applyColumn(c) {
+  if (!ctx || c >= 6 || !cols[c]) return;
+  const k = cols[c], t = ctx.currentTime, f = S.filter[c];
+  k.g.gain.setTargetAtTime(S.level[c], t, 0.015);
+  k.lp.frequency.setTargetAtTime(f < -0.04 ? 20000 * Math.pow(0.01, -f) : 20000, t, 0.02);
+  k.hp.frequency.setTargetAtTime(f > 0.04 ? 20 * Math.pow(250, f) : 10, t, 0.02);
+}
+const nowS = () => performance.now() / 1000;
+function startSource(v, offset) {
+  if (quiet || !ctx || !BUF[v.snd]) return;
+  const src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = BUF[v.snd]; src.loop = v.loop; src.connect(g); g.connect(cols[v.c].g);
+  v.dur = src.buffer.duration;
+  src.start(0, offset % v.dur); v.src = src; v.g = g;
+}
+function killSource(v, fade) {
+  if (!v.src) return;
+  const src = v.src, g = v.g; v.src = null;
+  try {
+    if (fade && ctx) { const t = ctx.currentTime; g.gain.setValueAtTime(1, t); g.gain.linearRampToValueAtTime(0, t + 0.04); src.stop(t + 0.05); }
+    else src.stop();
+  } catch (e) {}
+}
+function pos(v) {
+  const p = v.paused ? v.offset : nowS() - v.t0;
+  return v.loop ? p % v.dur : Math.min(p, v.dur);
+}
+function play(id) {
+  const p = PAD[id]; if (!p) return;
+  audio();
+  const old = S.voices[id]; if (old) killSource(old, false);
+  const v = { id, c: p.c, snd: p.snd, loop: p.loop, dur: (p.snd && BUF[p.snd]) ? BUF[p.snd].duration : (p.loop ? 60 : 5), t0: nowS(), offset: 0, paused: false };
+  S.voices[id] = v; S.sel = id; S.shown = id;
+  if (p.snd) startSource(v, 0); else if (!quiet) toast('Ce pad est muet dans la visite : il joue dans le vrai spectacle.');
+}
+function stop(id, fade = true) { const v = S.voices[id]; if (!v) return; killSource(v, fade); delete S.voices[id]; }
+function togglePause(id) {
+  const v = S.voices[id];
+  if (!v) { play(id); return; }
+  if (v.paused) { v.paused = false; v.t0 = nowS() - v.offset; startSource(v, v.offset); }
+  else { v.offset = pos(v); v.paused = true; killSource(v, true); }
+}
+function stopAll() { Object.keys(S.voices).forEach(id => stop(id, true)); S.stops++; }
+const playing = id => !!S.voices[id] && !S.voices[id].paused;
+const paused = id => !!S.voices[id] && S.voices[id].paused;
+
+
+// ---------- État de la copie ----------
+let S;
+function init() { return { voices: {}, lights: {}, sel: null, shown: null, level: [.8, .8, .8, .8, .8, .8, 1, 1], filter: [0, 0, 0, 0, 0, 0], locked: true, added: null, stops: 0, drop: null }; }
+S = init();
+// Un pad lumière : un double-clic allume ou éteint la lumière ; « Noir » éteint tout
+function toggleLight(id) {
+  const p = PAD[id]; if (!p) return;
+  if (p.noir) { S.lights = {}; } else S.lights[id] = !S.lights[id];
+  S.sel = id; S.shown = null;
+}
+const lit = id => !!S.lights[id];
+
+// ---------- Dessin ----------
+const ICO = {
+  note: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  spot: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 14l6-6 6 6-6 2z M10 8l3-3 M18 16l3 1 M16 19l1 3 M19 12l3-1"/></svg>',
+  play: s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><path d="M7.5 5.2v13.6a.8.8 0 001.2.7l11-6.8a.8.8 0 000-1.4l-11-6.8a.8.8 0 00-1.2.7z" fill="currentColor"/></svg>`,
+  stop: s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>`,
+  pause: s => `<svg width="${s}" height="${s}" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></svg>`,
+  loop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M17 2l3 3-3 3 M4 11V9a4 4 0 014-4h12 M7 22l-3-3 3-3 M20 13v2a4 4 0 01-4 4H4"/></svg>',
+  lock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>',
+  unlock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.6-1.7"/></svg>',
+  sun: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2 M12 20v2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M2 12h2 M20 12h2 M4.9 19.1l1.4-1.4 M17.7 6.3l1.4-1.4"/></svg>',
+  bulb: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 18h6 M10 21h4 M12 3a6 6 0 00-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0012 3z"/></svg>',
+  wave: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 12h2 M7 8v8 M11 5v14 M15 9v6 M19 11v2 M21 12h0"/></svg>',
+};
+const dbText = l => l <= 0.0005 ? '−∞ dB' : ((v => (v < 0 ? '−' : '+') + Math.abs(v).toFixed(1).replace('.', ','))(20 * Math.log10(l)) + ' dB');
+const hz = f => f >= 1000 ? (Math.round(f / 100) / 10).toString().replace('.', ',') + ' kHz' : Math.round(f) + ' Hz';
+function filterLabel(f) {
+  if (Math.abs(f) <= 0.04) return 'Neutre';
+  return f < 0 ? 'Bas<br>' + hz(20000 * Math.pow(0.01, -f)) : 'Haut<br>' + hz(20 * Math.pow(250, f));
+}
+function knobSVG(c) {
+  const f = S.filter[c], col = TINT[COLS[c].tint][2], a = f * 135, r = 13, cx = 17, cy = 17;
+  const pt = d => { const t = (d - 90) * Math.PI / 180; return [cx + r * Math.cos(t), cy + r * Math.sin(t)]; };
+  let arc = '';
+  if (Math.abs(f) > 0.04) { const [x1, y1] = pt(0), [x2, y2] = pt(a); arc = `<path d="M${x1} ${y1}A${r} ${r} 0 0 ${a > 0 ? 1 : 0} ${x2} ${y2}" stroke="${col}" stroke-width="3" fill="none" stroke-linecap="round"/>`; }
+  const [hx, hy] = (() => { const t = (a - 90) * Math.PI / 180; return [cx + 6 * Math.cos(t), cy + 6 * Math.sin(t)]; })();
+  return `<svg width="34" height="34" viewBox="0 0 34 34"><path d="${(() => { const [x1, y1] = pt(-135), [x2, y2] = pt(135); return `M${x1} ${y1}A${r} ${r} 0 1 1 ${x2} ${y2}`; })()}" stroke="#2C2F37" stroke-width="3" fill="none" stroke-linecap="round"/>${arc}<circle cx="17" cy="2.5" r="1.3" fill="#8D919B"/><circle cx="17" cy="17" r="9" fill="#1E2026" stroke="#3A3D45"/><line x1="17" y1="17" x2="${hx}" y2="${hy}" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`;
+}
+
+function padHTML(c, r) {
+  const col = COLS[c];
+  let p = col.pads[r];
+  if (!p && S.added && S.added.c === c && S.added.r === r) p = S.added;
+  if (!p) return `<div class="pad empty${S.drop === padId(c, r) ? ' drop' : ''}" data-cell="${padId(c, r)}"></div>`;
+  const [bg, fg, viv] = TINT[p.tint];
+  if (p.light) {
+    const on = lit(p.id);
+    return `<div class="pad light${S.sel === p.id ? ' sel' : ''}${on ? ' lit' : ''}" id="pad-${p.id}" data-pad="${p.id}" style="background:${bg};color:${fg};--v:${viv}">`
+      + `<div class="t">${esc(p.t)}</div><div class="s">${esc(p.s)}</div>`
+      + `<button class="pb" data-pb="${p.id}" aria-label="Allumer ou éteindre">${ICO.bulb.replace('width="18" height="18"', 'width="13" height="13"')}</button></div>`;
+  }
+  const v = S.voices[p.id];
+  const cls = ['pad', S.sel === p.id ? 'sel' : '', v ? (v.paused ? 'paused' : 'play') : ''].join(' ');
+  const btn = v && !v.paused ? ICO.stop(12) : (v && v.paused ? ICO.pause(12) : ICO.play(12));
+  return `<div class="${cls}" id="pad-${p.id}" data-pad="${p.id}" style="background:${bg};color:${fg};--v:${viv}">`
+    + `<div class="t">${esc(p.t)}</div><div class="s">${esc(p.s)}</div>`
+    + (v && !v.paused ? '<span class="eq"><i></i><i></i><i></i></span>' : '')
+    + `<button class="pb" data-pb="${p.id}" aria-label="Lecture ou arrêt">${btn}</button>`
+    + (v ? '<span class="bar"></span>' : '') + '</div>';
+}
+const lightText = c => `Intensité ${Math.round(S.level[c] * 100)} %`;
+function render() {
+  const any = Object.keys(S.voices).length > 0;
+  const tabs = `<div class="tab on"><span class="num">1</span>Découverte <small>29</small></div><div class="tab" data-act="tab"><span class="num">2</span>L'orage <small>6</small></div>`;
+  let h = `<div class="hd" id="r-hd"><div class="lights"><i></i><i></i><i></i></div><span class="logo">lalabob</span><span class="show">Entraînement</span>${tabs}<span class="sp"></span>`
+    + `<span class="ctl" id="r-ctl"><i></i>Aucun contrôleur</span><span class="out">Haut-parleurs MacBo… <span>⌃</span></span>`
+    + `<span class="pair">${ICO.spot} Relier</span>`
+    + `<button class="lockb${S.locked ? '' : ' open'}" id="r-lock" data-act="lock">${S.locked ? ICO.lock + ' Verrouillé' : ICO.unlock + ' Déverrouillé'}</button>`
+    + `<button class="stopall${any ? ' hot' : ''}" id="r-stopall" data-act="stopall"><b></b>Tout arrêter</button></div>`;
+  h += `<div class="grid" id="r-grid">` + COLS.map((col, c) => `<div${col.light ? ` id="col-${c}"` : ''}><div class="ch${col.light ? ' light' : ''}"><span class="ico">${col.light ? ICO.spot : ICO.note}</span><span class="nm">${col.n}</span><span class="no">${c + 1}</span></div><div class="pads">${Array.from({ length: 8 }, (_, r) => padHTML(c, r)).join('')}</div></div>`).join('') + '</div>';
+  h += '<div class="cards" id="r-cards">' + COLS.map((col, c) => col.light
+    ? `<div class="card lt" id="card-${c}"><div class="fader" id="fader-${c}" data-fader="${c}"><b style="top:${6 + (1 - S.level[c]) * 50}px"></b></div><span class="sun" id="sun-${c}" style="opacity:${0.25 + 0.75 * S.level[c]}">${ICO.sun}</span><div class="db" id="db-${c}">${lightText(c)}</div></div>`
+    : `<div class="card" id="card-${c}"><div class="fader" id="fader-${c}" data-fader="${c}"><b style="top:${6 + (1 - S.level[c]) * 50}px"></b></div><div class="meter"><i><b id="m-${c}-0"></b></i><i><b id="m-${c}-1"></b></i></div><div class="knob" id="knob-${c}" data-knob="${c}">${knobSVG(c)}</div><div class="klab" id="kl-${c}">${filterLabel(S.filter[c])}</div><div class="db" id="db-${c}">${dbText(S.level[c])}</div><button class="cstop" data-cstop="${c}" aria-label="Arrêter les sons de la colonne"><b></b></button></div>`).join('') + '</div>';
+  h += `<div class="bottom" id="r-bottom">${bottomHTML()}</div>`;
+  h += `<div class="lib${S.locked ? '' : ' on'}" id="r-lib"><div class="search">Rechercher</div><h5>Sons d'entraînement</h5>`
+    + [['applaudissements', 'Applaudissements', '0:13'], ['rires', 'Rires', '0:16'], ['cloche', 'Cloche', '0:14'], ['porte', 'Porte qui claque', '0:02'], ['verre', 'Verre brisé', '0:08']]
+      .map(([k, n, d], i) => `<div class="it" ${i === 0 ? 'id="lib-0"' : ''} data-lib="${k}" data-name="${n}"><span class="w">${ICO.wave}</span><span class="nmf">${n}</span><span class="u"></span><span class="d">${d}</span></div>`).join('')
+    + '<div class="foot">Glissez un son sur un pad</div></div><div id="r-toast"></div>';
+  $('#vg-stage').innerHTML = h;
+  drawWave();
+  scene();
+}
+function bottomHTML() {
+  const id = S.shown, p = id && (PAD[id] || (S.added && S.added.id === id ? S.added : null));
+  if (!p || p.light) return `<div class="idle"><div class="msg">Spectacle ${S.locked ? 'verrouillé' : 'déverrouillé'} — cliquez sur un pad son pour afficher ses réglages.</div><div class="ind">`
+    + '<div><small>Grille en cours</small><strong>Découverte</strong>• 24 sons, 5 lumières<br>• Rien en lecture</div>'
+    + '<div><small>Contrôleur et audio</small><strong>Aucun contrôleur</strong>• Branchez un Launchpad ou un APC<br>• Sortie : Haut-parleurs MacBook Pro</div>'
+    + '<div><small>Éclairage</small><strong>Projecteurs</strong>• Liaison avec les projecteurs prête</div>'
+    + `<div><small>Astuce</small><div class="tip"><span class="bulb">${ICO.bulb}</span><span><strong style="font-size:14px">C'est quoi, un pad ?</strong>Une case de la grille, comme les boutons lumineux de votre contrôleur. Il joue un son, ou allume une lumière.</span></div></div></div></div>`;
+  const v = S.voices[id], [, , viv] = TINT[p.tint];
+  const big = v && !v.paused ? ICO.stop(18) : ICO.play(18);
+  return `<div class="insp"><div class="top"><div class="cap"><button class="pl" data-act="ipp" style="background:${viv};color:#111">${big}</button><button class="sm${v && v.paused ? ' on' : ''}" data-act="ipause">${ICO.pause(15)}</button><button class="sm" data-act="istop">${ICO.stop(15)}</button><span class="sep"></span><button class="sm lp${p.loop ? ' on' : ''}">${ICO.loop}</button></div>`
+    + `<span class="time" id="r-time">0:00 / ${mmss(v ? v.dur : (p.loop ? 60 : 5))}</span><span class="ttl">${esc(p.t)}<small>${esc(p.s)}</small></span><span class="file">${p.snd || 'son'}.m4a</span><span class="dot" style="background:${viv}"></span></div>`
+    + `<div class="low"><div class="gauge"><b></b><span>0,0 dB</span></div><div class="wave"><canvas id="r-wave"></canvas><span class="head" id="r-head"></span></div></div></div>`;
+}
+function drawWave() {
+  const cv = $('#r-wave'); if (!cv) return;
+  const p = PAD[S.shown] || S.added, k = 2, W = 1180, H = 110;
+  cv.width = W * k; cv.height = H * k;
+  const g = cv.getContext('2d'); g.scale(k, k);
+  let seed = [...(p ? p.t : 'x')].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) >>> 0;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+  g.fillStyle = TINT[p ? p.tint : 'azur'][2];
+  for (let x = 0; x < W; x += 3) { const a = p && p.loop ? 0.25 + rnd() * 0.35 : Math.max(0.05, Math.exp(-x / (W * 0.35)) * (0.5 + rnd() * 0.5)); const h = a * (H - 20); g.fillRect(x, H / 2 - h / 2, 2, h); }
+}
+// La scène, dans la bulle des étapes lumière : un projecteur par lumière, son faisceau suit l'état et l'intensité
+function sceneSVG() {
+  const W = 300, H = 120, n = LIGHTS.length;
+  let s = `<svg class="vg-scene" id="vg-scene" viewBox="0 0 ${W} ${H}" role="img" aria-label="La scène et ses projecteurs"><rect x="0" y="0" width="${W}" height="${H}" fill="#0B0C10"/><rect x="0" y="${H - 18}" width="${W}" height="18" fill="#17181E"/><line x1="14" y1="12" x2="${W - 14}" y2="12" stroke="#3A3D45" stroke-width="3" stroke-linecap="round"/>`;
+  LIGHTS.forEach((p, i) => {
+    const x = 30 + i * (W - 60) / (n - 1), on = lit(p.id), lvl = S.level[p.c], col = TINT[p.tint][2], op = on ? 0.18 + 0.62 * lvl : 0;
+    s += `<polygon points="${x - 5},22 ${x + 5},22 ${x + 34},${H - 16} ${x - 34},${H - 16}" fill="${col}" opacity="${op.toFixed(2)}"/>`
+      + `<ellipse cx="${x}" cy="${H - 14}" rx="34" ry="6" fill="${col}" opacity="${(op * 0.9).toFixed(2)}"/>`
+      + `<rect x="${x - 7}" y="12" width="14" height="13" rx="3" fill="${on ? col : '#2C2F37'}" stroke="#55585F"/>`
+      + `<text x="${x}" y="${H - 3}" fill="#8D919B" font-size="8.5" text-anchor="middle" font-family="-apple-system, sans-serif">${esc(p.t)}</text>`;
+  });
+  return s + '</svg>';
+}
+function scene() { const e = $('#vg-scene'); if (e) e.outerHTML = sceneSVG(); }
+function toast(t) { if (quiet) return; const e = $('#r-toast'); if (!e) return; e.innerHTML = `<div class="toast">${esc(t)}</div>`; clearTimeout(toast.t); toast.t = setTimeout(() => { const f = $('#r-toast'); if (f) f.innerHTML = ''; }, 2600); }
+
+// Animation : progression des pads, temps, vumètres
+const fall = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]];
+function tick() {
+  let ended = false;
+  Object.values(S.voices).forEach(v => {
+    const pp = pos(v);
+    if (!v.loop && !v.paused && pp >= v.dur - 0.01) { stop(v.id, false); ended = true; return; }
+    const bar = $(`#pad-${v.id} .bar`); if (bar) bar.style.width = (100 * pp / v.dur) + '%';
+    if (S.shown === v.id) { const t = $('#r-time'); if (t) t.textContent = mmss(pp) + ' / ' + mmss(v.dur); const hd = $('#r-head'); if (hd) hd.style.left = (100 * pp / v.dur) + '%'; }
+  });
+  if (ended) render();
+  for (let c = 0; c < 6; c++) {
+    const k = cols[c]; let pk = 0;
+    if (k) { k.an.getFloatTimeDomainData(k.data); for (let i = 0; i < k.data.length; i++) pk = Math.max(pk, Math.abs(k.data[i])); }
+    const db = pk > 0 ? 20 * Math.log10(pk) : -90, frac = clamp((db + 60) / 60, 0, 1);
+    for (let s = 0; s < 2; s++) {
+      const target = frac * (s ? 0.96 : 1);
+      fall[c][s] = target > fall[c][s] ? target : Math.max(target, fall[c][s] - 0.45 / 60);
+      const b = $(`#m-${c}-${s}`); if (b) b.style.height = (fall[c][s] * 100) + '%';
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+// ---------- Gestes sur la copie ----------
+let fromGhost = false;
+function act(a, v) {
+  if (busyGhost && !fromGhost) return;
+  audio();
+  const isLight = id => PAD[id] && PAD[id].light;
+  switch (a) {
+    case 'select': S.sel = v; S.shown = isLight(v) ? null : v; refreshSelection(); check(); return;
+    case 'play': if (isLight(v)) toggleLight(v); else play(v); break;
+    case 'pb': if (isLight(v)) toggleLight(v); else { if (playing(v)) stop(v); else if (paused(v)) togglePause(v); else play(v); S.sel = v; S.shown = v; } break;
+    case 'pause': if (S.sel && !isLight(S.sel)) togglePause(S.sel); break;
+    case 'stopall': stopAll(); break;
+    case 'cstop': Object.values(S.voices).filter(x => x.c === +v).forEach(x => stop(x.id)); break;
+    case 'ipp': if (S.shown) { if (playing(S.shown)) stop(S.shown); else if (paused(S.shown)) togglePause(S.shown); else play(S.shown); } break;
+    case 'ipause': if (S.shown && S.voices[S.shown]) togglePause(S.shown); break;
+    case 'istop': if (S.shown) stop(S.shown); break;
+    case 'lock': S.locked = !S.locked; if (S.locked) S.sel = null; break;
+    case 'tab': toast('Dans la visite, on reste sur la première grille.'); return;
+    case 'drop': {
+      const [c, r] = v.cell.split('-').map(Number);
+      const occupied = S.added && S.added.c === c && S.added.r === r;
+      if (S.locked || c !== 5 || occupied) { toast('Déposez le son sur une case vide de la colonne « À vous ».'); return; }
+      S.added = { id: '5-' + r, c: 5, r, t: v.name, s: 'Nouveau son', snd: v.snd, loop: false, tint: 'azur' };
+      PAD[S.added.id] = S.added; S.sel = S.added.id; S.shown = S.added.id; break;
+    }
+  }
+  render(); check();
+}
+// Sélection sans tout redessiner : un double-clic doit retrouver le même pad sous la souris
+function refreshSelection() {
+  document.querySelectorAll('.pad.sel').forEach(x => x.classList.remove('sel'));
+  const el = $('#pad-' + S.sel); if (el) el.classList.add('sel');
+  $('#r-bottom').innerHTML = bottomHTML(); drawWave();
+}
+const stage = $('#vg-stage');
+stage.addEventListener('click', e => {
+  const t = e.target.closest('[data-act],[data-pb],[data-cstop],[data-pad]');
+  if (!t) return;
+  if (t.dataset.pb) { e.stopPropagation(); act('pb', t.dataset.pb); }
+  else if (t.dataset.cstop) act('cstop', t.dataset.cstop);
+  else if (t.dataset.act) act(t.dataset.act);
+  else if (t.dataset.pad && e.detail < 2) act('select', t.dataset.pad);
+});
+stage.addEventListener('dblclick', e => {
+  const t = e.target.closest('[data-pad]'); if (t && !e.target.closest('[data-pb]')) act('play', t.dataset.pad);
+  const f = e.target.closest('[data-fader]'), k = e.target.closest('[data-knob]');
+  if (f) setLevel(+f.dataset.fader, +f.dataset.fader >= 6 ? 1 : 0.8); if (k) setFilter(+k.dataset.knob, 0);
+});
+// Fader et potard : on glisse verticalement
+let drag = null;
+stage.addEventListener('pointerdown', e => {
+  const f = e.target.closest('[data-fader]'), k = e.target.closest('[data-knob]'), l = e.target.closest('[data-lib]');
+  if (f) { drag = { type: 'fader', c: +f.dataset.fader, el: f }; moveFader(e); }
+  else if (k) drag = { type: 'knob', c: +k.dataset.knob, y: e.clientY, v: S.filter[+k.dataset.knob] };
+  else if (l && !S.locked) drag = { type: 'lib', snd: l.dataset.lib, name: l.dataset.name, ghost: Object.assign(document.createElement('div'), { className: 'drag', textContent: l.dataset.name }) };
+  if (drag) { e.preventDefault(); audio(); if (drag.ghost) { document.body.appendChild(drag.ghost); moveLib(e); } }
+});
+window.addEventListener('pointermove', e => { if (!drag) return; if (drag.type === 'fader') moveFader(e); else if (drag.type === 'knob') setFilter(drag.c, clamp(drag.v - (e.clientY - drag.y) / 120, -1, 1)); else moveLib(e); });
+window.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.type === 'lib') { d.ghost.remove(); const cell = S.drop; S.drop = null; if (cell) act('drop', { cell, snd: d.snd, name: d.name }); else render(); }
+  else check();
+});
+function moveFader(e) { const r = drag.el.getBoundingClientRect(), sc = r.height / 62; setLevel(drag.c, clamp(1 - ((e.clientY - r.top) / sc - 6) / 50, 0, 1)); }
+function moveLib(e) {
+  drag.ghost.style.left = e.clientX + 'px'; drag.ghost.style.top = e.clientY + 'px';
+  const el = document.elementFromPoint(e.clientX, e.clientY), cell = el && el.closest && el.closest('[data-cell]');
+  const id = cell ? cell.dataset.cell : null;
+  if (id !== S.drop) { S.drop = id; document.querySelectorAll('.pad.empty.drop').forEach(x => x.classList.remove('drop')); if (cell) cell.classList.add('drop'); }
+}
+function setLevel(c, l) {
+  S.level[c] = l; applyColumn(c);
+  const b = $(`#fader-${c} b`); if (b) b.style.top = (6 + (1 - l) * 50) + 'px';
+  const t = $(`#db-${c}`); if (t) t.textContent = c >= 6 ? lightText(c) : dbText(l);
+  const sun = $(`#sun-${c}`); if (sun) sun.style.opacity = 0.25 + 0.75 * l;
+  if (c >= 6) scene();
+  check();
+}
+function setFilter(c, f) {
+  S.filter[c] = Math.abs(f) < 0.04 ? 0 : f; applyColumn(c);
+  const k = $(`#knob-${c}`); if (k) k.innerHTML = knobSVG(c);
+  const l = $(`#kl-${c}`); if (l) l.innerHTML = filterLabel(S.filter[c]);
+  check();
+}
+document.addEventListener('keydown', e => {
+  if (e.metaKey && e.key.toLowerCase() === 'l') { e.preventDefault(); act('lock'); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key === ' ') { e.preventDefault(); act('pause'); }
+  else if (e.key === 'Escape') { e.preventDefault(); act('stopall'); }
+  else if (e.key === 'ArrowRight' || (e.key === 'Enter' && e.target.tagName !== 'BUTTON')) { e.preventDefault(); next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); if (cur > 0) go(cur - 1); }
+});
+
+// ---------- Parcours ----------
+const CH = ['Découvrir', 'Jouer', 'Régler', 'La lumière', 'Préparer'];
+const ensurePluie = () => { if (paused(ID.pluie)) togglePause(ID.pluie); else if (!S.voices[ID.pluie]) play(ID.pluie); };
+const STEPS = [
+  { ch: 0, card: 1, t: 'Bienvenue dans Lalabob', x: [
+      "Lalabob est la <b>régie son et lumière</b> de la troupe : chaque case de la grille lance un son ou allume des projecteurs.",
+      "Voici une <b>copie</b> de l'app, avec de vrais sons : mettez le son de l'ordinateur.",
+      "Suivez les bulles : faites le geste demandé, ou cliquez <b>Suivant</b> pour le voir faire.",
+      "Cinq minutes, pas plus."], next: 'Commencer' },
+  { ch: 0, t: 'La grille', tg: '#r-grid', x: "Chaque case colorée est un <b>pad</b> : un son prêt à partir. Les deux colonnes de droite commandent les <b>projecteurs</b>." },
+  { ch: 0, t: 'Sous chaque colonne', tg: '#r-cards', x: "Le <b>volume</b> de la colonne, son <b>filtre</b> et son vumètre. On les règle même en plein spectacle." },
+  { ch: 0, t: 'En haut', tg: '#r-hd', x: "Les grilles (onglets), le contrôleur, la sortie du son, le <b>cadenas</b>, et le bouton <b>Tout arrêter</b>." },
+  { ch: 1, t: 'Lancer un son', tg: '#pad-0-0', dbl: 1, done: () => playing(ID.pluie), rp: () => play(ID.pluie),
+    x: "Un clic sélectionne un pad, un <b>double-clic</b> le joue : un clic de travers ne lance jamais un son.",
+    go: 'Double-cliquez sur Pluie.', af: "La pluie tombe : le pad s'illumine, une barre avance, le panneau du bas suit le son." },
+  { ch: 1, t: 'Un son par-dessus', tg: '#pad-1-0', dbl: 1, en: ensurePluie, done: () => playing(ID.tonnerre), rp: () => play(ID.tonnerre),
+    x: "Les sons se superposent : une ambiance qui dure, des bruitages par-dessus.",
+    go: 'Double-cliquez sur Tonnerre.', af: "Les deux jouent ensemble. Rejouer un son le relance depuis le début." },
+  { ch: 1, t: 'Pause', tg: '#pad-0-0', keys: 'Espace', en: () => { ensurePluie(); S.sel = ID.pluie; S.shown = ID.pluie; }, demo: () => act('pause'),
+    done: () => paused(ID.pluie), rp: () => togglePause(ID.pluie),
+    x: "<kbd>Espace</kbd> met en pause le pad sélectionné (contour blanc), puis le reprend.",
+    go: 'Appuyez sur Espace.', af: "En pause. <kbd>Espace</kbd> la reprendrait là où elle était." },
+  { ch: 1, t: 'Tout arrêter', tg: '#r-stopall', keys: 'Échap', en: () => { ensurePluie(); S.mark = S.stops; },
+    done: () => S.stops > S.mark && !Object.keys(S.voices).length, rp: () => stopAll(),
+    x: "Le geste de sécurité : mauvais son, trop fort… tout s'arrête, en douceur.",
+    go: 'Appuyez sur Échap.', af: "Silence. Retenez-le : <kbd>Échap</kbd>, quoi qu'il arrive." },
+  { ch: 2, t: 'Le volume', tg: '#fader-0', pad: 18, en: ensurePluie, done: () => S.level[0] <= 0.5, rp: () => setLevel(0, 0.35),
+    demo: () => slide(t => setLevel(0, 0.8 - 0.45 * t)),
+    x: "Le <b>fader</b> règle le volume de toute la colonne ; le vumètre, à côté, montre le vrai signal.",
+    go: 'Baissez le fader des Ambiances.', af: "La pluie s'éloigne. Un double-clic sur le fader le remet en place." },
+  { ch: 2, t: 'Le filtre', tg: '#knob-0', pad: 18, en: ensurePluie, done: () => Math.abs(S.filter[0]) >= 0.4, rp: () => setFilter(0, -0.65),
+    demo: () => slide(t => setFilter(0, -0.65 * t)), lv: () => { stopAll(); setLevel(0, 0.8); setFilter(0, 0); },
+    x: "Le <b>potard</b> filtre la colonne : vers la gauche il reste les basses, vers la droite les aigus.",
+    go: 'Tournez-le : glissez vers le bas.', af: "La pluie semble derrière une fenêtre. Un double-clic remet le son intact." },
+  { ch: 3, t: 'Allumer les projecteurs', tg: '#pad-6-0', dbl: 1, scene: 1, done: () => lit(ID.plein), rp: () => toggleLight(ID.plein),
+    x: "Les deux colonnes de droite commandent les <b>projecteurs</b>. Chaque pad est une <b>lumière</b>.",
+    go: 'Double-cliquez sur Plein feu.', af: "La scène s'éclaire, et le pad s'allume aussi." },
+  { ch: 3, t: "L'intensité", tg: '#card-6', aim: '#fader-6', pad: 6, scene: 1, en: () => { if (!lit(ID.plein)) toggleLight(ID.plein); },
+    done: () => S.level[6] <= 0.5, rp: () => setLevel(6, 0.4), demo: () => slide(t => setLevel(6, 1 - 0.6 * t)),
+    x: "Sous une colonne lumière, le fader règle l'<b>intensité</b> des projecteurs.",
+    go: 'Baissez ce fader.', af: "La lumière baisse doucement." },
+  { ch: 3, t: 'Éteindre', tg: '#pad-6-0', dbl: 1, scene: 1, en: () => { if (!lit(ID.plein)) toggleLight(ID.plein); },
+    done: () => !lit(ID.plein), rp: () => toggleLight(ID.plein), lv: () => { S.lights = {}; setLevel(6, 1); },
+    x: "Un nouvel appui éteint la lumière. Le pad <b>Noir</b>, lui, éteint tout d'un coup.",
+    go: 'Double-cliquez encore sur Plein feu.', af: "Éteint. Les lumières elles-mêmes se préparent dans le logiciel des projecteurs." },
+  { ch: 3, t: 'Le contrôleur', tg: '#r-ctl', pad: 8, apc: 1,
+    x: "Branchez l'<b>APC mini mk2</b> ou le <b>Launchpad</b> : ses 64 boutons sont les 64 pads, aux mêmes couleurs. Sur le contrôleur, <b>un appui suffit</b>." },
+  { ch: 4, t: 'Le cadenas', tg: '#r-lock', keys: '⌘L', done: () => !S.locked, rp: () => { S.locked = false; },
+    x: "Cadenas <b>fermé</b> : on joue, rien ne peut être effacé par erreur. <b>Ouvert</b> : on prépare le spectacle.",
+    go: 'Ouvrez le cadenas.', af: "La bibliothèque des sons apparaît à gauche." },
+  { ch: 4, t: 'Ajouter un son', tg: '#lib-0', en: () => { S.locked = false; }, done: () => !!S.added, demo: () => dragDemo(), slow: 1,
+    rp: () => { S.added = { id: '5-0', c: 5, r: 0, t: 'Applaudissements', s: 'Nouveau son', snd: 'applaudissements', loop: false, tint: 'azur' }; PAD['5-0'] = S.added; },
+    x: "On glisse un son de la bibliothèque (ou du Finder) sur une case vide.",
+    go: 'Glissez Applaudissements dans la colonne « À vous ».', af: "Le pad est créé, avec son titre et sa couleur." },
+  { ch: 4, card: 1, end: 1, t: "C'est parti !", x: [
+      "Vous savez l'essentiel : <b>jouer, arrêter, régler, allumer, préparer</b>.",
+      inApp ? "<b>Essayer maintenant</b> ouvre le spectacle d'entraînement : la même grille, pour de vrai." : "Dans Lalabob : <b>Aide ▸ Ouvrir le spectacle d'entraînement</b>, la même grille, pour de vrai.",
+      "Tout le reste est dans <b>Aide ▸ Aide de Lalabob</b> (⌘?)."] },
+];
+
+let cur = 0, done = false, busy = false, busyGhost = false;
+const timers = [];
+const later = (f, ms) => timers.push(setTimeout(f, ms));
+const clearTimers = () => { while (timers.length) clearTimeout(timers.pop()); };
+const isInfo = s => !s.done;
+function check() {
+  const s = STEPS[cur];
+  if (quiet || done || isInfo(s) || !s.done()) return;
+  done = true; bubble(true); busy = true; later(advance, 1700);
+}
+function go(n) {
+  clearTimers(); busy = false; busyGhost = false; $('#vg-ghost').hidden = true;
+  quiet = true; Object.keys(S.voices).forEach(id => stop(id, false)); S = init();
+  for (let i = 0; i < n; i++) { const s = STEPS[i]; s.en && s.en(); if (s.done && !s.done() && s.rp) s.rp(); s.lv && s.lv(); }
+  Object.keys(S.voices).forEach(id => stop(id, false)); S.voices = {}; S.sel = null; S.shown = null;
+  quiet = false;
+  cur = n; enter();
+}
+function enter() {
+  const s = STEPS[cur];
+  s.en && s.en();
+  done = isInfo(s) || s.done();
+  render(); bubble(); store();
+}
+function advance() {
+  if (cur >= STEPS.length - 1) return;
+  clearTimers(); busy = false; busyGhost = false; $('#vg-ghost').hidden = true;
+  const s = STEPS[cur]; s.lv && s.lv();
+  cur++; enter();
+}
+function next() {
+  const s = STEPS[cur];
+  if (s.end) {
+    if (inApp) { try { localStorage.removeItem('lalabob-visite-v2'); } catch (e) {} stopAll(); window.webkit.messageHandlers.tour.postMessage('essayer'); }
+    else go(0);
+    return;
+  }
+  audio();
+  if (done) { advance(); return; }
+  if (!busy) showMe();
+}
+function store() { try { localStorage.setItem('lalabob-visite-v2', String(cur)); } catch (e) {} }
+function slide(set) { let t = 0; const st = () => { t = Math.min(1, t + 0.06); fromGhost = true; set(t); fromGhost = false; if (t < 1 && !done) later(st, 30); }; st(); }
+
+// La bulle : chapitre, titre, une ou deux phrases, le geste à faire (ou ce qui vient de se passer), Précédent / Suivant
+function bubble(keep) {
+  const s = STEPS[cur], b = $('#vg-bubble');
+  const inCh = STEPS.filter(q => q.ch === s.ch && !q.card), k = inCh.indexOf(s) + 1;
+  let h = s.card ? '' : `<p class="eye">${s.ch + 1} · ${CH[s.ch]} — ${k}/${inCh.length}</p>`;
+  h += `<h2>${s.t}</h2>`;
+  h += Array.isArray(s.x) ? `<ul>${s.x.map(i => `<li>${i}</li>`).join('')}</ul>` : `<p>${s.x}</p>`;
+  if (s.scene) h += sceneSVG();
+  if (s.apc) h += `<div class="vg-apc" aria-hidden="true">${Array.from({ length: 64 }, (_, i) => { const r = i >> 3, c = i & 7, p = COLS[c].pads[r]; return `<i style="${p ? 'background:' + TINT[p.tint][2] : ''}"></i>`; }).join('')}</div>`;
+  if (s.go) h += done
+    ? `<div class="vg-done"><span>${s.af}</span></div>`
+    : `<p class="vg-do">→ <span>${s.go}</span></p>` + (s.keys ? '' : '');
+  const label = s.end ? (inApp ? 'Essayer maintenant' : 'Recommencer la visite') : s.next || 'Suivant →';
+  h += `<div class="vg-nav">${cur > 0 ? '<button type="button" class="back" id="vg-back" aria-label="Étape précédente">←</button>' : ''}<button type="button" class="go${done && s.go ? ' pulse' : ''}" id="vg-next">${label}</button>`
+    + (s.go && !done ? '<small>Suivant : la visite<br>fait le geste</small>' : '') + '</div><span class="vg-arrow" id="vg-arrow"></span>';
+  b.className = 'vg-bubble' + (s.card ? ' center' : '');
+  b.innerHTML = h;
+  if (!keep) b.style.opacity = 0;
+  $('#vg-next').addEventListener('click', next);
+  const bk = $('#vg-back'); if (bk) bk.addEventListener('click', () => go(cur - 1));
+  $('#vg-top').innerHTML = CH.map((n, i) => {
+    const all = STEPS.filter(q => q.ch === i).length, before = STEPS.slice(0, cur + (done ? 1 : 0)).filter(q => q.ch === i).length;
+    return `<button type="button" data-ch="${i}" class="${i === s.ch ? 'cur' : i < s.ch ? 'past' : ''}"><span>${i + 1} · ${n}</span><i><b style="width:${100 * before / all}%"></b></i></button>`;
+  }).join('');
+  requestAnimationFrame(() => { place(true); b.style.opacity = 1; });
+}
+$('#vg-top').addEventListener('click', e => { const b = e.target.closest('[data-ch]'); if (b) go(STEPS.findIndex(q => q.ch === +b.dataset.ch)); });
+
+// La copie occupe toute la place, centrée
+function cam() {
+  const v = $('#vg-view').getBoundingClientRect(), W = 1320, H = 752, m = 14;
+  if (!v.width) return;
+  const sc = Math.min((v.width - 2 * m) / W, (v.height - m) / H), tx = (v.width - W * sc) / 2, ty = Math.max(0, (v.height - m - H * sc) / 2);
+  stage.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
+}
+// Mise en lumière et bulle, recalées à chaque image (la copie se redessine, la fenêtre change de taille)
+let lastBox = '';
+function place(force) {
+  const s = STEPS[cur], spot = $('#vg-spot'), b = $('#vg-bubble'), ar = $('#vg-arrow');
+  const el = s.tg ? $(s.tg) : null;
+  const vw = innerWidth, vh = innerHeight, bw = b.offsetWidth, bh = b.offsetHeight, gap = 16;
+  if (!el) {
+    spot.className = 'vg-spot none'; Object.assign(spot.style, { left: vw / 2 + 'px', top: vh / 2 + 'px', width: '0px', height: '0px' });
+    const key = `c${vw}x${vh}x${bh}`;
+    if (force || key !== lastBox) { lastBox = key; b.style.left = (vw - bw) / 2 + 'px'; b.style.top = Math.max(12, (vh - bh) / 2) + 'px'; if (ar) ar.hidden = true; }
+    return;
+  }
+  const r = el.getBoundingClientRect(), p = s.pad || 6;
+  const x = r.left - p, y = r.top - p, w = r.width + 2 * p, h = r.height + 2 * p;
+  spot.className = 'vg-spot' + (done ? '' : ' go');
+  Object.assign(spot.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+  const key = [x, y, w, h, bw, bh, vw, vh].map(Math.round).join(',');
+  if (!force && key === lastBox) return;
+  lastBox = key;
+  // Côté de la bulle : à droite, à gauche, dessous, dessus — le premier où elle tient sans cacher la cible
+  const fits = { right: x + w + gap + bw <= vw - 8, left: x - gap - bw >= 8, below: y + h + gap + bh <= vh - 8, above: y - gap - bh >= 8 };
+  const side = ['right', 'left', 'below', 'above'].find(k => fits[k]) || 'below';
+  let bx, by;
+  if (side === 'right' || side === 'left') { bx = side === 'right' ? x + w + gap : x - gap - bw; by = clamp(y + h / 2 - bh / 2, 8, vh - bh - 8); }
+  else { by = side === 'below' ? y + h + gap : y - gap - bh; bx = clamp(x + w / 2 - bw / 2, 8, vw - bw - 8); }
+  if (side === 'below' && !fits.below) by = clamp(by, 8, vh - bh - 8);
+  b.style.left = bx + 'px'; b.style.top = by + 'px';
+  if (ar) {
+    ar.hidden = false;
+    const ax = side === 'right' ? -8 : side === 'left' ? bw - 7 : clamp(x + w / 2 - bx - 7, 16, bw - 30);
+    const ay = side === 'below' ? -8 : side === 'above' ? bh - 7 : clamp(y + h / 2 - by - 7, 16, bh - 30);
+    Object.assign(ar.style, { left: ax + 'px', top: ay + 'px',
+      borderWidth: side === 'right' ? '0 0 1px 1px' : side === 'left' ? '1px 1px 0 0' : side === 'below' ? '1px 0 0 1px' : '0 1px 1px 0' });
+  }
+}
+function loop() { place(false); requestAnimationFrame(loop); }
+// Suivant sur une étape à geste : un curseur part du bouton et fait le geste à votre place
+function showMe() {
+  const s = STEPS[cur]; if (done || !s.go) return;
+  const el = $(s.aim || s.tg); if (!el) return;
+  busy = true; busyGhost = true;
+  const g = $('#vg-ghost'), from = $('#vg-next').getBoundingClientRect();
+  moveGhost(g, from.left + from.width / 2, from.top + from.height / 2, true);
+  const to = el.getBoundingClientRect();
+  later(() => moveGhost(g, to.left + to.width / 2, to.top + to.height / 2), 20);
+  later(() => {
+    if (STEPS[cur] !== s) return;
+    tap(g);
+    fromGhost = true;
+    if (s.demo) s.demo();
+    else if (s.dbl) { const id = el.dataset.pad; act('select', id); later(() => { tap(g); fromGhost = true; act('play', id); fromGhost = false; }, 220); }
+    else act(el.dataset.act);
+    fromGhost = false;
+    later(() => { g.hidden = true; busyGhost = false; if (!done) busy = false; }, s.slow ? 1600 : 900);
+  }, 720);
+}
+function moveGhost(g, x, y, jump) { g.hidden = false; if (jump) g.style.transition = 'none'; g.style.left = x + 'px'; g.style.top = y + 'px'; if (jump) { void g.offsetWidth; g.style.transition = ''; } }
+function tap(g) { g.classList.remove('tap'); void g.offsetWidth; g.classList.add('tap'); }
+// Glisser « Applaudissements » sur la première case de « À vous »
+function dragDemo() {
+  const g = $('#vg-ghost'), cell = $('[data-cell="5-0"]'); if (!cell) return;
+  const chip = Object.assign(document.createElement('div'), { className: 'drag', textContent: 'Applaudissements' });
+  const from = $('#lib-0').getBoundingClientRect(), to = cell.getBoundingClientRect();
+  document.body.appendChild(chip); chip.style.transition = 'left 1.1s cubic-bezier(.3,.7,.2,1), top 1.1s cubic-bezier(.3,.7,.2,1)';
+  chip.style.left = from.left + 60 + 'px'; chip.style.top = from.top + from.height / 2 + 'px';
+  g.style.transitionDuration = '1.1s';
+  later(() => { chip.style.left = to.left + to.width / 2 + 'px'; chip.style.top = to.top + to.height / 2 + 'px'; moveGhost(g, to.left + to.width / 2, to.top + to.height / 2); }, 30);
+  later(() => { chip.remove(); g.style.transitionDuration = ''; fromGhost = true; act('drop', { cell: '5-0', snd: 'applaudissements', name: 'Applaudissements' }); fromGhost = false; }, 1200);
+}
+
+window.addEventListener('resize', () => { cam(); place(true); });
+if (window.ResizeObserver) new ResizeObserver(() => { cam(); place(true); }).observe($('#vg-view'));
+window.lalabobVisite = { act, go, count: () => STEPS.length, state: () => S, step: () => cur };
+let start = 0;
+try { start = Math.min(STEPS.length - 1, Math.max(0, parseInt(localStorage.getItem('lalabob-visite-v2'), 10) || 0)); } catch (e) {}
+cam(); go(start); loop(); tick();
+})();
+</script>
+</body>
+</html>

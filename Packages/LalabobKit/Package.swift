@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "LalabobMIDI", targets: ["LalabobMIDI"]),
         .library(name: "ControllerDrivers", targets: ["ControllerDrivers"]),
         .library(name: "LalabobAudio", targets: ["LalabobAudio"]),
+        .library(name: "LalabobDMX", targets: ["LalabobDMX"]),
         .library(name: "LalabobEngine", targets: ["LalabobEngine"]),
     ],
     targets: [
@@ -27,10 +28,12 @@ let package = Package(
         .target(name: "ControllerDrivers", dependencies: ["LalabobModel", "LalabobMIDI"]),
         // Lecture audio (AVAudioEngine) — jalon 1.
         .target(name: "LalabobAudio", dependencies: ["LalabobModel"]),
+        // Lumière en DMX (J14, ADR 0012) : trames, boîtier USB-DMX, envoi continu sur un fil à lui.
+        .target(name: "LalabobDMX", dependencies: ["LalabobModel"]),
         // Orchestration : état du spectacle ouvert, commandes, routage.
         .target(
             name: "LalabobEngine",
-            dependencies: ["LalabobModel", "LalabobAudio", "LalabobMIDI", "ControllerDrivers"]
+            dependencies: ["LalabobModel", "LalabobAudio", "LalabobMIDI", "ControllerDrivers", "LalabobDMX"]
         ),
 
         .testTarget(
@@ -41,8 +44,9 @@ let package = Package(
         .testTarget(name: "LalabobMIDITests", dependencies: ["LalabobMIDI"]),
         .testTarget(
             name: "LalabobEngineTests",
-            dependencies: ["LalabobEngine", "LalabobAudio", "LalabobModel", "LalabobMIDI", "ControllerDrivers"]
+            dependencies: ["LalabobEngine", "LalabobAudio", "LalabobModel", "LalabobMIDI", "ControllerDrivers", "LalabobDMX"]
         ),
+        .testTarget(name: "LalabobDMXTests", dependencies: ["LalabobDMX"]),
         .testTarget(name: "LalabobAudioTests", dependencies: ["LalabobAudio", "LalabobModel"]),
         .testTarget(name: "ControllerDriversTests", dependencies: ["ControllerDrivers", "LalabobModel", "LalabobMIDI"]),
     ],

@@ -6,6 +6,8 @@ Les valeurs de couleur et de dimension sont déjà dans `LalabobModel/Tint.swift
 
 ## Principes
 
+- **Vocabulaire** (27/11/2026) : voir `docs/LEXIQUE.md`. On parle de **lumières** et de **projecteurs** (« Relier », « Reliée ✓ », « Intensité »), jamais de cue, d'appairage, de note ou de CC dans l'interface ; les paragraphes plus bas qui gardent les anciens mots décrivent les mêmes écrans.
+
 - Mode sombre uniquement. Fond de fenêtre `#0E0F12`, panneaux `#121317` / `#15161B`, creux `#0B0C0F`.
 - Coins arrondis partout : pads 14 px, panneaux 18 px, boutons 8–12 px.
 - Texte : SF Pro (système) ; logo « Lalabob » en police très arrondie (Fredoka, à intégrer au J5).
@@ -19,7 +21,7 @@ De gauche à droite : bouton masquer la bibliothèque · logo « Lalabob » + no
 **onglets de grilles** au centre (pastille numérotée 1…n, nom, nombre de sons ; bouton +). Le **canal LightKey** de la grille n'est pas affiché
 en permanence (décision du 25/11/2026, trop de place) : clic droit sur l'onglet › « Canal LightKey » (avec confirmation) ; l'infobulle de l'onglet le rappelle ·
 (**Réglages du spectacle**, menu Spectacle, ⌥⌘, , déverrouillé : interrupteur « Colonnes lumière communes à toutes les grilles », canal commun,
-confirmation qui liste ce qui est mis de côté grille par grille ; une colonne commune porte un petit badge ambré « Commune » dans son en-tête) ·
+confirmation qui liste ce qui est mis de côté grille par grille) ·
 **sélecteur de contrôleur** (nom du modèle + pastille verte « Connecté ») · **sélecteur de sortie audio** (à ajouter) ·
 **cadenas** Verrouillé / Déverrouillé (⌘L, remplace la bascule Édition / Live de la maquette) · bouton rouge **Tout arrêter** (raccourci Échap).
 
@@ -37,24 +39,24 @@ Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dos
     avec une ligne d'explication chacun, la ligne devient la raison quand le choix est impossible). Le **clic droit** sur l'en-tête donne : Renommer… · Type de colonne ›
     (coche sur le type actuel, « … » sur les choix qui retireraient quelque chose) · Arrêter les sons de la colonne · Vider la colonne…. Verrouillé : seulement « Arrêter les sons ».
   - **Feuille de confirmation** quand un changement retire quelque chose : titre « Passer « Nom » en colonne Son ? », une ligne par catégorie avec pastille (rouge = supprimé,
-    ambre = perd sa cue ou son son, vert = reste tel quel) avec le nombre et les titres des pads, « Annulable avec ⌘Z. Aucun son en cours n'est arrêté » (ou quel son s'arrête net),
+    ambre = perd sa lumière ou son son, vert = reste tel quel) avec le nombre et les titres des pads, « Annulable avec ⌘Z. Aucun son en cours n'est arrêté » (ou quel son s'arrête net),
     boutons Annuler · [« Passer en Son et lumière » quand c'est la sortie sans perte] · **Convertir** (rouge). Un changement sans perte s'applique tout de suite.
   - Avec les **colonnes lumière communes** actives : une colonne commune ne change pas de type et aucune colonne ne devient lumière (le popover donne la raison).
 - 8 pads par colonne, 56 px de haut : titre (13 px, demi-gras), sous-titre (11,5 px) + durée en mono.
-  - Case vide : bordure pointillée blanche à 11 %, « + Déposer un son » (ou « + Nouvelle cue »). **Colonne son et lumière** : la case est coupée en deux, « + Son »
-    (un son déposé n'importe où fait un pad son) et « + Cue » (bouton ambre : crée une cue).
+  - Case vide : bordure pointillée blanche à 11 %, « + Déposer un son » (ou « + Nouvelle lumière »). **Colonne son et lumière** : la case est coupée en deux, « + Son »
+    (un son déposé n'importe où fait un pad son) et « + Lumière » (bouton ambre : crée une lumière).
   - **Pad son et lumière** : une **capsule** (fond noir 30 %, contour blanc 6 %) à droite avec le bouton lecture / stop au-dessus de l'ampoule, 22 pt chacun (26 pt sur un grand pad) ;
-    **côte à côte** sur un pad bas (< 54 pt), pour que la capsule tienne. L'ampoule ne lance **que la cue** (« Tester la cue »). Pad « en attente de son » : badge ambre « + Son ».
-    Son et cue sont indépendants : le contour suit le son (ou la cue allumée) ; pas de badge sur un pad bas (< 50 pt).
+    **côte à côte** sur un pad bas (< 54 pt), pour que la capsule tienne. L'ampoule ne lance **que la lumière** (« Essayer la lumière »). Pad « en attente de son » : badge ambre « + Son ».
+    Son et lumière sont indépendants : le contour suit le son (ou la lumière allumée) ; pas de badge sur un pad bas (< 50 pt).
   - En lecture : contour et halo dans la couleur vive, mini-égaliseur animé, barre de progression de 3 px en bas.
   - En pause : contour atténué, icône pause, barre de progression figée et estompée.
   - Lumière active : contour + badge « ON ».
   - Sélectionné : contour blanc 2 px. Cible de dépôt : contour pointillé blanc ; badge « Copie » si ⌥.
 - Sous chaque colonne : **fader vertical** (poignée blanche arrondie), vumètre (vert, ambre au-delà de 82 %),
-  valeur en dB (sons) ou en % + CC (lumière, icône soleil dont l'opacité suit le niveau).
+  valeur en dB (sons) ou « Intensité 75 % » (lumière, icône soleil dont l'opacité suit le niveau ; le CC n'est plus affiché).
 - Colonne son : à droite du fader, le **potard de filtre** (36 pt, 28 pt quand la piste des faders rétrécit). Repère au sommet = neutre ; un arc à la couleur de la colonne part du sommet
   vers la gauche (passe-bas : il reste les basses) ou vers la droite (passe-haut : il reste les aigus). Étiquette dessous, sur deux lignes : « Neutre », ou « Bas » / « Haut » et la coupure
-  (« Bas 800 Hz », « Haut 2 kHz »). Glisser vers le haut ou la droite = passe-haut, vers le bas ou la gauche = passe-bas ; double-clic = neutre ; flèches du clavier ; VoiceOver réglable.
+  (« Bas 800 Hz », « Haut 2 kHz »). Glisser vers le haut ou la droite = passe-haut, vers le bas ou la gauche = passe-bas ; double-clic = **retour au neutre en glissant (1,5 s, l'aiguille suit ; toucher le potard l'interrompt)** ; flèches du clavier ; VoiceOver réglable.
   Actif même verrouillé (on règle en jouant). Curseur : main ouverte / fermée, comme le fader. Le vumètre mesure après le filtre.
 
 ### Inspecteur (panneau du bas, s'ouvre quand on clique un pad) — solution B, décision du 31/10/2026
@@ -79,14 +81,43 @@ largeur (zones élaguées assombries, poignées d'élagage, tête de lecture). *
 droite (sortie) ; une fois actif, la puce affiche la durée (« 0,8 s ») avec une croix pour le retirer, et une poignée au
 bout de la courbe pointillée en règle la durée en glissant (un seul ⌘Z). Il n'y a plus de bouton « Fondus ».
 
-**Pad son et lumière** (colonne mixte) : même bande du haut que le pad son, plus un **groupe Lumière** après le titre (ampoule, « Note 52 ✓ », bouton Tester = la cue seule)
+**Pad son et lumière** (colonne mixte) : même bande du haut que le pad son, plus un **groupe Lumière** après le titre (ampoule, « Reliée ✓ », bouton Tester = la cue seule)
 et, à droite, un menu **Nouvel appui** unique (son : relancer ou arrêter ; lumière : allumer seulement ou basculer à chaque appui) et le **type du pad** en segmenté
 [Son | Lumière | Les deux]. Écart avec la maquette (variante A) : pour tenir dans la largeur minimale, le canal n'est plus écrit dans le groupe (infobulle), les deux réglages « nouvel appui »
 sont réunis dans un menu, et le nom du fichier est abrégé d'abord. Un pad son ou lumière d'une colonne mixte a aussi le segmenté « Type du pad ».
 
-**Pad lumière** (ADR 0006) : une seule bande — titre, bouton **Tester** et rappel de la note envoyée
+**Pad lumière** (ADR 0006) : une seule bande — titre, bouton **Essayer** et rappel de la note envoyée
 à LightKey, puis couleur (popover) et actions. L'état allumé / éteint ne vient pas de l'inspecteur : il se lit sur le pad
-(voir « Appairage lumière » plus bas).
+(voir « Relier aux projecteurs » plus bas).
+
+### Lumière DMX — « Projecteurs pilotés par Lalabob » (27/11/2026, maquette https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT, plan `docs/plan-lumiere-dmx.md`)
+Choisi par spectacle (Spectacle › Réglages du spectacle…, déverrouillé) ; le mode LightKey reste intact.
+- **En-tête** : pastille « Projecteurs » (état du boîtier : prêt, signal envoyé, erreur) ; le bouton « Relier » disparaît ; le **cadenas devient compact**
+  (bouton carré, icône seule) pour faire de la place (largeur minimale de fenêtre 1320 pt).
+- **Pad lumière** : repère de 4 points (couleur et intensité de chaque projecteur, gris si éteint) ; ⇄ pour l'alternance, ϟ pour le strobo, arc-en-ciel +
+  P3 / MIC pour un programme ou « sur le son » ; sous-titre par défaut résumant l'état (`LightLook.summary`). Pas de repère sur un pad plus bas que 44 pt
+  ni sur un pad son et lumière.
+- **Panneau du bas** (`App/LookEditor.swift`, ≤ 196 pt) : bande du haut — Essayer, titre, aperçu, fondu − / +, nouvel appui, couleur du pad ;
+  bande du bas — type (Couleurs · Alternance · Programme · Sur le son), Chacun / Ensemble, cartes de projecteurs, strobo (arrêté par défaut), alternance
+  (couleurs A et B, bascule, fondu, tempo de repli), programme 1–12, roue des couleurs (teinte + saturation, couleurs du spectacle).
+  Un glissé est un brouillon : une seule annulation (⌘Z) au relâchement.
+- **Aperçu** (interrupteur, actif par défaut, mémorisé par Mac) : chaque réglage s'applique à la barre sans fondu et sans désigner le pad comme joué ;
+  en quittant le pad, retour en fondu de 0,5 s ; un appui ou un Noir pendant l'aperçu l'emporte ; jamais verrouillé.
+- **Cartes de fader lumière** : clic droit = rôle (Général, Couleurs, Strobo, Aucun). La carte **Général** porte la mini-barre (4 projecteurs aux couleurs
+  réelles, clic = couper / rallumer en fondu), le bouton **Noir** et le tempo « ⇄ 124 » avec un point qui bat. Un seul Général et un seul fader Couleurs
+  pour tout le spectacle.
+- **Contrôleur** : le bouton rond d'une colonne lumière (APC) = Noir, LED rouge. Échap ne touche jamais à la lumière.
+- **Pas encore** : commandes de la barre sans colonne Général (menu Lumière ou panneau de repos) ; contour ambré des pads lumière en DMX.
+
+### Grilles Apple Music (27/11/2026, maquette https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ, spec `docs/spec-grilles-apple-music.md`)
+- **Créer** : le + des onglets propose « Sons et lumière » (⌘T) ou « Apple Music » (⌥⌘T) ; clic droit sur un onglet › Type de grille. Onglet marqué d'une
+  note rose (`Surface.musicAccent`, #FF5A8C). Colonnes **Music** (liseré rose) et colonnes lumière.
+- **Panneau de gauche** (déverrouillé) : état de Music (« Ouvrir Music », refus d'accès), bascule **Mes playlists / Internet**, recherche, dossiers de
+  playlists repliables, morceaux (point rose = déjà sur une grille, ☁ = dans le nuage, ▶ = extrait de 30 s), « Téléchargés seulement »,
+  « Télécharger les N », sélection Maj / ⌘, glisser (cases d'arrivée numérotées) ; interrupteur **« Son de Music par Lalabob »** et sa ligne de diagnostic.
+- **Pad Music** : titre (morceau), sous-titre (artiste), bouton lecture / pause ; ☁ ambre ou « Introuvable » rouge ; lueur, progression et LED comme un son.
+- **Sous une colonne Music** : carte « Volume : 9e fader » ; avec le pont audio, fader, vumètre et filtre comme une colonne son ; bouton ■ (fondu de sortie).
+- **Panneau du bas** : lecture / pause, stop, temps, titre, morceau d'origine et playlist, **pochette** (116 pt), barre de position cliquable, ce qui n'est pas disponible.
 
 ## Interactions
 
@@ -97,7 +128,7 @@ sont réunis dans un menu, et le nom du fichier est abrégé d'abord. Un pad son
 - Un spectacle déjà enregistré s'ouvre verrouillé ; un nouveau spectacle s'ouvre déverrouillé.
 - Glisser un fichier de la bibliothèque vers un pad : crée le pad (titre, sous-titre, couleur pré-remplis).
 - Glisser un pad sur une autre case : déplace ou échange. Avec ⌥ : duplique.
-- Les sons ne vont que dans les colonnes sons, les cues que dans les colonnes lumière.
+- Les sons ne vont que dans les colonnes sons, les lumières que dans les colonnes lumière.
 - ⌘X / ⌘C / ⌘V / ⌘D / ⌫ / ⌘Z ; Échap = Tout arrêter ; Espace = pause du pad sélectionné.
 
 **Retouches du 31/10/2026** : cliquer ou glisser sur l'onde déplace la tête de lecture ; les actions du pad (Couper, Copier, Coller, Dupliquer, Vider) sont dans un menu à trois petits points qui affiche leurs raccourcis (⌘X ⌘C ⌘V ⌘D ⌘⌫).
@@ -130,10 +161,10 @@ vumètres**. Toute icône seule a une infobulle (verbe d'action, raccourci entre
 glisser) sont annoncées ; un contrôle refusé parce que verrouillé dit pourquoi. Code : `LalabobDesign/Interaction.swift`
 (`interactiveCursor`, `hoverHighlight`, `HelpText`).
 
-**Appairage lumière** (01/11/2026, ADR 0006) : bouton « Appairage » dans l'en-tête (déverrouillé). Barre du bas dédiée (196 px) : trois étapes (LightKey › External Control › Add Trigger…, appui sur un pad
-ou clic sur son ampoule, nom de la cue), case cible, état « En attente de LightKey… » / « Appairée ✓ », boutons « C'est appairé », « Retirer l'appairage », « Terminer ». Cases lumière : pointillés ambrés ; cible : pointillés qui pulsent ;
+**Relier aux projecteurs** (ex-« Appairage lumière », 01/11/2026, ADR 0006) : bouton « Relier » dans l'en-tête (déverrouillé). Barre du bas dédiée (196 px) : trois étapes (LightKey › External Control › Add Trigger…, appui sur un pad
+ou clic sur son ampoule, nom de la cue), case cible, état « En attente des projecteurs… » / « Reliée ✓ », boutons « C'est relié », « Délier », « Terminer ». Cases lumière : pointillés ambrés ; cible : pointillés qui pulsent ;
 appairée : contour plein ; ampoule ambrée en bas à droite de chaque case lumière. Cue allumée dans LightKey : contour, halo et ampoule à la couleur du pad ; éteinte : ampoule atténuée.
-Les **faders** des colonnes lumière s'appairent de la même façon : la carte du fader a le même contour et une étiquette « Appairer / En attente… / Appairé ✓ » ; bouger le fader (main ou écran) le désigne comme cible. Échap reste « Tout arrêter » pendant l'appairage.
+Les **faders** des colonnes lumière s'appairent de la même façon : la carte du fader a le même contour et une étiquette « Relier / En attente… / Relié ✓ » ; bouger le fader (main ou écran) le désigne comme cible. Échap reste « Tout arrêter » pendant l'appairage.
 
 **Banc d'essai lumière** (Fenêtre ▸ Banc d'essai lumière, ⌥⌘L) : fenêtre d'essai séparée (état du contrôleur et des ports, grille 8×8 cliquable avec les numéros de note, journal en direct « Contrôleur → / → LightKey / LightKey → », bouton Copier, canal des clics). Ne coûte rien fenêtre fermée.
 

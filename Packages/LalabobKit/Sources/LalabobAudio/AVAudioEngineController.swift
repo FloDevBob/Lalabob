@@ -55,6 +55,8 @@ public actor AVAudioEngineController: AudioEngineControlling {
     private var nextGeneration = 0
     private var selectedOutputUID: String?
     private var configurationObserver: NSObjectProtocol?
+    /// Pont audio : le nœud qui lit le tampon du son capté, et la colonne où il joue.
+    private var external: (node: AVAudioSourceNode, ring: AudioRingBuffer, format: AVAudioFormat, column: Int)?
 
     // MARK: - Types internes
 
@@ -309,6 +311,40 @@ public actor AVAudioEngineController: AudioEngineControlling {
     }
 
     // MARK: - Observation
+
+    public func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) {
+        guard columnMixers.indices.contains(column), sampleRate > 0 else { return }
+        if let current = external, current.ring === ring, current.format.sampleRate == sampleRate {
+            guard current.column != column else { return }
+            engine.disconnectNodeOutput(current.node)
+            engine.connect(current.node, to: columnMixers[column], format: current.format)
+            external?.column = column
+            return
+        }
+        detachExternal()
+        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2) else { return }
+        // Fil de rendu : lecture du tampon circulaire, ni verrou ni allocation. Le mélangeur de la colonne convertit la fréquence.
+        let node = AVAudioSourceNode(format: format) { _, _, frameCount, output in
+            let buffers = UnsafeMutableAudioBufferListPointer(output)
+            guard buffers.count >= 2, let left = buffers[0].mData?.assumingMemoryBound(to: Float.self),
+                let right = buffers[1].mData?.assumingMemoryBound(to: Float.self)
+            else { return noErr }
+            ring.read(left: left, right: right, frames: Int(frameCount))
+            return noErr
+        }
+        engine.attach(node)
+        engine.connect(node, to: columnMixers[column], format: format)
+        external = (node, ring, format, column)
+        do { try startEngineIfNeeded() } catch { log.error("Pont audio : moteur à l'arrêt : \(error.localizedDescription)") }
+        observeConfigurationChanges()
+    }
+
+    public func detachExternal() {
+        guard let current = external else { return }
+        engine.disconnectNodeOutput(current.node)
+        engine.detach(current.node)
+        external = nil
+    }
 
     public func state(of pad: Pad.ID) -> PlaybackState { voices[pad]?.state ?? .idle }
 
@@ -638,6 +674,10 @@ public actor AVAudioEngineController: AudioEngineControlling {
             Self.apply(FilterCurve.mode(for: filterPositions[column]), to: filter)  // réglage gardé d'une sortie à l'autre
         }
         Self.installMeters(on: columnFilters, meters: meters)  // le format a pu changer avec la sortie : la prise de mesure est reposée
+        if let current = external {  // le pont audio suit le moteur sur la nouvelle sortie
+            engine.disconnectNodeOutput(current.node)
+            engine.connect(current.node, to: columnMixers[current.column], format: current.format)
+        }
         do { try startEngineIfNeeded() } catch {
             log.error("Redémarrage du moteur impossible : \(error.localizedDescription)")
             for item in snapshot { continuation.yield(PlaybackEvent(pad: item.pad, state: .idle, duration: 0)) }

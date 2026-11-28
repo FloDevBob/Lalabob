@@ -19,6 +19,8 @@ actor RecordingAudioEngine: AudioEngineControlling {
         case padGain(Pad.ID, Double)
         case seek(Pad.ID, Double)
         case filter(Int, Double)
+        case attachExternal(column: Int)
+        case detachExternal
     }
 
     nonisolated let events: AsyncStream<PlaybackEvent>
@@ -44,6 +46,8 @@ actor RecordingAudioEngine: AudioEngineControlling {
     func setPadGain(_ pad: Pad.ID, gainDB: Double) { commands.append(.padGain(pad, gainDB)) }
     func seek(_ pad: Pad.ID, to elapsed: TimeInterval) { commands.append(.seek(pad, elapsed)) }
     func setColumnFilter(_ column: Int, value: Double) { commands.append(.filter(column, value)) }
+    func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) { commands.append(.attachExternal(column: column)) }
+    func detachExternal() { commands.append(.detachExternal) }
 }
 
 @MainActor

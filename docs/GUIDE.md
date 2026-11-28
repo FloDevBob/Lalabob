@@ -1,24 +1,25 @@
 # Lalabob — guide d'utilisation (une page)
 
-Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation Launchpad Mini MK3** (grille, sans fader). La version complète est dans l'app : **Aide ▸ Aide de Lalabob** (⌘?).
+Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation Launchpad Mini MK3** (grille, sans fader). La version complète est dans l'app : **Aide ▸ Aide de Lalabob** (⌘?). Pour apprendre en cinq minutes : **Aide ▸ Visite guidée**.
 
 ## Avant la représentation
 1. Brancher le contrôleur (Launchpad ou APC mini mk2) : l'indicateur vert apparaît dans l'en-tête.
 2. Choisir la **sortie audio** dans l'en-tête.
-3. Dans LightKey : entrée **et** sortie « Lalabob Lumière » activées, contrôleur physique **désactivé**.
+3. Lumière avec LightKey : entrée **et** sortie « Lalabob Lumière » activées, contrôleur physique **désactivé**.
+   Lumière pilotée par Lalabob (boîtier USB-DMX) : **LightKey fermé**, ou au moins sans qu'il pilote le boîtier (voir « Projecteurs pilotés par Lalabob »).
 4. Ouvrir le spectacle (`.lalabob`). Un spectacle enregistré s'ouvre **verrouillé** : c'est le mode jeu.
 
 ## Jouer (cadenas fermé)
 | Geste | Effet |
 | --- | --- |
-| Appui sur un pad du contrôleur | Lance le son (relance s'il joue déjà) ; sur les 2 colonnes de droite, lance la cue LightKey |
+| Appui sur un pad du contrôleur | Lance le son (relance s'il joue déjà) ; sur les 2 colonnes de droite, allume ou éteint la lumière |
 | Clic / double-clic à l'écran | Sélectionne / joue |
 | ← → ↑ ↓ | Passe d'un pad à l'autre |
 | Espace / Retour | Pause-reprise / lecture du pad sélectionné |
 | **Échap** | **Tout arrêter** (fondu de 40 ms) |
 | Bouton ■ de la colonne / bouton rouge sous la colonne (APC) | Arrête tous les sons de cette colonne |
-| Faders | Volume des sons ; intensité côté LightKey pour les 2 colonnes de droite |
-| Potard à côté du fader (colonnes sons) | **Filtre** : centre = son intact ; vers la gauche, il reste les basses ; vers la droite, il reste les aigus. Double-clic = neutre |
+| Faders | Volume des sons ; intensité des projecteurs pour les 2 colonnes de droite |
+| Potard à côté du fader (colonnes sons) | **Filtre** : centre = son intact ; vers la gauche, il reste les basses ; vers la droite, il reste les aigus. Double-clic = retour au neutre en douceur (1,5 s) |
 | ⌘1 … ⌘9 | Changer de grille |
 
 Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien : les clics à l'écran continuent de marcher.
@@ -30,25 +31,78 @@ Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien :
 - **Grilles** : onglets en haut (+ ou ⌘T pour en ajouter, double-clic pour renommer).
 - **Enregistrer** : ⌘S (sauvegarde automatique aussi). Les sons sont dans le fichier : copier le `.lalabob` suffit pour l'autre Mac.
 
-## Appairer la lumière (déverrouillé)
-1. Bouton **Appairage** dans l'en-tête.
-2. Dans LightKey : clic droit sur la cue › External Control › Add Trigger…
-3. Appuyer sur un pad des 2 colonnes de droite (ou cliquer son ampoule). Quand LightKey répond, la case est appairée : la nommer ; la case libre suivante s'arme. Sinon cliquer **C'est appairé**.
-4. Fader : « Add Trigger… » sur le réglage, puis bouger le fader.
+## Grilles Apple Music
+- **Créer** : bouton + des onglets › Apple Music (ou ⌥⌘T). Clic droit sur un onglet › Type de grille pour convertir (confirmation, ⌘Z).
+- **Remplir** (déverrouillé, **Music ouvert**) : panneau de gauche, dossiers et playlists ; Maj-clic / ⌘-clic pour plusieurs morceaux, glisser
+  sur une colonne Music : ils se rangent vers le bas puis dans la colonne suivante. ▶ = extrait de 30 s (sans toucher à Music). Onglet
+  **Internet** : chercher dans tout Apple Music, « Ajouter… » ouvre le morceau dans Music (cliquer + pour l'ajouter à la bibliothèque).
+- **Jouer** : appui (ou double-clic) = le morceau joue dans Music ; ré-appui = **arrêt** en fondu (1 s), l'appui suivant repart du début ; **pause** : barre du bas ou Espace (un appui sur un morceau en pause le reprend) ; un autre pad = fondu enchaîné ; ■ de la colonne =
+  fondu de sortie ; Échap arrête tout. **Un seul morceau à la fois.** Volume : 9e fader de l'APC (volume général de Music).
+- **Avant la représentation** : **télécharger** les morceaux (☁ sur un pad = Internet nécessaire ; « Télécharger les N » dans le panneau).
+  « Introuvable » = le morceau n'est plus dans la bibliothèque : en glisser un autre.
+- **Son de Music par Lalabob** (interrupteur du panneau, autorisation « enregistrement audio » la première fois) : le morceau sort par Lalabob,
+  dans sa colonne : **fader, filtre, vumètre, sortie choisie dans Lalabob**, fondus sans à-coups. Si la capture s'arrête, Music redevient audible
+  tout seul (et un message le dit). Un morceau protégé capté en silence désactive l'option.
+- Droits : l'abonnement Apple Music est personnel ; une diffusion publique relève des droits de la troupe (SACEM).
+
+## La lumière
+Les **2 colonnes de droite** commandent les **projecteurs** : chaque pad est une **lumière** (« Plein feu »…), un appui
+l'allume ou l'éteint, le **fader** règle l'**intensité**. Une lumière **allumée** a un contour, un halo et une ampoule à
+sa couleur ; **éteinte**, l'ampoule est atténuée. Les lumières se préparent dans le logiciel des projecteurs (LightKey).
+
+**Relier un pad aux projecteurs** (cadenas ouvert) :
+1. Bouton **Relier** dans l'en-tête.
+2. Dans LightKey : clic droit sur la lumière › External Control › Add Trigger…
+3. Appuyer sur le pad (ou cliquer son ampoule). Quand les projecteurs répondent, le pad est **relié** : le nommer ; la case
+   suivante est prête. Sinon cliquer **C'est relié**.
+4. Fader d'intensité : « Add Trigger… » sur le réglage dans LightKey, puis bouger le fader.
 5. **Terminer** (Échap reste « Tout arrêter »).
 
-Chaque grille a **son canal LightKey** : la même touche lance une cue différente selon la grille affichée. On appaire donc
-chaque grille à part. Le canal se lit dans l'infobulle de l'onglet et se change par clic droit sur l'onglet › **Canal LightKey**
-(les appairages de la grille sont alors à refaire). Un spectacle d'avant cette version le signale à l'ouverture : les cues des grilles 2 et suivantes sont à réappairer.
+Chaque grille commande **ses propres lumières** : la même touche allume une lumière différente selon la grille affichée,
+on relie donc chaque grille à part. Réglage avancé : clic droit sur l'onglet › **Canal des lumières** (les liaisons de la
+grille sont alors à refaire).
 
-**Colonnes lumière communes** (Spectacle › Réglages du spectacle…, déverrouillé) : les colonnes lumière de la grille affichée
-deviennent les mêmes dans toutes les grilles (badge « Commune »), sur un canal commun : on les appaire une seule fois, et changer de
-grille ne change pas la lumière. Ce qui occupait leur place dans les autres grilles est mis de côté et revient si on désactive l'option.
+**Mêmes lumières sur toutes les grilles** (Spectacle › Réglages du spectacle…, cadenas ouvert) : les colonnes lumière de la
+grille affichée deviennent les mêmes partout (badge « Commune ») : on les relie une seule fois, et changer de grille ne change
+pas la lumière. Ce qui occupait leur place dans les autres grilles est mis de côté et revient si on désactive l'option.
 
-Sur la grille : une cue **allumée** dans LightKey a un contour, un halo et une ampoule à sa couleur ; **éteinte**, l'ampoule est atténuée ; sans ampoule, LightKey n'a rien dit. La couleur réelle de la cue n'est pas connue de Lalabob.
+## Projecteurs pilotés par Lalabob (boîtier USB-DMX)
+Pour une petite salle, Lalabob peut piloter lui-même la barre (Chauvet 4BAR LT BT : 4 projecteurs RVB), sans LightKey.
+Chaque spectacle choisit son mode : **Logiciel lumière** (LightKey) ou **Projecteurs pilotés par Lalabob**. On peut revenir
+de l'un à l'autre sans rien perdre.
+
+**Mise en route** (une fois)
+1. Brancher le boîtier USB-DMX et la barre. Sur la barre : MENU › `15Ch` › adresse de départ (celle de la troupe : **050**).
+2. Spectacle › **Réglages du spectacle…** (cadenas ouvert) › **Projecteurs pilotés par Lalabob**. Régler l'**adresse**, le
+   **boîtier de ce Mac** (retenu par Mac), le **fondu du noir** (1,5 s), l'**avance de la lumière** (0 par défaut) et
+   **En quittant Lalabob** (fondu au noir par défaut ; sinon la lumière reste, car la barre garde sa dernière couleur).
+3. **Essayer : 4 projecteurs en blanc** : les 4 projecteurs s'allument. La pastille « Projecteurs » de l'en-tête dit l'état du boîtier.
+
+**Les pads lumière** décrivent un état des projecteurs, choisi dans le panneau du bas :
+- **Couleurs** : *Chacun* (une couleur par projecteur) ou *Ensemble* (une seule) ; roue des couleurs (teinte + saturation), couleurs favorites du spectacle, **strobo** (arrêté par défaut), **fondu d'entrée**.
+- **Alternance** : deux couleurs qui basculent au tempo du dernier son lancé (tempo détecté automatiquement ; sans tempo fiable, le tempo de repli du pad), ou au tempo de repli sans son.
+- **Programme** : un des 12 programmes de la barre. **Sur le son** : la barre suit le son avec son micro.
+- **Aperçu** (interrupteur du panneau) : chaque réglage s'applique tout de suite à la barre ; en quittant le pad, retour en fondu à la lumière d'avant.
+- Un pad sans état précis allume les 4 projecteurs à la couleur du pad.
+
+**En jeu** : un appui (ou double-clic) joue l'état du pad avec son fondu. Sous les colonnes lumière, clic droit sur la carte d'un fader
+pour choisir son **rôle** : **Général** (intensité), **Couleurs** (fait tourner toute la roue), **Strobo**, ou Aucun. Il n'y a qu'un Général et
+qu'un fader Couleurs pour tout le spectacle : changer de grille ne change jamais la lumière. La carte Général montre la mini-barre
+(clic sur un projecteur = le couper ou le rallumer en fondu) et le bouton **Noir**. Sur l'APC, le bouton rond d'une colonne lumière = **Noir** (fondu).
+Échap (Tout arrêter) ne touche jamais à la lumière.
+
+⚠︎ **LightKey et Lalabob ne doivent jamais piloter le boîtier en même temps** : les deux envoient à la barre, sans aucune erreur
+affichée, et la lumière devient imprévisible. En mode Projecteurs, fermer LightKey.
+⚠︎ **Strobo** : jamais allumé par erreur (arrêté par défaut dans un nouvel état), mais à prévenir : les flashs rapides peuvent
+déclencher des crises chez les personnes photosensibles. Prévenir la salle, et ne pas dépasser ce qu'on a essayé en répétition.
+Si le boîtier est débranché en jeu, aucun son ne s'arrête ; la lumière reprend au rebranchement. Fenêtre › **Banc d'essai DMX** pour essayer canal par canal (il prend la main sur la sortie du spectacle tant qu'il est ouvert).
 
 ## En cas de problème
-- **Une cue ne se lance pas ou deux fois** : LightKey écoute-t-il encore le contrôleur ? Le désactiver.
-- **Aucun état sur les pads** : sortie de « Lalabob Lumière » activée dans LightKey ? Ouvrir le **Banc d'essai lumière** (⌥⌘L) : une ligne « LightKey → » doit apparaître quand on lance une cue.
+- **Projecteurs pilotés par Lalabob : rien ne s'allume** : pastille « Projecteurs » en erreur → boîtier débranché ou occupé ; vérifier l'adresse (barre et réglages identiques) et le mode 15Ch de la barre. Essayer « 4 projecteurs en blanc ».
+- **La lumière fait des choses étranges** : LightKey est-il encore ouvert et relié au boîtier ? Le fermer.
+- **Une lumière ne s'allume pas, ou s'allume puis s'éteint** : dans LightKey, le contrôleur est-il encore activé ? Le désactiver.
+- **Les pads ne montrent jamais si la lumière est allumée** : sortie « Lalabob Lumière » activée dans LightKey ? Le **Banc d'essai lumière** (⌥⌘L) doit montrer une ligne « LightKey → » quand on allume une lumière.
 - **Contrôleur absent** : le rebrancher, les LED reviennent seules ; en attendant, tout se joue à l'écran.
 - **Sons manquants à l'ouverture** : un message les liste ; leurs pads restent muets.
+- **Apple Music ne répond pas** : Music doit être ouvert (Lalabob ne l'ouvre jamais seul en scène). « Accès refusé » : Réglages Système ›
+  Confidentialité et sécurité › Automatisation › Lalabob › Music. Le message exact s'affiche dans le panneau ou la pastille « Apple Music ».

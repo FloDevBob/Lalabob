@@ -110,6 +110,8 @@ struct DocumentWindow: View {
     let document: LalabobDocument
     @Environment(\.midiSession) private var midiSession
     @Environment(\.appearsActive) private var appearsActive
+    @Environment(MusicPlaybackCoordinator.self) private var musicPlayer
+    @Environment(DMXSession.self) private var dmxSession
     @State private var controller: ShowController?
     @State private var showsMissingAudio = false
     @State private var showsPairingReset = false
@@ -131,6 +133,8 @@ struct DocumentWindow: View {
                     show: document.mirror.current, audioDirectory: document.workingAudio, isLocked: document.opensLocked)
                 let mirror = document.mirror
                 created.onShowChange = { mirror.update($0) }
+                created.musicPlayer = musicPlayer
+                created.tempoAnalyzer = TempoStore.shared  // tempo des sons, analysé en arrière-plan (lumière DMX)
                 controller = created
                 showsMissingAudio = !document.missingAudio.isEmpty
                 // Deux alertes ne s'affichent pas en même temps : celle des appairages suit celle des sons manquants.
@@ -140,14 +144,17 @@ struct DocumentWindow: View {
         }
         .onChange(of: appearsActive) { attachIfActive() }
         .onDisappear {
-            if let controller { midiSession?.detach(controller) }
+            if let controller {
+                midiSession?.detach(controller)
+                dmxSession.detach(controller)
+            }
         }
         .alert("Sons manquants", isPresented: $showsMissingAudio) {
             Button("OK") { showsPairingReset = !document.lightPairingsReset.isEmpty }
         } message: {
             Text("Ces sons sont introuvables dans le spectacle ; leurs pads restent muets :\n" + document.missingAudio.joined(separator: ", "))
         }
-        .alert("Lumière : appairages à refaire", isPresented: $showsPairingReset) {
+        .alert("Lumières à relier de nouveau", isPresented: $showsPairingReset) {
             Button("OK") {}
         } message: {
             Text(pairingResetMessage)
@@ -159,13 +166,14 @@ struct DocumentWindow: View {
         let grids = document.mirror.current.grids
         let names = document.lightPairingsReset.filter { grids.indices.contains($0) }
             .map { "\($0 + 1). \(grids[$0].name)" }
-        return "Chaque grille a maintenant son propre canal LightKey. Les cues et faders lumière de ces grilles sont à "
-            + "réappairer dans LightKey (mode Appairage) :\n" + names.joined(separator: ", ")
+        return "Chaque grille commande maintenant ses propres lumières. Les lumières et intensités de ces grilles sont à "
+            + "relier de nouveau aux projecteurs (bouton « Relier ») :\n" + names.joined(separator: ", ")
             + "\n\nEnregistrez le spectacle pour ne plus voir ce message."
     }
 
     private func attachIfActive() {
         guard appearsActive, let controller else { return }
         midiSession?.attach(controller)
+        dmxSession.attach(controller)
     }
 }

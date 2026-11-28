@@ -1,4 +1,5 @@
 import AppKit
+import LalabobDMX
 import LalabobDesign
 import LalabobEngine
 import LalabobModel
@@ -74,17 +75,186 @@ struct ColumnView: View {
     @Environment(\.gridDensity) private var density
     /// Incrémenté par « Renommer… » du menu : le titre passe en saisie.
     @State private var renameRequest = 0
-    /// « 75 % · CC 54 » : le niveau et le CC que reçoit LightKey (sans CC tant qu'aucun contrôleur n'est connu).
+    /// « Intensité 75 % » : l'intensité des projecteurs de la colonne (le CC MIDI n'est pas affiché, voir docs/LEXIQUE.md).
     private func lightValueText(_ column: Column) -> String {
         let percent = Int((column.level * 100).rounded())
-        guard let cc = controller.lightFaderCC(forColumn: index) else { return "\(percent) %" }
-        return "\(percent) % · CC \(cc)"
+        guard controller.isDMXLighting else { return "Intensité \(percent) %" }
+        // Mode Projecteurs : le fader a un rôle (Intensité, Couleurs, Strobo), écrit sur la carte.
+        let role = DMXFaderRole.role(ofColumn: index, in: controller.currentGrid)
+        return "\(percent) %"
     }
 
     @Environment(ShowController.self) private var controller
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DMXSession.self) private var dmx: DMXSession?
     let index: Int
     let onPress: () -> Void
+
+    // MARK: - Carte de fader
+
+    /// Ce que dit le petit titre de la carte, et son icône.
+    private func cardHeading(_ column: Column, role: DMXFaderRole?) -> (String, Icon) {
+        guard column.kind == .light else { return ("Volume", .volume) }
+        switch role {
+        case .general?: return ("Intensité lumineuse", .sun)
+        case .colors?: return ("Couleurs", .palette)
+        case .strobeSpeed?: return ("Strobo", .flash)
+        case DMXFaderRole.none?: return ("Sans rôle", .sun)
+        case nil: return ("Intensité", .sun)
+        }
+    }
+
+    /// Petit titre discret en haut de la carte. En mode Projecteurs, déverrouillé, c'est aussi le menu du rôle du fader.
+    @ViewBuilder
+    private func cardTitle(_ column: Column, role: DMXFaderRole?) -> some View {
+        let (title, icon) = cardHeading(column, role: role)
+        let label = HStack(spacing: 5) {
+            // Carte lumière : icône jaune (comme celle de l'en-tête des colonnes lumière), titre en blanc ; volume : tout discret.
+            icon.view(size: 11)
+                .foregroundStyle(column.kind == .light ? Surface.lightAccent : Surface.textTertiary)
+            Text(title)
+                .font(.system(size: 10.5, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(column.kind == .light ? Surface.textPrimary : Surface.textTertiary)
+        }
+        .frame(height: 15)
+        .padding(.leading, 4)
+        if let role, !controller.isLocked {
+            Menu {
+                faderRoleMenu(current: role)
+            } label: { label }
+            // `.borderlessButton` ignore la police et la taille de l'icône de l'étiquette (titre et icône grossissaient
+            // déverrouillé) : style bouton « plain » pour que l'étiquette reste exactement celle du mode verrouillé.
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Ce que règle ce fader : \(role.title) (cliquer pour le changer)")
+        } else {
+            label
+        }
+    }
+
+    @ViewBuilder
+    private func cardContent(_ column: Column, role: DMXFaderRole?) -> some View {
+        if column.kind == .music, controller.musicPlayer?.isBridgeEnabled != true {
+            // Colonne Music : pas de fader (le volume est celui de Music, réglé par le 9e fader de l'APC).
+            Text("Réglé par le 9e fader de l'APC (Apple Music)")
+                .font(.system(size: 11))
+                .foregroundStyle(Surface.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 6)
+                .frame(maxWidth: .infinity, minHeight: density.faderTrackHeight + 20, alignment: .topLeading)
+        } else if column.kind.hasAudio || column.kind == .music {  // son, mixte, ou Music par le pont audio
+            FaderCardRow(faderWidth: 58, minCompanion: 44) {
+                VerticalFader(
+                    name: column.name,
+                    level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
+                    hardwareMarker: controller.waitingFaders[index]
+                ) {
+                    LevelMeter(column: index).frame(width: 14)
+                }
+            } companion: { space in
+                // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
+                RotaryKnob(
+                    name: column.name,
+                    accent: accentColor(of: column),
+                    value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
+                    onReset: { controller.resetColumnFilter(index) },
+                    size: clampSize(min(space.width - 6, space.height - 44), 28, 56)
+                )
+            }
+        } else {
+            lightContent(column, role: role)
+                .contextMenu { if let role, !controller.isLocked { faderRoleMenu(current: role) } }
+        }
+    }
+
+    @ViewBuilder
+    private func lightContent(_ column: Column, role: DMXFaderRole?) -> some View {
+        let level = Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) })
+        switch role {
+        case .general?:
+            // Intensité lumineuse : la barre des 4 projecteurs à la place du potard, le tempo dessous.
+            FaderCardRow(faderWidth: 44, minCompanion: 62) {
+                VerticalFader(name: column.name, level: level, valueText: lightValueText(column), defaultLevel: 1,
+                    hardwareMarker: controller.waitingFaders[index]) { EmptyView() }
+            } companion: { space in
+                VStack(spacing: 8) {
+                    DMXHeadsBar(lampSize: clampSize((space.width - 8) / 4.6, 12, 20))
+                    DMXTempo()
+                }
+            }
+        case .colors?:
+            // Couleurs : le rail est un arc-en-ciel recalé sur la couleur du pad ; la couleur en cours à droite.
+            let info = colorFaderInfo(level: column.level)
+            FaderCardRow(faderWidth: 50, minCompanion: 50) {
+                VerticalFader(name: column.name, level: level, valueText: info.value, defaultLevel: 1,
+                    hardwareMarker: controller.waitingFaders[index], trackStyle: AnyShapeStyle(info.track), handleColor: info.current) { EmptyView() }
+            } companion: { space in
+                let diameter = clampSize(min(space.width - 8, space.height - 50), 24, 44)
+                VStack(spacing: 5) {
+                        Circle()
+                            .fill(info.current)
+                            .overlay { Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 2) }
+                            .shadow(color: info.current.opacity(0.7), radius: diameter / 4)
+                            .frame(width: diameter, height: diameter)
+                        Text(info.caption)
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(Surface.textPrimary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                }
+            }
+        default:
+            // Strobo, sans rôle, ou mode LightKey : le fader et un repère qui suit le niveau.
+            VerticalFader(name: column.name, level: level, valueText: lightValueText(column), defaultLevel: 1,
+                hardwareMarker: controller.waitingFaders[index]) {
+                (role == .strobeSpeed ? Icon.flash : Icon.sun).view(size: 16)
+                    .foregroundStyle(Surface.lightAccent)
+                    .opacity(0.25 + 0.75 * column.level)
+                    .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
+            }
+            .opacity(role == DMXFaderRole.none ? 0.5 : 1)
+        }
+    }
+
+    /// Le fader Couleurs est **relatif** : sa position au départ d'un état donne les couleurs du pad, le bouger fait tourner la
+    /// roue (toute la course = un tour). Le rail montre donc l'arc-en-ciel calé pour que la poignée soit sur la couleur en cours :
+    /// on voit vers quelle couleur on va. Un état sans teinte (blanc) garde un arc-en-ciel pâle.
+    private func colorFaderInfo(level: Double) -> (track: LinearGradient, current: Color, value: String, caption: String) {
+        let console = dmx?.console
+        let base = console?.activeLook?.representativeColor ?? LightColor(hue: 0, saturation: 1)
+        let reference = console?.colorReference ?? level
+        let pale = base.saturation < 0.15
+        let saturation = pale ? 0.3 : base.saturation
+        let stops = (0...12).map { step -> Color in
+            let position = Double(step) / 12
+            return Color(light: LightColor(hue: base.hue + (position - reference) * 360, saturation: saturation))
+        }
+        let shift = Int(((level - reference) * 360).rounded())
+        let current = Color(light: LightColor(hue: base.hue + Double(shift), saturation: pale ? 0 : base.saturation))
+        return (
+            LinearGradient(colors: stops, startPoint: .bottom, endPoint: .top), current,
+            shift == 0 ? "origine" : (shift > 0 ? "+\(shift)°" : "\(shift)°"),
+            shift == 0 ? "Couleurs du pad" : "Tourné de \(abs(shift))°"
+        )
+    }
+
+    /// Clic droit sur la carte d'un fader lumière (mode Projecteurs) : ce que règle ce fader.
+    @ViewBuilder
+    private func faderRoleMenu(current: DMXFaderRole) -> some View {
+        Section("Ce que règle ce fader") {
+            ForEach(DMXFaderRole.allCases, id: \.self) { role in
+                Button {
+                    controller.setFaderRole(column: index, to: role)
+                } label: {
+                    Text((role == current ? "✓ " : "") + role.title)
+                }
+            }
+        }
+    }
 
     /// Petit bouton « stop » à côté du volume d'une colonne son : arrête tous les sons de la colonne. Sur l'APC mini mk2,
     /// le bouton rond rouge sous la colonne fait la même chose. Les colonnes lumière n'en ont pas.
@@ -99,10 +269,35 @@ struct ColumnView: View {
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
-        .padding(6)
+        .padding(4)
         .interactiveCursor(.link)
         .help("Arrêter tous les sons de cette colonne")
         .accessibilityLabel("Arrêter la colonne \(index + 1)")
+    }
+
+    /// Bouton « Noir » de la carte Intensité lumineuse (mode Projecteurs), dans le coin du caisson comme le stop d'une colonne
+    /// son : éteint toute la barre en fondu. Carré stop et libellé, fond et filet rouges (comme le pad Noir).
+    private var blackoutButton: some View {
+        let red = Color(red: 1, green: 0.36, blue: 0.4)
+        return Button {
+            controller.blackout()
+        } label: {
+            HStack(spacing: 5) {
+                RoundedRectangle(cornerRadius: 1.5).fill(Color(red: 1, green: 0.88, blue: 0.89)).frame(width: 7, height: 7)
+                Text("Noir").font(.system(size: 10.5, weight: .semibold))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 28)  // même hauteur que le bouton stop des colonnes son
+            .background(red.opacity(0.18), in: Capsule())
+            .overlay { Capsule().strokeBorder(red.opacity(0.6), lineWidth: 1) }
+            .foregroundStyle(Color(red: 1, green: 0.88, blue: 0.89))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(4)
+        .interactiveCursor(.link)
+        .help("Noir : éteindre toute la barre en fondu (bouton rond de l'APC)")
+        .accessibilityLabel("Noir")
     }
 
     /// Couleur d'une colonne son : la teinte vive de son premier pad (gris neutre si elle est vide).
@@ -135,7 +330,7 @@ struct ColumnView: View {
                 Button {
                     controller.selectPairingFader(column: index)
                 } label: {
-                    Text(paired ? "Appairé ✓" : isTarget ? "En attente…" : "Appairer")
+                    Text(paired ? "Relié ✓" : isTarget ? "En attente…" : "Relier")
                         .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 7)
                         .padding(.vertical, 3)
@@ -146,30 +341,21 @@ struct ColumnView: View {
                 .buttonStyle(.plain)
                 .padding(.top, 5)
                 .interactiveCursor(.link)
-                .help("Désigner ce fader comme cible, puis le bouger : son CC part vers LightKey")
-                .accessibilityLabel(paired ? "Fader appairé" : "Appairer ce fader")
+                .help("Choisir ce fader, puis le bouger : le logiciel des projecteurs apprend qu'il règle cette intensité")
+                .accessibilityLabel(paired ? "Fader relié aux projecteurs" : "Relier ce fader aux projecteurs")
             }
         }
     }
 
     var body: some View {
         let column = controller.currentGrid.columns[index]
+        let dmxRole: DMXFaderRole? = controller.isDMXLighting && column.kind == .light
+            ? DMXFaderRole.role(ofColumn: index, in: controller.currentGrid) : nil
         VStack(spacing: Metrics.padSpacing) {
             HStack(spacing: 8) {
                 // Pastille de type : note (son), projecteur (lumière), les deux (son et lumière) ; un bouton déverrouillé.
                 ColumnKindPill(index: index, kind: column.kind, name: column.name)
                 ColumnTitle(index: index, name: column.name, renameTrigger: renameRequest)
-                if controller.show.isSharedLightColumn(index) {
-                    // Colonne lumière commune à toutes les grilles (Réglages du spectacle).
-                    Text("Commune")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(Surface.lightAccent)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .overlay { Capsule().strokeBorder(Surface.lightAccent.opacity(0.4)) }
-                        .help("Commune à toutes les grilles : la même dans chaque onglet (Spectacle › Réglages du spectacle…)")
-                        .accessibilityLabel("Commune à toutes les grilles")
-                }
                 Spacer(minLength: 0)
                 Text("\(index + 1)")
                     .font(Typography.mono)
@@ -184,42 +370,20 @@ struct ColumnView: View {
             // Les 8 pads de la colonne : seuls eux défilent (comme une page) quand on change d'onglet.
             PadsPager(column: index, kind: column.kind, onPress: onPress)
 
-            // Carte sous la colonne : un son a fader, vumètre du signal réel et dB ; une cue lumière a un fader
-            // (CC envoyé à LightKey, comme le fader de l'Akai), un soleil qui suit le niveau, la valeur en % et le CC.
-            Group {
-                if column.kind.hasAudio {
-                    HStack(alignment: .top, spacing: 8) {
-                        VerticalFader(
-                            name: column.name,
-                            level: Binding(get: { column.level }, set: { controller.setColumnLevel(index, level: $0) }),
-                            hardwareMarker: controller.waitingFaders[index]
-                        ) {
-                            LevelMeter(column: index).frame(width: 14)
-                        }
-                        // Filtre DJ de la colonne (passe-bas à gauche, passe-haut à droite), arc à la couleur de la colonne.
-                        RotaryKnob(
-                            name: column.name,
-                            accent: accentColor(of: column),
-                            value: Binding(get: { column.filter }, set: { controller.setColumnFilter(index, value: $0) }),
-                            onReset: { controller.resetColumnFilter(index) }
-                        )
+            // Carte sous la colonne (maquette « titre + caisson », option A) : un petit titre avec son icône, puis un caisson
+            // sombre avec le fader à gauche (valeur dessous) et ce qui l'accompagne à droite ; Stop ou Noir dans le coin du caisson.
+            VStack(alignment: .leading, spacing: 3) {
+                cardTitle(column, role: dmxRole)
+                cardContent(column, role: dmxRole)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity)
+                    .background(Surface.well, in: .rect(cornerRadius: 10))
+                    .overlay(alignment: .bottomTrailing) {
+                        if column.kind.hasAudio || column.kind == .music { stopColumnButton } else if dmxRole == .general { blackoutButton }
                     }
-                } else {
-                    VerticalFader(
-                        name: column.name,
-                        level: Binding(get: { column.level }, set: { controller.setLightFader(column: index, level: $0) }),
-                        valueText: lightValueText(column),
-                        defaultLevel: 1,
-                        hardwareMarker: controller.waitingFaders[index]
-                    ) {
-                        Icon.sun.view(size: 16)
-                            .foregroundStyle(Surface.lightAccent)
-                            .opacity(0.25 + 0.75 * column.level)
-                            .frame(width: 16, height: density.faderTrackHeight, alignment: .top)
-                    }
-                }
             }
-            .padding(.vertical, 10)
+            .padding(4)
             .frame(maxWidth: .infinity)
             .background(Surface.panel, in: .rect(cornerRadius: Metrics.padCornerRadius))
             .overlay(
@@ -227,7 +391,6 @@ struct ColumnView: View {
                     .stroke(column.kind == .light ? Surface.lightAccent.opacity(0.12) : Color.white.opacity(0.06))
             )
             .overlay { faderPairingOverlay(column) }
-            .overlay(alignment: .bottomTrailing) { if column.kind.hasAudio { stopColumnButton } }
             .padding(.top, 4)
         }
         .frame(minWidth: 110, maxWidth: .infinity)
@@ -425,6 +588,8 @@ struct PadView: View {
     @Environment(\.gridDensity) private var density
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(ShowController.self) private var controller
+    @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
+    @Environment(DMXSession.self) private var dmx: DMXSession?
     let position: GridPosition
     let kind: ColumnKind
     /// La grille dont on affiche la case (celle de la page à l'écran, pas forcément la grille courante pendant un défilement).
@@ -496,13 +661,13 @@ struct PadView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             pad.map { "\($0.title), \($0.subtitle)" + ($0.kind == .mixed ? ", son et lumière" : "") }
-                ?? (kind.hasAudio ? "Case vide" : "Case lumière vide")
+                ?? (kind == .music ? "Case Music vide" : kind.hasAudio ? "Case vide" : "Case lumière vide")
         )
         .accessibilityValue(accessibilityValue(pad, event: event))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { controller.audition(at: position) }
         .accessibilityAction(named: "Sélectionner") { activate() }
-        .accessibilityAction(named: "Tester la cue") { controller.testCue(at: position) }
+        .accessibilityAction(named: "Essayer la lumière") { controller.testCue(at: position) }
         .help(padHelp(pad))
     }
 
@@ -541,8 +706,8 @@ struct PadView: View {
                     .buttonStyle(.plain)
                     .padding(6)
                     .interactiveCursor(.link)
-                    .help("Envoyer la note de cette case à LightKey")
-                    .accessibilityLabel("Envoyer la note à LightKey")
+                    .help("Envoyer le signal de cette case au logiciel des projecteurs, pour la relier")
+                    .accessibilityLabel("Envoyer le signal de cette case")
                 }
             }
         }
@@ -553,13 +718,13 @@ struct PadView: View {
         var parts: [String] = []
         if case .playing = event?.state { parts.append("En lecture") } else if event?.state.isPaused == true { parts.append("En pause") }
         let light = lightAccessibilityValue(pad)
-        if !light.isEmpty { parts.append(pad?.audio != nil ? "cue " + light.lowercased() : light) }
+        if !light.isEmpty { parts.append(pad?.audio != nil ? "lumière " + light.lowercased() : light) }
         return parts.joined(separator: ", ")
     }
 
     private func lightAccessibilityValue(_ pad: Pad?) -> String {
         if controller.isPairingLights, !controller.isLocked, controller.isLightCell(position) {
-            return controller.isPaired(at: position) ? "Appairée" : "À appairer"
+            return controller.isPaired(at: position) ? "Reliée" : "À relier"
         }
         guard pad?.light != nil else { return "" }
         switch controller.lightState(at: position) {
@@ -576,8 +741,9 @@ struct PadView: View {
                 : "Clic : sélectionner · Double-clic : jouer · Glisser : déplacer (⌥ : copier)"
         }
         guard !controller.isLocked else { return "" }
-        if kind == .mixed { return "Glissez un son ici (bibliothèque ou Finder), ou cliquez « + Cue » pour créer une cue lumière" }
-        return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une cue"
+        if kind == .music { return "Glissez ici un morceau d'une playlist d'Apple Music (panneau de gauche)" }
+        if kind == .mixed { return "Glissez un son ici (bibliothèque ou Finder), ou cliquez « + Lumière » pour créer une lumière" }
+        return kind.hasAudio ? "Glissez un son ici (depuis la bibliothèque ou le Finder)" : "Case lumière vide : sélectionnez-la pour créer une lumière"
     }
 
     /// Clic : ⇧ étend la sélection en rectangle depuis l'ancre, ⌘ ajoute ou retire la case, sinon la case seule.
@@ -592,7 +758,23 @@ struct PadView: View {
     /// Glisser un groupe de pads : chaque case où il tomberait est teintée (blanc) ; en rouge si le dépôt serait refusé.
     @ViewBuilder
     private var groupDropOverlay: some View {
-        if let preview = controller.dragPreview, preview.positions.contains(position) {
+        if let index = controller.musicDropPreview.firstIndex(of: position) {
+            RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                .fill(Color.white.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
+                        .strokeBorder(Color.white.opacity(0.75), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                )
+                .overlay {
+                    Text("\(index + 1)")
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 22, height: 22)
+                        .background(Surface.musicAccent, in: .circle)
+                        .foregroundStyle(Surface.window)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        } else if let preview = controller.dragPreview, preview.positions.contains(position) {
             let color: Color = preview.isAllowed ? .white : .red
             RoundedRectangle(cornerRadius: Metrics.padCornerRadius)
                 .fill(color.opacity(0.14))
@@ -650,11 +832,24 @@ struct PadView: View {
             Spacer(minLength: 0)
             if case .paused = event?.state { Icon.pauseFill.view(size: 14) }
             if case .playing = event?.state { MiniEqualizer(color: pad.tint.vividColor, isAnimating: true) }
-            if pad.audio != nil, pad.light != nil {
+            if pad.music != nil {
+                musicAvailabilityBadge(pad)
+                musicButton(pad, event: event)
+            } else if pad.audio != nil, pad.light != nil {
                 mixedCapsule(pad, event: event, state: lightState)
             } else {
                 if pad.audio != nil { playStopButton(pad, event: event) }
-                if pad.light != nil { cueButton(pad, state: lightState) }
+                if let summary = lookSummary(pad) {
+                    // Mode Projecteurs : les points des projecteurs SONT le bouton (clic = allumer, second clic = éteindre).
+                    ProjectorToggle(
+                        summary: summary, tint: pad.tint, isOn: lightState == .on, compact: density.padHeight < 44,
+                        cutHeads: cutHeads,
+                        action: {
+                            if controller.isPairingLights, !controller.isLocked { controller.pairingSend(at: position) } else { controller.toggleLight(at: position) }
+                        })
+                } else if pad.light != nil {
+                    cueButton(pad, state: lightState)
+                }
             }
         }
         .foregroundStyle(pad.tint.labelColor)
@@ -702,6 +897,18 @@ struct PadView: View {
         .animation(reduceMotion || outline > 0 ? nil : Motion.glowOut, value: outline)
     }
 
+    /// Les projecteurs coupés à la main (mini-barre de la carte Intensité) : la pastille des pads les montre aussi.
+    private var cutHeads: Set<Int> {
+        guard let console = dmx?.console else { return [] }
+        return Set((0..<console.rig.profile.headCount).filter { !console.isHeadOn($0) })
+    }
+
+    /// Le résumé de l'état lumineux d'un pad, en mode Projecteurs seulement.
+    private func lookSummary(_ pad: Pad) -> LightLookSummary? {
+        guard controller.isDMXLighting, pad.audio == nil, pad.music == nil else { return nil }
+        return pad.light?.look?.summary
+    }
+
     /// Bouton rond d'une cue lumière, du même dessin que le bouton lecture d'un son : une ampoule pleine qui envoie la cue
     /// à LightKey (comme un double-clic ; marche aussi verrouillé). Sa couleur dit l'état renvoyé par LightKey : pleine
     /// couleur du pad = allumée, atténuée = éteinte, neutre = LightKey n'a encore rien dit. En mode d'appairage, il envoie
@@ -728,12 +935,12 @@ struct PadView: View {
         .interactiveCursor(.link)
         .help(
             controller.isPairingLights
-                ? "Envoyer la note de cette case à LightKey"
+                ? "Envoyer le signal de cette case au logiciel des projecteurs, pour la relier"
                 : pad.audio != nil
-                    ? "Tester la cue : l'envoie à LightKey sans lancer le son"
-                    : "Envoyer la cue à LightKey (double-clic sur le pad : pareil)"
+                    ? "Essayer la lumière, sans lancer le son"
+                    : "Allumer ou éteindre la lumière (double-clic sur le pad : pareil)"
         )
-        .accessibilityLabel(controller.isPairingLights ? "Envoyer la note à LightKey" : "Tester la cue")
+        .accessibilityLabel(controller.isPairingLights ? "Envoyer le signal de cette case" : "Essayer la lumière")
         .accessibilityValue(isOn ? "Allumée" : isOff ? "Éteinte" : "")
     }
 
@@ -765,6 +972,51 @@ struct PadView: View {
         .buttonStyle(.plain)
         .interactiveCursor(.link)
         .help(isPlaying ? "Arrêter ce son" : event?.state.isPaused == true ? "Reprendre ce son" : "Lancer ce son")
+    }
+
+    /// Pad Apple Music : un bouton rond lecture / stop, comme un appui sur le pad (stop en fondu de 1 s ; en pause : reprise).
+    private func musicButton(_ pad: Pad, event: PlaybackEvent?) -> some View {
+        let isPlaying: Bool = if case .playing = event?.state { true } else { false }
+        let size = Self.buttonSize(for: density)
+        return Button {
+            controller.togglePlayStop(at: position)
+        } label: {
+            (isPlaying ? Icon.stopFill : Icon.playFill).view(size: size * 0.5)
+                .frame(width: size, height: size)
+                .background(isPlaying ? pad.tint.vividColor : pad.tint.labelColor.opacity(0.18), in: .circle)
+                .foregroundStyle(isPlaying ? pad.tint.surfaceColor : pad.tint.labelColor)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help(isPlaying ? "Arrêter le morceau (fondu)" : event?.state.isPaused == true ? "Reprendre le morceau" : "Jouer le morceau dans Apple Music, depuis le début")
+        .accessibilityLabel(isPlaying ? "Arrêter" : "Lecture")
+    }
+
+    /// Morceau dans le nuage (Internet nécessaire) ou plus dans la bibliothèque de Music.
+    @ViewBuilder
+    private func musicAvailabilityBadge(_ pad: Pad) -> some View {
+        switch pad.music.flatMap({ musicLibrary?.padAvailability[$0.persistentID] }) {
+        case .cloud:
+            Text("☁")
+                .font(.system(size: 11, weight: .semibold))
+                .padding(.horizontal, 5)
+                .background(Surface.lightAccent.opacity(0.18), in: .rect(cornerRadius: 6))
+                .foregroundStyle(Surface.lightAccent)
+                .help("Dans le nuage : Internet nécessaire pour le jouer. Téléchargez-le dans Music avant la représentation.")
+                .accessibilityLabel("Dans le nuage")
+        case .missing:
+            Text("Introuvable")
+                .font(.system(size: 9.5, weight: .bold))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(Color.red.opacity(0.22), in: .rect(cornerRadius: 6))
+                .foregroundStyle(Color(red: 1, green: 0.6, blue: 0.63))
+                .help("Ce morceau n'est plus dans la bibliothèque de Music : remplacez-le (glissez-en un autre sur le pad).")
+                .accessibilityLabel("Morceau introuvable")
+        default:
+            EmptyView()
+        }
     }
 
     /// Pad son et lumière : une capsule avec le bouton lecture / stop et l'ampoule (22 pt chacun, 26 sur un grand pad), l'un au-dessus
@@ -823,19 +1075,34 @@ struct PadView: View {
                         Button {
                             controller.newLightCue(at: position)
                         } label: {
-                            IconLabel("Cue", icon: .plus, size: 12)
+                            IconLabel("Lumière", icon: .plus, size: 12)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 .foregroundStyle(Surface.lightAccent)
                                 .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
                         .interactiveCursor(.link)
-                        .help("Créer une cue lumière sur cette case")
-                        .accessibilityLabel("Créer une cue")
+                        .help("Créer une lumière sur cette case")
+                        .accessibilityLabel("Créer une lumière")
                     }
                     .font(.system(size: 11.5))
+                } else if kind == .light {
+                    // Colonne lumière : un clic crée la lumière (en mode Projecteurs, « Relier » n'existe pas).
+                    Button {
+                        controller.newLightCue(at: position)
+                    } label: {
+                        IconLabel("Nouvelle lumière", icon: .plus, size: 13)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(Surface.lightAccent)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .interactiveCursor(.link)
+                    .help("Créer une lumière sur cette case")
+                    .accessibilityLabel("Créer une lumière")
                 } else {
-                    IconLabel(kind.hasAudio ? "Déposer un son" : "Nouvelle cue", icon: .plus, size: 13)
+                    IconLabel(kind == .music ? "Morceau" : kind.hasAudio ? "Déposer un son" : "Nouvelle lumière", icon: .plus, size: 13)
                         .font(.system(size: 11.5))
                         .foregroundStyle(Surface.textTertiary)
                 }
@@ -982,7 +1249,12 @@ struct PadDropDelegate: DropDelegate {
     }
 
     /// Un groupe de pads qu'on glisse : toutes les cases d'arrivée sont montrées (pas pour un fichier venu du Finder).
+    /// Des morceaux venus du panneau Apple Music : les cases d'arrivée, numérotées.
     private func updateGroupPreview(_ info: DropInfo) {
+        if controller.draggedPosition == nil, controller.musicDragCount > 0, !info.hasItemsConforming(to: [.fileURL]) {
+            controller.updateMusicDropPreview(at: position)
+            return
+        }
         guard isPadDrag(info), let source = controller.draggedPosition else {
             controller.clearDragPreview()
             return
@@ -1001,6 +1273,7 @@ struct PadDropDelegate: DropDelegate {
     func dropExited(info: DropInfo) {
         highlight = nil
         controller.clearDragPreview()
+        controller.clearMusicDropPreview()
     }
 
     func performDrop(info: DropInfo) -> Bool {
@@ -1030,6 +1303,12 @@ struct PadDropDelegate: DropDelegate {
                     return
                 }
                 Task { @MainActor in
+                    if let tracks = MusicDragToken.parse(text) {
+                        controller.endMusicDrag()
+                        let placed = controller.dropMusicTracks(tracks, at: target)
+                        Self.log.info("Glisser : \(placed) morceau(x) Apple Music déposé(s) sur \(target.description, privacy: .public)")
+                        return
+                    }
                     guard let token = PadDragToken.parse(text), token.grid == controller.currentGrid.id else {
                         Self.log.error("Glisser : jeton refusé « \(text, privacy: .public) »")
                         return
@@ -1066,3 +1345,205 @@ extension PlaybackState {
         }
     }
 }
+
+
+/// Les points des projecteurs d'un pad lumière (mode Projecteurs) : c'est le bouton du pad. Un clic allume l'état, un second
+/// l'éteint en fondu. **Allumé** : points pleins qui rayonnent, pastille teintée de la couleur du pad, filet clair.
+/// **Éteint** : points creux (simples anneaux gris), pastille sombre. La forme change, pas seulement la couleur : l'état se lit
+/// sans distinguer les couleurs. **Toujours de la même taille**, quel que soit le type d'état : 4 points, ou une barre arc-en-ciel
+/// et le numéro du programme, ou un micro. Elle reflète aussi les projecteurs coupés à la main (mini-barre de la carte
+/// Intensité) : un projecteur coupé est un anneau très sombre. `cutHeads` : les projecteurs coupés (rang depuis 0).
+struct ProjectorToggle: View {
+    let summary: LightLookSummary
+    let tint: Tint
+    let isOn: Bool
+    let compact: Bool
+    var cutHeads: Set<Int> = []
+    let action: () -> Void
+
+    /// Taille unique de la pastille (un peu plus basse sur un pad bas).
+    private var width: CGFloat { 52 }
+    private var height: CGFloat { compact ? 20 : 26 }
+    private let size: CGFloat = 7
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) { content }
+                .frame(width: width, height: height)
+                .background {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.black.opacity(0.5))
+                        .overlay { if isOn { RoundedRectangle(cornerRadius: 10).fill(tint.vividColor.opacity(0.22)) } }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(isOn ? tint.vividColor.opacity(0.67) : Color.white.opacity(0.08), lineWidth: 1)
+                }
+                .contentShape(.rect(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help(isOn ? "Éteindre cette lumière en fondu" : "Allumer cette lumière : \(summary.subtitle)")
+        .accessibilityLabel("Lumière")
+        .accessibilityValue(isOn ? "Allumée" : "Éteinte")
+        .accessibilityHint("Allume ou éteint cette lumière")
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch summary.kind {
+        case .colors, .alternate:
+            ForEach(Array(summary.dots.enumerated()), id: \.offset) { index, dot in point(dot, lit: dot.isOn && !cutHeads.contains(index)) }
+        case .program(let number):
+            rainbow
+            Text("\(number)")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundStyle(Surface.textPrimary)
+                .opacity(isOn ? 1 : 0.6)
+                .monospacedDigit()
+        case .sound:
+            MicGlyph()
+                .stroke(isOn ? Surface.textPrimary : Surface.textTertiary.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                .frame(width: 11, height: 14)
+        }
+    }
+
+    @ViewBuilder
+    private func point(_ dot: LightLookSummary.Dot, lit: Bool) -> some View {
+        if !lit {
+            Circle().strokeBorder(Color(white: 0.23), lineWidth: 1.5).frame(width: size, height: size)
+        } else if isOn {
+            Circle()
+                .fill(Color(light: dot.color).opacity(0.45 + 0.55 * min(max(dot.intensity, 0), 1)))
+                .frame(width: size, height: size)
+                .shadow(color: Color(light: dot.color), radius: 2.5)
+        } else {
+            Circle().strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5).frame(width: size, height: size)
+        }
+    }
+
+    private var rainbow: some View {
+        let gradient = LinearGradient(colors: [.red, .yellow, .green, .blue, .purple], startPoint: .leading, endPoint: .trailing)
+        return ZStack {
+            if isOn {
+                RoundedRectangle(cornerRadius: 3).fill(gradient)
+            } else {
+                RoundedRectangle(cornerRadius: 3).strokeBorder(Surface.textTertiary.opacity(0.8), lineWidth: 1.5)
+            }
+        }
+        .frame(width: 20, height: 7)
+    }
+}
+
+/// Petit micro (« sur le son », le micro de la barre) : capsule, arc en U et pied.
+private nonisolated struct MicGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width, h = rect.height
+        path.addRoundedRect(in: CGRect(x: w * 0.32, y: 0, width: w * 0.36, height: h * 0.58), cornerSize: CGSize(width: w * 0.18, height: w * 0.18))
+        path.move(to: CGPoint(x: w * 0.1, y: h * 0.4))
+        path.addQuadCurve(to: CGPoint(x: w * 0.9, y: h * 0.4), control: CGPoint(x: w * 0.5, y: h * 1.0))
+        path.move(to: CGPoint(x: w * 0.5, y: h * 0.75))
+        path.addLine(to: CGPoint(x: w * 0.5, y: h))
+        return path
+    }
+}
+
+/// Les projecteurs de la carte **Intensité lumineuse** (mode Projecteurs), en ligne à la place du potard d'une colonne son :
+/// tels que la barre les montre (fondus compris). Un clic en coupe ou rallume un en fondu sans toucher au pad ; la pastille
+/// des pads le reflète.
+struct DMXHeadsBar: View {
+    @Environment(DMXSession.self) private var dmx
+    /// Diamètre d'un projecteur : la barre grandit avec la carte.
+    var lampSize: CGFloat = 13
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
+            let colors = dmx.console?.headColors(at: DMXClock.now()) ?? []
+            HStack(spacing: max(2, lampSize * 0.2)) {
+                ForEach(0..<(dmx.console?.rig.profile.headCount ?? 4), id: \.self) { index in
+                    head(index, rgb: colors.indices.contains(index) ? colors[index] : nil)
+                }
+            }
+            .padding(max(3, lampSize * 0.25))
+            .background(Color(red: 0.15, green: 0.16, blue: 0.18), in: RoundedRectangle(cornerRadius: lampSize * 0.5))
+            .overlay { RoundedRectangle(cornerRadius: lampSize * 0.5).stroke(Color(red: 0.23, green: 0.24, blue: 0.27), lineWidth: 1) }
+        }
+    }
+
+    private func head(_ index: Int, rgb: RGB?) -> some View {
+        let isOn = dmx.console?.isHeadOn(index) ?? true
+        let fill = rgb.map { Color(red: Double($0.red) / 255, green: Double($0.green) / 255, blue: Double($0.blue) / 255) } ?? .clear
+        return Button { dmx.toggleHead(index) } label: {
+            Circle()
+                .fill(Color(red: 0.07, green: 0.08, blue: 0.09))
+                .overlay { Circle().fill(fill).padding(lampSize * 0.18) }
+                .overlay { Circle().stroke(Color(red: 0.29, green: 0.3, blue: 0.33), lineWidth: 1) }
+                .shadow(color: fill.opacity(0.6), radius: lampSize * 0.2)
+                .frame(width: lampSize, height: lampSize)
+                .opacity(isOn ? 1 : 0.45)
+        }
+        .buttonStyle(.plain)
+        .interactiveCursor(.link)
+        .help("Projecteur \(index + 1) : cliquer pour l'allumer ou le couper en fondu (le pad ne change pas)")
+        .accessibilityLabel("Projecteur \(index + 1)")
+        .accessibilityValue(isOn ? "allumé" : "coupé")
+    }
+}
+
+/// Quand une alternance joue : son tempo, avec un point qui bat (carte Intensité lumineuse).
+struct DMXTempo: View {
+    @Environment(DMXSession.self) private var dmx
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 20)) { _ in
+            if let info = dmx.console?.alternationInfo(at: DMXClock.now()) {
+                HStack(spacing: 4) {
+                    Circle().fill(Surface.lightAccent).frame(width: 6, height: 6)
+                        .opacity(info.onBeat && !reduceMotion ? 1 : 0.25)
+                    Text("⇄ \(Int(info.bpm.rounded()))")
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Surface.textSecondary)
+                }
+                .help("Alternance : tempo du son en cours (sinon tempo de repli)")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Alternance à \(Int(info.bpm.rounded())) battements par minute")
+            }
+        }
+    }
+}
+
+
+/// Une ligne de carte de fader : le fader (et sa valeur dessous) et ce qui l'accompagne (potard, projecteurs, couleur), **centrés
+/// ensemble** dans le caisson avec un écart qui suit la place, comme dans la maquette. L'accompagnement grandit avec la carte,
+/// sans dépasser une taille raisonnable ; il est centré en hauteur sur le bloc du fader.
+struct FaderCardRow<Fader: View, Companion: View>: View {
+    @Environment(\.gridDensity) private var density
+    /// Largeur approximative du bloc du fader (piste, vumètre, valeur), pour répartir la place qui reste.
+    let faderWidth: CGFloat
+    /// Largeur minimale de l'accompagnement (la barre des 4 projecteurs ne tient pas en dessous).
+    let minCompanion: CGFloat
+    @ViewBuilder let fader: () -> Fader
+    @ViewBuilder let companion: (CGSize) -> Companion
+
+    private var blockHeight: CGFloat { density.faderTrackHeight + 20 }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let free = max(geometry.size.width - faderWidth, 0)
+            let width = clampSize(free * 0.55, minCompanion, 110)
+            let gap = clampSize(free * 0.12, 6, 24)
+            HStack(alignment: .top, spacing: gap) {
+                fader()
+                companion(CGSize(width: width, height: blockHeight))
+                    .frame(width: width, height: blockHeight)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+        .frame(height: blockHeight)
+    }
+}
+
+/// Une taille bornée (les éléments des cartes de fader grandissent avec la place, sans excès).
+func clampSize(_ value: CGFloat, _ low: CGFloat, _ high: CGFloat) -> CGFloat { min(max(value, low), high) }

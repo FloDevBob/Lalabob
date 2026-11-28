@@ -19,4 +19,6 @@ public actor SilentAudioEngine: AudioEngineControlling {
     public func setOutputDevice(uid: String?) {}
     public func setPadGain(_ pad: Pad.ID, gainDB: Double) {}
     public func seek(_ pad: Pad.ID, to elapsed: TimeInterval) {}
+    public func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) {}
+    public func detachExternal() {}
 }

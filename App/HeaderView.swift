@@ -10,6 +10,7 @@ struct HeaderView: View {
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Binding var showsLibrary: Bool
     @Environment(\.midiSession) private var midiSession
+    @Environment(DMXSession.self) private var dmx
     @State private var showsCalibration = false
     @State private var audioUsage = AudioFolderUsage.empty
 
@@ -45,9 +46,11 @@ struct HeaderView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // À droite : contrôleur, sortie audio, cadenas, Tout arrêter.
+            if let session = midiSession, controller.connectedController == .apcMiniMK2 { MusicVolumePill(session: session) }
             controllerStatusControl
+            if controller.isDMXLighting { projectorsStatus }
             outputPicker
-            PairingButton()
+            if !controller.isDMXLighting { PairingButton() }  // « Relier » n'a pas de sens quand Lalabob allume lui-même la barre
             LockButton()
             Button("Tout arrêter", icon: .stop) {
                 controller.stopAll()
@@ -101,6 +104,24 @@ struct HeaderView: View {
         .help(controller.connectedControllerName.map { "\($0) : contrôleur connecté" } ?? "Aucun Launchpad ni APC mini mk2 détecté : branchez-en un, il sera reconnu tout seul")
     }
 
+    /// Pastille « Projecteurs » (mode DMX) : le boîtier est-il branché ? Rien n'est affirmé sur la barre elle-même (le DMX ne
+    /// renvoie rien).
+    private var projectorsStatus: some View {
+        let color: Color =
+            switch dmx.status {
+            case .connected: .green
+            case .failed: Surface.lightAccent
+            case .stopped, .noDevice: Surface.textTertiary
+            }
+        return HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text("Projecteurs").font(.system(size: 12)).foregroundStyle(Surface.textSecondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Projecteurs, \(dmx.status.headline)")
+        .help("Boîtier USB-DMX : \(dmx.status.headline)" + (dmx.status.detail.map { "\n\($0)" } ?? ""))
+    }
+
     private var outputPicker: some View {
         Picker(
             "Sortie audio",
@@ -131,7 +152,7 @@ struct PairingButton: View {
         Button {
             controller.setPairingLights(!active)
         } label: {
-            IconLabel("Appairage", icon: .spotlight, size: 15)
+            IconLabel("Relier", icon: .spotlight, size: 15)
                 .font(.system(size: 12.5, weight: .semibold))
                 .padding(.horizontal, 10)
                 .frame(height: 28)
@@ -143,8 +164,8 @@ struct PairingButton: View {
         .opacity(locked ? 0.45 : 1)
         .hoverHighlight()
         .interactiveCursor(.link, enabled: !locked)
-        .help(locked ? "Déverrouillez pour appairer les cues lumière" : "Appairer les cases lumière aux cues de LightKey")
-        .accessibilityLabel(active ? "Quitter l'appairage lumière" : "Appairage lumière")
+        .help(locked ? "Déverrouillez pour relier les lumières aux projecteurs" : "Relier les pads lumière aux projecteurs")
+        .accessibilityLabel(active ? "Terminer : relier aux projecteurs" : "Relier aux projecteurs")
     }
 }
 
@@ -162,12 +183,11 @@ struct LockButton: View {
         return Button {
             controller.isLocked.toggle()
         } label: {
-            IconLabel(locked ? "Verrouillé" : "Déverrouillé", icon: locked ? .lock : .lockOpen, size: 15)
+            // Bouton carré, icône seule (l'état se lit à l'icône et à l'ambre ; le texte reste pour VoiceOver et l'infobulle).
+            (locked ? Icon.lock : Icon.lockOpen).view(size: 15)
                 .id(locked)
                 .transition(.opacity.combined(with: .scale(scale: 0.6)))
-                .font(.system(size: 12.5, weight: .semibold))
-                .padding(.horizontal, 10)
-                .frame(height: 28)
+                .frame(width: 30, height: 30)
                 .background(locked ? Surface.panel : Surface.lightAccent.opacity(0.18), in: .rect(cornerRadius: 8))
                 .foregroundStyle(locked ? Surface.textSecondary : Surface.lightAccent)
         }
@@ -191,6 +211,14 @@ struct GridTabsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Changement de canal LightKey en attente de confirmation (les appairages de la grille sont à refaire).
     @State private var pendingChannel: PendingChannel?
+    /// Changement de type de grille qui supprime des pads, en attente de confirmation.
+    @State private var pendingKind: PendingKind?
+
+    private struct PendingKind {
+        let grid: Int
+        let kind: GridKind
+        let removed: [Pad]
+    }
 
     private struct PendingChannel {
         let grid: Int
@@ -205,10 +233,17 @@ struct GridTabsView: View {
                         tab(index: index, grid: grid)
                     }
                     if !controller.isLocked {
-                        Button("Nouvelle grille", icon: .plus) { controller.addGrid() }
-                            .labelStyle(.iconOnly)
-                            .buttonStyle(.borderless)
-                            .help("Nouvelle grille (⌘T)")
+                        Menu {
+                            Button("Sons et lumière") { controller.addGrid(kind: .standard) }
+                            Button("Apple Music") { controller.addGrid(kind: .appleMusic) }
+                        } label: {
+                            Icon.plus.view(size: 14)
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .help("Nouvelle grille : sons et lumière (⌘T) ou Apple Music (⌥⌘T)")
+                        .accessibilityLabel("Nouvelle grille")
                     }
                 }
                 .padding(.horizontal, 4)
@@ -219,7 +254,7 @@ struct GridTabsView: View {
         }
         .frame(height: 36)
         .alert(
-            "Changer le canal LightKey ?",
+            "Changer le canal des lumières ?",
             isPresented: Binding(get: { pendingChannel != nil }, set: { if !$0 { pendingChannel = nil } }),
             presenting: pendingChannel
         ) { pending in
@@ -228,9 +263,22 @@ struct GridTabsView: View {
         } message: { pending in
             Text(
                 pending.channel == nil
-                    ? "Sans canal, les cues et faders lumière de cette grille n'enverront plus rien à LightKey."
-                    : "Les cues et faders lumière de cette grille sont à réappairer dans LightKey sur le canal \(pending.channel ?? 0)."
+                    ? "Sans canal, les lumières et intensités de cette grille ne commanderont plus les projecteurs."
+                    : "Les lumières et intensités de cette grille seront à relier de nouveau aux projecteurs (canal \(pending.channel ?? 0))."
             )
+        }
+        .alert(
+            pendingKind.map { "Passer « \(controller.show.grids[safe: $0.grid]?.name ?? "") » en grille \($0.kind.title) ?" } ?? "",
+            isPresented: Binding(get: { pendingKind != nil }, set: { if !$0 { pendingKind = nil } }),
+            presenting: pendingKind
+        ) { pending in
+            Button("Convertir", role: .destructive) { controller.setGridKind(at: pending.grid, to: pending.kind) }
+            Button("Annuler", role: .cancel) {}
+        } message: { pending in
+            let names = pending.removed.prefix(5).map(\.title).joined(separator: ", ") + (pending.removed.count > 5 ? "…" : "")
+            Text(
+                "\(pending.removed.count) \(pending.removed.count == 1 ? "pad sera supprimé" : "pads seront supprimés") : \(names). "
+                    + "Les colonnes lumière restent telles quelles. Annulable avec ⌘Z.")
         }
     }
 
@@ -242,6 +290,9 @@ struct GridTabsView: View {
                 .frame(width: 18, height: 18)
                 .background(isSelected ? Surface.textPrimary : Surface.well, in: .circle)
                 .foregroundStyle(isSelected ? Surface.window : Surface.textSecondary)
+            if grid.kind == .appleMusic {
+                Icon.music.view(size: 12).foregroundStyle(Surface.musicAccent).accessibilityHidden(true)
+            }
             if renaming == grid.id {
                 TextField("Nom de la grille", text: $draftName)
                     .textFieldStyle(.plain)
@@ -272,7 +323,7 @@ struct GridTabsView: View {
         .interactiveCursor(.link, enabled: renaming != grid.id)
         .help(
             (controller.isLocked ? "Grille \(index + 1) : \(grid.name)" : "Grille \(index + 1) : \(grid.name) · Double-cliquer pour renommer, glisser pour réordonner (⌘\(index + 1))")
-                + " · " + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey")
+                + " · " + (grid.lightChannel.map { "canal des lumières \($0)" } ?? "sans canal des lumières")
                 + (controller.isLocked ? "" : " (clic droit pour le changer)"))
         .onTapGesture(count: 2) {
             if controller.isLocked { controller.notifyLocked() } else { startRenaming(grid) }
@@ -299,7 +350,8 @@ struct GridTabsView: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityLabel(
             "Grille \(index + 1), \(grid.name), \(controller.padCount(inGrid: index)) pads, "
-                + (grid.lightChannel.map { "canal LightKey \($0)" } ?? "sans canal LightKey"))
+                + (grid.lightChannel.map { "canal des lumières \($0)" } ?? "sans canal des lumières")
+                + (grid.kind == .appleMusic ? ", grille Apple Music" : ""))
     }
 
     @ViewBuilder
@@ -311,18 +363,38 @@ struct GridTabsView: View {
                 .disabled(index == controller.show.grids.count - 1)
             Divider()
             channelMenu(index: index, grid: grid)
+            kindMenu(index: index, grid: grid)
             Divider()
             Button("Supprimer la grille", role: .destructive) { controller.removeGrid(at: index) }
                 .disabled(controller.show.grids.count == 1)
     }
 
+    /// Sous-menu « Type de grille » : sans perte, le changement s'applique tout de suite ; sinon une confirmation nomme les pads supprimés.
+    private func kindMenu(index: Int, grid: PadGrid) -> some View {
+        Menu("Type de grille : \(grid.kind.title)") {
+            ForEach([GridKind.standard, .appleMusic], id: \.self) { kind in
+                Button {
+                    let removed = controller.gridKindRemovedPads(at: index, to: kind)
+                    if removed.isEmpty {
+                        controller.setGridKind(at: index, to: kind)
+                    } else {
+                        pendingKind = PendingKind(grid: index, kind: kind, removed: removed)
+                    }
+                } label: {
+                    Text((grid.kind == kind ? "✓ " : "") + kind.title)
+                }
+                .disabled(grid.kind == kind)
+            }
+        }
+    }
+
     /// Sous-menu « Canal LightKey » : les 16 canaux (ceux des autres grilles grisés, avec leur nom) et « Sans canal ».
     private func channelMenu(index: Int, grid: PadGrid) -> some View {
-        Menu("Canal LightKey : \(grid.lightChannel.map(String.init) ?? "aucun")") {
+        Menu("Canal des lumières : \(grid.lightChannel.map(String.init) ?? "aucun")") {
             ForEach(Array(Show.lightChannels), id: \.self) { channel in
                 let owner = controller.gridIndex(usingLightChannel: channel)
                 let isShared = controller.show.sharedLight?.channel == channel
-                let title = isShared ? "Canal \(channel) — colonnes communes"
+                let title = isShared ? "Canal \(channel) — mêmes lumières partout"
                     : owner.flatMap { $0 == index ? nil : "Canal \(channel) — \(controller.show.grids[$0].name)" }
                     ?? "Canal \(channel)"
                 Button {
@@ -363,4 +435,13 @@ struct GridTabsView: View {
         controller.renameGrid(at: index, to: draftName)
         renaming = nil
     }
+}
+
+extension GridKind {
+    /// Nom affiché d'un type de grille.
+    var title: String { self == .appleMusic ? "Apple Music" : "Sons et lumière" }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }

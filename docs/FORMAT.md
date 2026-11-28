@@ -48,7 +48,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 
 | Clé | Type | Contraintes |
 | --- | --- | --- |
-| `formatVersion` | entier | 1 ≤ valeur ≤ `Show.currentFormatVersion` (**2**). Plus grand : refusé (`unsupportedFormatVersion`). Un fichier de version 1 se lit (migration, § 5) et se réécrit en version 2 |
+| `formatVersion` | entier | 1 ≤ valeur ≤ `Show.currentFormatVersion` (**3**). Plus grand : refusé (`unsupportedFormatVersion`). Écrite = la plus petite version qui contient le spectacle (`requiredFormatVersion`) : **3** s'il a une grille Apple Music, **2** sinon. Un fichier de version 1 se lit (migration, § 5) |
 | `name` | texte | nom du spectacle |
 | `grids` | tableau de grilles | 1 à **64** grilles (onglets), dans l'ordre d'affichage |
 | `sharedLight` | objet, **facultatif** | option « Colonnes lumière communes à toutes les grilles » ; absent = désactivée. `channel` (1…16, canal LightKey commun, qu'aucune grille n'utilise), `originGridID` (UUID de la grille qui reprend les colonnes en désactivant), `columnIndices` (positions 0…7 des colonnes communes, triées, non vides). **Chaque grille porte une copie identique** de chaque colonne commune, de type `light` |
@@ -59,6 +59,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 | --- | --- | --- |
 | `id` | UUID | identifiant stable de l'onglet |
 | `name` | texte | nom de l'onglet |
+| `kind` | `"appleMusic"`, **facultatif** | grille Apple Music (colonnes `music` et `light` seulement). **Absent = grille standard** (colonnes `audio`, `mixed`, `light`) ; `"standard"` n'est jamais écrit. Version 3 |
 | `columns` | tableau de colonnes | **exactement 8**, de gauche à droite |
 | `parkedColumns` | tableau, **facultatif** | colonnes mises de côté pendant que l'option `sharedLight` est active : `{ "index": 0…7, "column": Colonne }`. Absent = aucune. Leurs sons restent dans `Audio/` |
 | `lightChannel` | entier ou `null` | canal MIDI LightKey de la grille, **1 à 16**, unique entre les grilles ; `null` = « Sans canal » (la lumière de la grille n'envoie rien). **Toujours écrit**, `null` compris. **Absent à la lecture** = fichier d'avant le canal par grille : migration (voir § 3) |
@@ -69,7 +70,7 @@ Conventions de codage (celles de `Codable` de Swift, sans personnalisation sauf 
 | --- | --- | --- |
 | `id` | UUID | |
 | `name` | texte | « Colonne 1 »… par défaut |
-| `kind` | `"audio"`, `"light"` ou `"mixed"` (son et lumière) | `audio` accepte des pads son, `light` des pads lumière, `mixed` les trois types de pads (son, lumière, son et lumière). Volume, filtre et stop : `audio` et `mixed` ; fader MIDI vers LightKey : `light` |
+| `kind` | `"audio"`, `"light"`, `"mixed"` (son et lumière) ou `"music"` (Apple Music, version 3) | `audio` accepte des pads son, `light` des pads lumière, `mixed` les trois types de pads (son, lumière, son et lumière), `music` les pads Music seulement (grille Apple Music). Volume, filtre et stop : `audio` et `mixed` ; fader MIDI vers LightKey : `light` ; `music` : pas de fader (`level` 1, `filter` 0) |
 | `level` | nombre | fader de la colonne, **0 à 1** (0,8 par défaut en audio, 1 en lumière) |
 | `slots` | tableau de 8 éléments | **exactement 8**, de haut en bas ; `null` = case vide, sinon un pad |
 | `isFaderPaired` | booléen | colonne lumière : fader appairé à LightKey. **Facultatif à la lecture** (absent = `false`) |
@@ -91,7 +92,9 @@ Par défaut, les colonnes d'indices 6 et 7 (les deux de droite) sont des colonne
 | `awaitsSound` | booléen, facultatif | « son et lumière » choisi, son pas encore déposé : seulement avec `light` et sans `audio`. Absent = `false`. **Écrit seulement s'il est vrai** |
 | `lightRetrigger` | `"turnOnOnly"` ou `"toggle"`, facultatif | nouvel appui d'un pad son **et** lumière : n'envoyer la note que si LightKey dit la cue éteinte ou inconnue (défaut), ou à chaque appui. **Écrit seulement s'il n'est pas le défaut** |
 
-Un pad a **au moins une** des deux parties `audio` / `light` ; son type est déduit : `audio` seul = son, `light` seul = lumière, les deux (ou
+| `music` | objet `MusicTrackRef`, **facultatif** | un morceau d'Apple Music (version 3) : `persistentID` (identifiant persistant de Music, **hexadécimal, 1 à 32 caractères** : il entre dans une commande AppleScript), `title`, `artist`, `album`, `duration` (secondes, 0 à 86 400), `playlistName` (facultatif). **Exclusif** : un pad Music n'a ni `audio`, ni `light`, ni `awaitsSound` |
+
+Un pad Music n'a que `music`. Sinon, un pad a **au moins une** des deux parties `audio` / `light` ; son type est déduit : `audio` seul = son, `light` seul = lumière, les deux (ou
 `light` avec `awaitsSound`) = son et lumière. **Version 1** : un pad portait `content` = `{"audio": {"clip": …}}` ou `{"light": {"cue": …}}` ; cette
 forme est toujours lue et convertie, jamais écrite. Un pad qui mêle les deux formes (`content` avec `audio` ou `light`), ou dont `content` est
 vide, est illisible (`corrupt`).
@@ -221,6 +224,9 @@ Erreurs de paquet (avant `show.json`) : `notAPackage` (pas un dossier), `missing
   ou les deux), pour les pads « son et lumière » et les colonnes `mixed`. La lecture convertit `content` ; l'écriture est toujours en version 2.
   **Une ancienne version de Lalabob ne peut pas ouvrir un fichier de version 2** (`unsupportedFormatVersion`) : mettre à jour tous les Mac de
   régie en même temps, et garder une copie des spectacles avant la première ouverture avec la nouvelle version.
+- **Version 3 (27/11/2026, spec « Grilles Apple Music »)** : `PadGrid.kind`, `ColumnKind.music`, `Pad.music`. Écrite **seulement** si le spectacle a une
+  grille Apple Music ou une colonne Music : un spectacle sans Apple Music reste en version 2, lisible par l'app précédente. Une ancienne version ne
+  lit pas la version 3. Tests : `MusicGridTests`.
 - Un format de fichier ne se modifie jamais sans test (`CLAUDE.md`) : `ShowPackageTests`, `ShowTests`, `ClipSettingsTests`.
 
 ## 6. Tests de référence

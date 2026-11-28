@@ -199,11 +199,11 @@ struct PadTypesTests {
         #expect(show.grids[0].columns[6].kind == .light)
     }
 
-    @Test("Version 3 ou plus : refusée ; version 0 : refusée")
+    @Test("Version 5 ou plus : refusée ; version 0 : refusée (la 4 est celle du DMX)")
     func unsupportedVersions() throws {
         var show = Show.new()
-        show.formatVersion = 3
-        #expect(throws: ShowValidationError.unsupportedFormatVersion(3)) { try show.validate() }
+        show.formatVersion = 5
+        #expect(throws: ShowValidationError.unsupportedFormatVersion(5)) { try show.validate() }
         show.formatVersion = 0
         #expect(throws: ShowValidationError.unsupportedFormatVersion(0)) { try show.validate() }
     }

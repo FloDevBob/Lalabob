@@ -83,7 +83,7 @@ extension Show {
         guard grids.indices.contains(origin) else { return "Grille introuvable." }
         guard !lightColumnIndices(ofGrid: origin).isEmpty else { return "La grille affichée n'a aucune colonne lumière." }
         guard grids[origin].lightChannel != nil || firstFreeLightChannel() != nil else {
-            return "Les 16 canaux LightKey sont déjà pris par des grilles."
+            return "Les 16 canaux des lumières sont déjà pris par des grilles."
         }
         return nil
     }
@@ -109,7 +109,7 @@ extension Show {
                 } else if grids[g].columns[c].kind == .light {
                     // Option active, le type Lumière vaut pour toutes les grilles : cette colonne attend son retour.
                     grids[g].parkedColumns.append(ParkedColumn(index: c, column: grids[g].columns[c]))
-                    grids[g].columns[c] = Column.empty(name: grids[g].columns[c].name, kind: .audio)
+                    grids[g].columns[c] = Column.empty(name: grids[g].columns[c].name, kind: grids[g].kind.contentColumn)
                 }
             }
         }
@@ -150,7 +150,7 @@ extension Show {
     }
 
     /// Prépare une grille neuve pour ce spectacle : copies des colonnes communes ; ses autres colonnes lumière deviennent
-    /// des colonnes son (option active, le type Lumière vaut pour toutes les grilles).
+    /// des colonnes son, ou Music dans une grille Apple Music (option active, le type Lumière vaut pour toutes les grilles).
     public func adaptingNewGrid(_ grid: PadGrid) -> PadGrid {
         guard let sharedLight, let model = grids.first else { return grid }
         var grid = grid
@@ -158,7 +158,7 @@ extension Show {
             if sharedLight.columnIndices.contains(c) {
                 grid.columns[c] = model.columns[c]
             } else if grid.columns[c].kind == .light {
-                grid.columns[c] = Column.empty(name: grid.columns[c].name, kind: .audio)
+                grid.columns[c] = Column.empty(name: grid.columns[c].name, kind: grid.kind.contentColumn)
             }
         }
         return grid

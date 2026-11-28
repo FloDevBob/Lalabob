@@ -49,7 +49,7 @@ struct HelpTopic: Identifiable, Equatable {
 }
 
 enum HelpContent {
-    static let topics: [HelpTopic] = [start, hardware, play, prepare, lighting, shortcuts, troubleshooting]
+    static let topics: [HelpTopic] = [start, hardware, play, prepare, appleMusic, lighting, dmxLighting, shortcuts, troubleshooting]
 
     static func topics(matching query: String) -> [HelpTopic] { topics.filter { $0.matches(query) } }
 
@@ -59,7 +59,7 @@ enum HelpContent {
         id: "start", title: "Pour commencer", symbol: .music,
         blocks: [
             .paragraph(
-                "Lalabob est la régie son et lumière de la troupe : une grille de 8 colonnes de 8 pads. Les **6 colonnes de gauche** lancent des sons, les **2 colonnes de droite** pilotent les cues de LightKey."),
+                "Lalabob est la régie son et lumière de la troupe : une grille de 8 colonnes de 8 pads. Les **6 colonnes de gauche** lancent des sons, les **2 colonnes de droite** allument et éteignent les **projecteurs**."),
             .steps([
                 "Branchez votre contrôleur (**AKAI APC mini mk2** ou **Novation Launchpad Mini MK3**). L'indicateur vert « Connecté » apparaît en haut à droite.",
                 "Choisissez la **sortie audio** dans la barre d'en-tête.",
@@ -67,6 +67,7 @@ enum HelpContent {
                 "Pour le préparer, ouvrez le cadenas (⌘L), puis glissez des sons sur les pads.",
             ]),
             .paragraph("Un spectacle est un seul fichier `.lalabob` qui contient aussi ses sons : pour le passer à l'autre Mac, copiez ce fichier."),
+            .paragraph("**Vous découvrez Lalabob ?** Faites la **visite guidée** (Aide ▸ Visite guidée) : cinq minutes sur une copie de Lalabob, avec de vrais sons. Puis entraînez-vous sur le spectacle d'entraînement (Aide ▸ Ouvrir le spectacle d'entraînement), que vous pouvez modifier sans risque."),
             .warning("Règle d'or : le son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien."),
         ])
 
@@ -79,7 +80,7 @@ enum HelpContent {
                 "**Novation Launchpad Mini MK3** : grille 8×8 sans fader. Lalabob le met en **mode Programmeur** à la connexion ; il y reste jusqu'au débranchement.",
             ]),
             .paragraph("Les 6 **boutons ronds rouges** sous les colonnes son de l'APC arrêtent les sons de leur colonne ; ceux des colonnes lumière restent éteints. Quand vous quittez Lalabob, le contrôleur est **éteint** et remis dans son mode d'origine."),
-            .paragraph("Les LED du contrôleur reflètent l'écran : un pad allumé à la couleur de son pad, qui **pulse** quand le son joue, **atténué** en pause ou quand une cue lumière est éteinte, éteint pour une case vide."),
+            .paragraph("Les LED du contrôleur reflètent l'écran : un pad allumé à la couleur de son pad, qui **pulse** quand le son joue, **atténué** en pause ou quand une lumière est éteinte, éteint pour une case vide."),
             .paragraph("**Couleurs pâles sur le Launchpad ?** Ses LED rendent les teintes de l'écran délavées. Cliquez sur le **nom du contrôleur** en haut à droite : l'**étalonnage des LED** règle saturation, profondeur (gamma) et luminosité, et les 64 LED suivent chaque mouvement. Le réglage est mémorisé. (L'APC mini mk2 a sa propre palette : rien à régler.) Sur l'**APC mini mk2**, le même panneau propose le mode **RVB libre** (essai) : les teintes de l'écran sont envoyées en couleurs libres et s'étalonnent de la même façon ; « Palette Akai » remet les couleurs d'origine."),
             .paragraph("Les faders se **raccrochent** : après un changement de grille, un fader physique n'agit qu'une fois revenu à la valeur affichée, pour que le volume ne saute pas."),
             .warning("Lalabob ne supporte pas deux contrôleurs en même temps. Si les deux sont branchés, le premier reconnu est utilisé."),
@@ -95,7 +96,7 @@ enum HelpContent {
                 "Le bouton rond sur un pad lance ou arrête ce son (carré = arrêter).",
                 "Le petit bouton rouge ■ à côté du volume d'une colonne arrête **tous ses sons** (joués ou en pause). Sur l'**APC mini mk2**, c'est le bouton rond rouge sous la colonne ; les colonnes lumière n'en ont pas.",
                 "Les **vumètres** sous chaque colonne montrent le signal réel, après le fader et le filtre.",
-                "Le **potard de filtre**, à droite du fader de chaque colonne son : au centre (« Neutre »), le son est intact ; en le tournant vers la **gauche**, les aigus disparaissent et il reste les basses (« Bas 800 Hz ») ; vers la **droite**, les basses disparaissent et il reste les aigus (« Haut 2 kHz »). Glissez vers le haut ou le bas, ou utilisez les flèches ; un **double-clic** le remet au neutre. Il se règle aussi cadenas fermé.",
+                "Le **potard de filtre**, à droite du fader de chaque colonne son : au centre (« Neutre »), le son est intact ; en le tournant vers la **gauche**, les aigus disparaissent et il reste les basses (« Bas 800 Hz ») ; vers la **droite**, les basses disparaissent et il reste les aigus (« Haut 2 kHz »). Glissez vers le haut ou le bas, ou utilisez les flèches ; un **double-clic** le ramène au neutre en douceur (en 1,5 s : le son s'ouvre progressivement). Il se règle aussi cadenas fermé.",
                 "Changer de grille (onglets ou ⌘1 à ⌘9) ne coupe aucun son.",
             ]),
             .paragraph("Cadenas **fermé** : on peut jouer, régler les faders et les filtres, le volume d'un pad et ses fondus, changer de grille et tout arrêter. Rien d'autre ne se modifie."),
@@ -120,25 +121,69 @@ enum HelpContent {
             ]),
         ])
 
-    static let lighting = HelpTopic(
-        id: "lighting", title: "Lumière et LightKey", symbol: .spotlight,
+    static let appleMusic = HelpTopic(
+        id: "apple-music", title: "Grilles Apple Music", symbol: .music,
         blocks: [
-            .paragraph("Lalabob crée un appareil MIDI virtuel nommé **« Lalabob Lumière »**. LightKey n'écoute que lui : Lalabob lui **relaie** les appuis et les faders des 2 colonnes de droite, et lit en retour l'état de chaque cue."),
+            .paragraph("Une **grille Apple Music** joue des morceaux de vos playlists dans l'app Music, un à la fois. Music doit être ouvert sur ce Mac."),
             .steps([
-                "Dans les réglages MIDI de LightKey, activez l'**entrée et la sortie** de « Lalabob Lumière ».",
-                "**Désactivez** le contrôleur physique dans LightKey : sinon chaque cue bascule deux fois et semble ne rien faire.",
-                "Dans Lalabob, déverrouillé, cliquez **Appairage** dans l'en-tête.",
+                "**Créer** : bouton + des onglets › Apple Music (⌥⌘T). Une note rose marque l'onglet.",
+                "**Remplir** : déverrouillé, choisissez une playlist à gauche, sélectionnez des morceaux (Maj-clic, ⌘-clic) et glissez-les sur une colonne Music.",
+                "**Écouter avant** : ▶ joue un extrait de 30 s sans toucher à Music. L'onglet **Internet** cherche dans tout Apple Music ; « Ajouter… » ouvre le morceau dans Music pour l'ajouter.",
+                "**Jouer** : un appui lance le morceau, un autre l'arrête (fondu d'une seconde) ; l'appui suivant repart du début. La **pause** est dans la barre du bas (et Espace) ; un appui sur un morceau en pause le reprend. Un autre pad enchaîne en fondu. ■ sous la colonne arrête en fondu, Échap arrête tout.",
             ]),
-            .paragraph("**Appairer une cue** :"),
+            .bullets([
+                "**Volume** : celui de Music, réglé par le 9e fader de l'APC. Pas de volume par pad, pas de fondus ni d'élagage (morceaux protégés).",
+                "**☁ sur un pad** : le morceau est dans le nuage, Internet est nécessaire. Téléchargez-le avant la représentation (« Télécharger » dans le panneau).",
+                "**Introuvable** : le morceau n'est plus dans votre bibliothèque ; glissez-en un autre sur le pad.",
+                "**Son de Music par Lalabob** : interrupteur du panneau. Le morceau sort par Lalabob, dans sa colonne (fader, filtre, vumètre, sortie choisie). macOS demande l'autorisation d'enregistrement audio. Si la capture s'arrête, Music redevient audible tout seul.",
+            ]),
+        ])
+
+    static let lighting = HelpTopic(
+        id: "lighting", title: "La lumière", symbol: .spotlight,
+        blocks: [
+            .paragraph("Les **2 colonnes de droite** commandent les **projecteurs** : chaque pad est une **lumière** (« Plein feu », « Douche bleue »). Un appui l'allume ou l'éteint ; le **fader** en dessous règle l'**intensité**. Sur la grille, une lumière **allumée** a un contour, un halo et une ampoule à la couleur du pad ; **éteinte**, l'ampoule est atténuée."),
+            .paragraph("Ce qui suit vaut pour le mode **Logiciel lumière**. Pour piloter la barre directement par un boîtier USB-DMX, voir la rubrique « Projecteurs pilotés par Lalabob »."),
+            .paragraph("Les lumières elles-mêmes se préparent dans le **logiciel des projecteurs** (LightKey). Lalabob lui envoie le bon signal et lit en retour ce qui est allumé. La couleur réelle des projecteurs n'est pas connue de Lalabob : la teinte du pad est celle que vous avez choisie."),
+            .paragraph("**Mise en route** (une fois, dans LightKey) :"),
             .steps([
-                "Dans LightKey : clic droit sur la cue ▸ External Control ▸ Add Trigger…",
-                "Dans Lalabob : appuyez sur un pad des 2 colonnes de droite, ou cliquez son **ampoule**. La note part vers LightKey.",
-                "Quand LightKey répond, la case est appairée. Nommez la cue : la case libre suivante s'arme. Si LightKey ne répond pas (une cue éteinte peut rester muette), cliquez **C'est appairé**.",
+                "Dans les réglages MIDI de LightKey, activez l'**entrée et la sortie** « Lalabob Lumière ».",
+                "**Désactivez** le contrôleur (APC ou Launchpad) dans LightKey : sinon chaque appui compte deux fois et semble ne rien faire.",
             ]),
-            .paragraph("**Appairer un fader** : « Add Trigger… » sur le réglage dans LightKey, puis bougez le fader (du contrôleur ou à l'écran). **Terminer** quitte l'appairage ; Échap reste « Tout arrêter »."),
-            .paragraph("**Sur la grille** : une cue **allumée** dans LightKey a un contour, un halo et une ampoule à la couleur du pad ; **éteinte**, l'ampoule est atténuée ; sans ampoule, LightKey n'a encore rien dit. La couleur réelle de la cue n'est pas transmise par LightKey : la teinte du pad est celle que vous avez choisie."),
-            .warning("Aucun appairage en scène : verrouiller le spectacle quitte le mode d'appairage."),
-            .paragraph("Pour voir ce qui circule, ouvrez **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L) : on y envoie une note à la souris et on lit le journal contrôleur / Lalabob / LightKey."),
+            .paragraph("**Relier un pad aux projecteurs** (cadenas ouvert) :"),
+            .steps([
+                "Cliquez **Relier** dans l'en-tête.",
+                "Dans LightKey : clic droit sur la lumière ▸ External Control ▸ Add Trigger…",
+                "Dans Lalabob : appuyez sur le pad (ou cliquez son **ampoule**).",
+                "Quand les projecteurs répondent, le pad est **relié** : nommez la lumière, la case suivante est prête. S'ils ne répondent pas (une lumière éteinte peut rester muette), cliquez **C'est relié**.",
+            ]),
+            .paragraph("**Relier un fader d'intensité** : « Add Trigger… » sur le réglage dans LightKey, puis bougez le fader (sur le contrôleur ou à l'écran). **Terminer** quitte le mode ; Échap reste « Tout arrêter »."),
+            .warning("On ne relie rien en scène : fermer le cadenas termine le mode « Relier »."),
+            .paragraph("Pour les curieux : **Fenêtre ▸ Banc d'essai lumière** (⌥⌘L) montre les signaux MIDI échangés avec LightKey (notes, canal)."),
+        ])
+
+    static let dmxLighting = HelpTopic(
+        id: "dmx-lighting", title: "Projecteurs pilotés par Lalabob", symbol: .spotlight,
+        blocks: [
+            .paragraph("Pour une petite salle, Lalabob peut piloter lui-même la barre de projecteurs (4 projecteurs RVB) par un **boîtier USB-DMX**, sans LightKey. Chaque spectacle choisit : **Logiciel lumière** ou **Projecteurs pilotés par Lalabob**. On peut changer de mode sans rien perdre."),
+            .paragraph("**Mise en route** (une fois) :"),
+            .steps([
+                "Branchez le boîtier USB-DMX et la barre. Sur la barre : MENU ▸ `15Ch`, puis l'adresse de départ (celle de la troupe : **050**).",
+                "Spectacle ▸ **Réglages du spectacle…** (cadenas ouvert) ▸ **Projecteurs pilotés par Lalabob**. Réglez l'**adresse**, le **boîtier** de ce Mac, le **fondu du noir**, l'**avance de la lumière** et **En quittant Lalabob**.",
+                "Cliquez **Essayer : 4 projecteurs en blanc**. La pastille « Projecteurs » de l'en-tête indique l'état du boîtier.",
+            ]),
+            .paragraph("**Les pads lumière** décrivent un état des projecteurs, réglé dans le panneau du bas :"),
+            .bullets([
+                "**Couleurs** : *Chacun* (une couleur par projecteur) ou *Ensemble*. Roue des couleurs (teinte et saturation), couleurs favorites du spectacle, **strobo** (arrêté par défaut) et fondu d'entrée.",
+                "**Alternance** : deux couleurs qui basculent au tempo du dernier son lancé (détecté automatiquement), ou au tempo de repli du pad sans son.",
+                "**Programme** : l'un des 12 programmes de la barre. **Sur le son** : la barre suit le son avec son micro.",
+                "**Aperçu** : chaque réglage s'applique tout de suite à la barre ; en quittant le pad, elle revient en fondu à la lumière d'avant.",
+                "Un pad sans état précis allume les 4 projecteurs à la couleur du pad.",
+            ]),
+            .paragraph("**En jeu** : un appui joue l'état du pad avec son fondu. Clic droit sur la carte d'un fader lumière pour choisir son **rôle** : **Général** (intensité), **Couleurs** (fait tourner la roue), **Strobo** ou Aucun. Il n'y a qu'un Général et qu'un fader Couleurs pour tout le spectacle : changer de grille ne change jamais la lumière. La carte Général montre la mini-barre (clic sur un projecteur = le couper ou le rallumer) et le bouton **Noir**. Sur l'APC, le bouton rond d'une colonne lumière est aussi **Noir**. Échap ne touche jamais à la lumière."),
+            .warning("LightKey et Lalabob ne doivent jamais piloter le boîtier en même temps : les deux envoient à la barre sans aucune erreur affichée. En mode Projecteurs, fermez LightKey."),
+            .warning("Strobo : les flashs rapides peuvent déclencher des crises chez les personnes photosensibles. Prévenez la salle et n'allez pas au-delà de ce qui a été essayé en répétition."),
+            .paragraph("Si le boîtier est débranché en jeu, aucun son ne s'arrête ; la lumière reprend au rebranchement. La barre garde sa dernière couleur si Lalabob se ferme brutalement. **Fenêtre ▸ Banc d'essai DMX** permet d'essayer canal par canal (il prend la main sur la sortie du spectacle tant qu'il est ouvert)."),
         ])
 
     static let shortcuts = HelpTopic(
@@ -171,8 +216,10 @@ enum HelpContent {
                 "**Le contrôleur n'est pas reconnu** : vérifiez qu'il est branché en direct et attendez une seconde ; l'indicateur de l'en-tête passe au vert. Les LED reviennent seules après un rebranchement.",
                 "**Les couleurs du contrôleur sont pâles ou fausses** : cliquez sur le nom du contrôleur dans l'en-tête et réglez l'étalonnage des LED (essayez « Réglage conseillé », puis montez le gamma).",
                 "**Un pad n'allume pas sa LED** : changez de grille et revenez, ou rebranchez le contrôleur ; Lalabob renvoie alors toutes les LED.",
-                "**Une cue lumière ne se lance pas ou semble ne rien faire** : LightKey écoute-t-il encore le contrôleur ? Il ne doit écouter que « Lalabob Lumière ».",
-                "**Aucun état de cue sur les pads** : la **sortie** de « Lalabob Lumière » est-elle activée dans LightKey ? Le banc d'essai (⌥⌘L) doit afficher des lignes « LightKey → » quand on lance une cue.",
+                "**Une lumière ne s'allume pas, ou s'allume puis s'éteint aussitôt** : dans LightKey, le contrôleur est-il encore activé ? LightKey ne doit écouter que « Lalabob Lumière ».",
+                "**Les pads ne montrent jamais si la lumière est allumée** : dans LightKey, la **sortie** « Lalabob Lumière » est-elle activée ? Le banc d'essai (⌥⌘L) doit afficher des lignes « LightKey → » quand on allume une lumière.",
+                "**Projecteurs pilotés par Lalabob : rien ne s'allume** : la pastille « Projecteurs » de l'en-tête est-elle en erreur ? Vérifiez le boîtier, l'adresse (identique sur la barre et dans les réglages) et le mode 15Ch de la barre, puis essayez « 4 projecteurs en blanc ».",
+                "**La lumière fait des choses étranges** : LightKey est-il encore ouvert et relié au boîtier ? Fermez-le.",
                 "**Rien ne se passe au clic** : un clic sélectionne, le **double-clic** joue.",
                 "**« Spectacle verrouillé »** : ouvrez le cadenas (⌘L) pour modifier.",
                 "**Sons manquants à l'ouverture** : un message les liste ; leurs pads restent muets. Retrouvez les fichiers et glissez-les à nouveau.",

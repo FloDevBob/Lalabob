@@ -50,6 +50,17 @@ struct InspectorView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 12)
                     .task(id: clip.fileName) { waveform = await controller.waveform(for: clip) }
+                } else if let track = pad.music {
+                    MusicHeader(position: position, pad: pad, track: track)
+                        .frame(height: Self.headerHeight)
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    MusicDetails(position: position, pad: pad, track: track)
+                } else if controller.isDMXLighting, pad.light != nil {
+                    // Mode Projecteurs : l'état lumineux se règle ici (types, couleurs, roue).
+                    DMXLightHeader(position: position, pad: pad)
+                        .frame(height: Self.headerHeight)
+                    Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                    DMXLookPanel(position: position, pad: pad)
                 } else {
                     LightHeader(position: position, pad: pad)
                         .frame(height: Self.headerHeight)
@@ -128,6 +139,148 @@ private struct TintSwatch: View {
 }
 
 /// Pad lumière : titre | (espace) Tester + note envoyée | couleur, actions.
+/// Pad Apple Music : lecture / pause et stop, temps, titre et sous-titre, morceau d'origine, couleur et actions.
+private struct MusicHeader: View {
+    @Environment(ShowController.self) private var controller
+    let position: GridPosition
+    let pad: Pad
+    let track: MusicTrackRef
+
+    var body: some View {
+        let event = controller.playback[pad.id]
+        let isPlaying: Bool = if case .playing = event?.state { true } else { false }
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Button {
+                    controller.togglePause(at: position)  // la pause n'existe qu'ici (et Espace) ; arrêté, le morceau démarre
+                    if event == nil { controller.togglePlayStop(at: position) }
+                } label: {
+                    (isPlaying ? Icon.pauseFill : Icon.playFill).view(size: 15)
+                        .frame(width: 36, height: 36)
+                        .background(pad.tint.vividColor, in: .circle)
+                        .foregroundStyle(pad.tint.surfaceColor)
+                }
+                .buttonStyle(.plain)
+                .help(isPlaying ? "Pause (Espace)" : "Jouer dans Apple Music (Espace)")
+                .accessibilityLabel(isPlaying ? "Pause" : "Lecture")
+                Button {
+                    controller.stop(at: position)
+                } label: {
+                    Icon.stopFill.view(size: 13)
+                        .frame(width: 32, height: 32)
+                        .background(Color.white.opacity(0.08), in: .circle)
+                }
+                .buttonStyle(.plain)
+                .disabled(event == nil)
+                .help("Arrêter en fondu")
+                .accessibilityLabel("Arrêter")
+            }
+            .padding(4)
+            .background(Color.black.opacity(0.3), in: .capsule)
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.06)))
+            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                Text("\(AudioLibrary.formatDuration(MusicDetails.elapsed(event))) / \(AudioLibrary.formatDuration(track.duration))")
+                    .font(Typography.mono)
+                    .foregroundStyle(Surface.textSecondary)
+            }
+            HeaderDivider()
+            TitleFields(position: position, pad: pad)
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text([track.title, track.artist, track.album].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .lineLimit(1).truncationMode(.middle)
+                if let playlist = track.playlistName {
+                    Text("Playlist « \(playlist) »").lineLimit(1)
+                }
+            }
+            .font(.system(size: 11.5))
+            .foregroundStyle(Surface.textTertiary)
+            .layoutPriority(-1)
+            if !controller.isLocked {
+                HeaderDivider()
+                ColorPopoverButton(position: position, pad: pad)
+                PadActionsMenu(position: position, hasPad: true)
+            }
+        }
+        .padding(.horizontal, 14)
+    }
+}
+
+/// Bande du bas d'un pad Apple Music : pochette, barre de position (cliquer ou glisser pour aller à un moment du morceau),
+/// et ce qui n'existe pas pour un morceau protégé.
+private struct MusicDetails: View {
+    @Environment(ShowController.self) private var controller
+    @Environment(MusicLibraryController.self) private var musicLibrary: MusicLibraryController?
+    let position: GridPosition
+    let pad: Pad
+    let track: MusicTrackRef
+
+    static func elapsed(_ event: PlaybackEvent?) -> TimeInterval {
+        switch event?.state {
+        case .playing(let startedAt): max(0, ProcessInfo.processInfo.systemUptime - startedAt)
+        case .paused(let elapsed): elapsed
+        default: 0
+        }
+    }
+
+    var body: some View {
+        let event = controller.playback[pad.id]
+        HStack(alignment: .center, spacing: 16) {
+            Group {
+                if let data = musicLibrary?.artworks[track.persistentID], let image = NSImage(data: data) {
+                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(pad.tint.surfaceColor)
+                        .overlay { Icon.music.view(size: 34).foregroundStyle(pad.tint.labelColor.opacity(0.8)) }
+                }
+            }
+                .frame(width: 116, height: 116)
+                .clipShape(.rect(cornerRadius: 10))
+                .task(id: track.persistentID) { await musicLibrary?.loadArtwork(for: track) }
+                .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                .accessibilityLabel("Pochette de \(track.album.isEmpty ? track.title : track.album)")
+            VStack(alignment: .leading, spacing: 10) {
+                GeometryReader { proxy in
+                    TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+                        let fraction = track.duration > 0 ? min(1, Self.elapsed(event) / track.duration) : 0
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 10).fill(Surface.well)
+                            Rectangle().fill(pad.tint.vividColor.opacity(0.25)).frame(width: proxy.size.width * fraction)
+                            Rectangle().fill(.white).frame(width: 2).padding(.vertical, 4).offset(x: proxy.size.width * fraction - 1)
+                            if event == nil {
+                                Text("Jouez le morceau, puis cliquez pour aller à un moment précis")
+                                    .font(.system(size: 11)).foregroundStyle(Surface.textTertiary).padding(.leading, 10)
+                            }
+                        }
+                        .clipShape(.rect(cornerRadius: 10))
+                    }
+                    .contentShape(.rect)
+                    .gesture(DragGesture(minimumDistance: 0).onEnded { value in
+                        guard proxy.size.width > 0, track.duration > 0 else { return }
+                        controller.seekMusic(at: position, to: max(0, min(1, value.location.x / proxy.size.width)) * track.duration)
+                    })
+                }
+                .frame(height: 34)
+                .interactiveCursor(.link, enabled: event != nil)
+                .accessibilityElement()
+                .accessibilityLabel("Position dans le morceau")
+                .accessibilityValue("\(AudioLibrary.formatDuration(Self.elapsed(event))) sur \(AudioLibrary.formatDuration(track.duration))")
+                IconLabel(
+                    controller.musicPlayer?.isBridgeEnabled == true
+                        ? "Le son passe par Lalabob : fader, filtre et vumètre de la colonne. Volume général : 9e fader."
+                        : "Fondus, élagage et volume du pad : non disponibles pour un morceau Apple Music. Volume général : 9e fader.",
+                    icon: .warning, size: 13)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(Surface.textTertiary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+    }
+}
+
 private struct LightHeader: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
@@ -137,17 +290,18 @@ private struct LightHeader: View {
         HStack(spacing: 12) {
             TitleFields(position: position, pad: pad)
             Spacer(minLength: 8)
-            Button("Tester", icon: .spotlight, size: 12) { controller.testCue(at: position) }
+            Button("Essayer", icon: .spotlight, size: 12) { controller.testCue(at: position) }
                 .buttonStyle(.borderedProminent)
                 .tint(Surface.lightAccent)
                 .foregroundStyle(Surface.window)
                 .controlSize(.small)
-                .help("Envoie la note de cette case à LightKey (port « Lalabob Lumière »)")
-            Text(noteText)
+                .help("Allume ou éteint cette lumière, pour l'essayer")
+            Text(linkText)
                 .font(.system(size: 11))
                 .foregroundStyle(Surface.textSecondary)
                 .lineLimit(1)
                 .layoutPriority(-1)
+                .help(noteText)
             if pad.awaitsSound {
                 Text("En attente de son : déposez un fichier sur le pad")
                     .font(.system(size: 11, weight: .medium))
@@ -163,13 +317,20 @@ private struct LightHeader: View {
         .padding(.horizontal, 14)
     }
 
+    /// Ce qu'on lit : la lumière est-elle reliée aux projecteurs ? (la note MIDI passe dans l'infobulle)
+    private var linkText: String {
+        controller.isPaired(at: position)
+            ? "Reliée aux projecteurs ✓"
+            : "Pas encore reliée : bouton « Relier » en haut, cadenas ouvert"
+    }
+
     private var noteText: String {
         let label = controller.positionLabel(for: position)
         guard let note = label.components(separatedBy: " · note ").last, label.contains(" · note ") else {
-            return "Branchez le contrôleur pour connaître la note envoyée à LightKey."
+            return "Branchez le contrôleur pour connaître la note envoyée au logiciel des projecteurs (LightKey)."
         }
         let model = controller.connectedControllerName ?? controller.lastControllerModel?.displayName ?? "contrôleur"
-        return "LightKey reçoit la note \(note) (\(model))."
+        return "Le logiciel des projecteurs (LightKey) reçoit la note \(note) (\(model))."
     }
 }
 
@@ -187,13 +348,13 @@ private struct LightGroup: View {
             Icon.lightbulbFill.view(size: 14)
                 .foregroundStyle(state == .on ? pad.tint.vividColor : Surface.lightAccent.opacity(state == .off ? 0.5 : 1))
                 .accessibilityHidden(true)
-            Text(noteText + (paired ? " ✓" : ""))
-                .font(.system(size: 11, design: .monospaced))
+            Text(paired ? "Reliée ✓" : "À relier")
+                .font(.system(size: 11))
                 .foregroundStyle(paired ? Surface.textPrimary : Surface.textSecondary)
                 .lineLimit(1)
-            Button("Tester") { controller.testCue(at: position) }
+            Button("Essayer") { controller.testCue(at: position) }
                 .controlSize(.small)
-                .help("Envoie la cue à LightKey, sans lancer le son")
+                .help("Allume ou éteint la lumière, sans lancer le son")
         }
         .padding(.horizontal, 10)
         .frame(height: 34)
@@ -213,11 +374,11 @@ private struct LightGroup: View {
 
     private func helpText(paired: Bool, state: LightState) -> String {
         var parts = [noteText]
-        if let channel = controller.lightChannel(forColumn: position.column) { parts.append("canal LightKey \(channel)") }
-        parts.append(paired ? "appairée" : "non appairée")
+        if let channel = controller.lightChannel(forColumn: position.column) { parts.append("canal des lumières \(channel)") }
+        parts.append(paired ? "reliée aux projecteurs" : "pas encore reliée")
         switch state {
-        case .on: parts.append("allumée dans LightKey")
-        case .off: parts.append("éteinte dans LightKey")
+        case .on: parts.append("allumée")
+        case .off: parts.append("éteinte")
         case .unknown: break
         }
         return parts.joined(separator: " · ")
@@ -247,8 +408,8 @@ private struct MixedRetriggerMenu: View {
                 selection: Binding(
                     get: { pad.lightRetrigger }, set: { controller.setLightRetrigger(at: position, to: $0) })
             ) {
-                Text("Lumière : allumer seulement").tag(LightRetrigger.turnOnOnly)
-                Text("Lumière : basculer à chaque appui").tag(LightRetrigger.toggle)
+                Text("Lumière : laisse allumé").tag(LightRetrigger.turnOnOnly)
+                Text("Lumière : allume ou éteint").tag(LightRetrigger.toggle)
             }
             .pickerStyle(.inline)
         } label: {
@@ -258,7 +419,7 @@ private struct MixedRetriggerMenu: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .help("Si on rejoue ce pad : le son repart ou s'arrête ; la cue ne s'envoie que si LightKey la dit éteinte, ou à chaque appui")
+        .help("Si on rejoue ce pad : le son repart ou s'arrête ; la lumière reste allumée, ou s'allume et s'éteint à chaque appui")
         .accessibilityLabel("Nouvel appui")
     }
 }
@@ -293,7 +454,7 @@ private struct PadKindControl: View {
 }
 
 /// Filet vertical entre deux groupes sans rapport.
-private struct HeaderDivider: View {
+struct HeaderDivider: View {
     var body: some View {
         Rectangle().fill(Color.white.opacity(0.1)).frame(width: 1, height: 22).accessibilityHidden(true)
     }
@@ -301,7 +462,7 @@ private struct HeaderDivider: View {
 
 // MARK: - Titre et sous-titre (double-clic pour modifier)
 
-private struct TitleFields: View {
+struct TitleFields: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad
@@ -501,7 +662,7 @@ private struct RetriggerControl: View {
 
 // MARK: - Couleur (popover) : un seul bouton, la pastille de la teinte en cours (sans son nom)
 
-private struct ColorPopoverButton: View {
+struct ColorPopoverButton: View {
     @Environment(ShowController.self) private var controller
     let position: GridPosition
     let pad: Pad
@@ -695,13 +856,13 @@ struct PadContextMenu: View {
                 audioItems(pad: pad, clip: clip, locked: locked)
                 if pad.light != nil {
                     Divider()
-                    Button("Tester la cue", icon: .spotlight) { controller.testCue(at: position) }
+                    Button("Essayer la lumière", icon: .spotlight) { controller.testCue(at: position) }
                 }
             } else {
                 if !locked {
-                    Button("Tester", icon: .spotlight) { controller.testCue(at: position) }
+                    Button("Essayer la lumière", icon: .spotlight) { controller.testCue(at: position) }
                     if controller.isPaired(at: position) {
-                        Button("Retirer l'appairage") { controller.unpairCue(at: position) }
+                        Button("Délier des projecteurs") { controller.unpairCue(at: position) }
                     }
                     Divider()
                     colorMenu(pad: pad)
@@ -958,7 +1119,7 @@ private struct TrackGainGauge: View {
     grid.columns[1] = Column.empty(name: "Scènes", kind: .mixed)
     let position = GridPosition(column: 1, row: 2)
     grid[position] = Pad(
-        title: "Noir", subtitle: "Cue", tint: .graphite, light: .blank, awaitsSound: true)
+        title: "Noir", subtitle: "Lumière", tint: .graphite, light: .blank, awaitsSound: true)
     let controller = ShowController(show: Show(name: "Essai", grids: [grid]))
     controller.selection = position
     return InspectorView(position: position)

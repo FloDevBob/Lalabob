@@ -232,6 +232,11 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   **À essayer à l'oreille** : coupures de 200 Hz et 5 kHz (à ajuster dans `FilterCurve`) ; aucun clic ni coupure en tournant le potard pendant un son ; le vumètre baisse quand on filtre ;
   le potard tient dans la carte étroite et avec les pads de hauteur minimale (fenêtre basse), sans passer sous le bouton ■ ; changement d'onglet : chaque grille garde son filtre.
   **Non fait** : égaliseur 3 bandes ; APC (ses 8 faders servent déjà au volume, on n'y touche pas).
+- **Filtre : retour progressif au neutre (28/11/2026, branche `j7/filtre-retour-progressif`, demande de l'utilisateur)** ✅ code. Le double-clic sur le potard
+  ne remet plus le filtre au neutre d'un coup : il **glisse en 1,5 s** (courbe en cosinus, ~33 pas/s), le son s'ouvre doucement et l'aiguille suit.
+  Toucher le potard pendant le glissé l'interrompt (seulement s'il bouge d'au moins 2 pt : corrigé le 28/11, le clic du double-clic interrompait le retour avant le neutre) ; changer de grille ne l'arrête pas (la grille de départ finit au neutre). `ShowController.resetColumnFilter`
+  / `filterResetDuration`. 5 tests (`ColumnFilterControllerTests`). **À essayer** : ☐ double-clic sur un passe-haut puis un passe-bas en jouant : aucun clic ni
+  à-coup ☐ l'aiguille et l'étiquette suivent ☐ reprendre le potard pendant le retour ☐ la durée convient (1 ou 2 s ?).
 - **Reste pour l'étape 0** : « cue supprimée » n'a pas été relevé ; les fixtures Swift d'après le journal brut ne sont pas écrites.
 
 ### J10 — Types de colonnes et de pads 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
@@ -277,6 +282,12 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
 
 
 ### J9 — Grilles et contrôleurs 🟡 (plan : `docs/plan-types-et-grilles.md`, fiches : `docs/taches/`)
+- **9e fader de l'APC → volume d'Apple Music (25/11/2026, branche `j9/volume-apple-music`, fiche 03, ADR 0009)** ✅ code, essai réel à faire.
+  Remplace le script Python : `ControllerInput.auxiliaryFader`, `MediaVolumeRelay` (seuil 2 %, un envoi / 66 ms, dernière valeur gagnante, extrêmes 0 / 100 toujours envoyés),
+  `AppleMusicVolume` (ScriptingBridge, ne lance jamais Music), pastille « Apple Music » dans l'en-tête (APC branché) avec interrupteur, préférence par Mac (activée par défaut).
+  Entitlements Apple Events + `NSAppleEventsUsageDescription` dans `project.yml`. 8 tests (pilote, relais, session) ; `AppleMusicVolume` sans test automatique.
+  ⚠︎ **Message du 9e fader non relevé** : CC 56 canal 1 *et* CC 7 canal 3 acceptés. **À essayer** : ☐ arrêter le script Python ☐ autorisation macOS à la première utilisation
+  ☐ le fader suit sans à-coups ☐ Music fermé : rien, il ne s'ouvre pas ☐ refus : pastille « à autoriser » ☐ aucun effet sur les sons de Lalabob ☐ latence des pads inchangée.
 - **Changer de grille depuis le contrôleur (25/11/2026, branche `j9/changement-grille-controleur`, fiche 02)** ✅ code, essai sur le matériel à faire.
   **APC mini mk2** : boutons de scène (notes 112–119) = grilles 1 à 8, **Shift** (note 122) tenu = grilles 9 à 16 ; LED du bouton de la grille affichée.
   **Launchpad** : CC 91 = grille précédente, CC 92 = suivante (vert si une grille existe de ce côté, bornés, pas de boucle). Marche verrouillé, ne coupe aucun son,
@@ -308,6 +319,15 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
   attend la fiche 06.
   **À essayer** : ☐ activer, appairer une cue une fois, la lancer depuis chaque grille ☐ LED des colonnes lumière inchangées en changeant de
   grille ☐ désactiver : les anciennes colonnes reviennent ☐ ⌘S puis rouvrir avec l'option active ☐ aucun son ne s'arrête.
+- **Étape 5 — documentation (28/11/2026, branche `j14/documentation-dmx`, empilée sur `j14/interface-dmx`)** ✅ texte seul, aucun code ni test touché.
+  `GUIDE.md` (section « Projecteurs pilotés par Lalabob », dépannage, règle **LightKey fermé en mode Projecteurs**, mise en garde strobo), aide intégrée
+  (rubrique « Projecteurs pilotés par Lalabob », dépannage, renvoi depuis « La lumière »), `LEXIQUE.md` (vocabulaire DMX), `DESIGN.md` (section DMX).
+  **Check-list d'essai sur la vraie barre** (à cocher) : ☐ Réglages du spectacle lisibles (adresse 50, boîtier, « 4 projecteurs en blanc ») ☐ pastille « Projecteurs » et cadenas carré (1320 pt)
+  ☐ repères et sous-titres des pads lumière ☐ panneau du bas à la largeur minimale, ≤ 196 pt ☐ aperçu : la barre suit sans fondu, ⌘Z d'un seul pas, retour en fondu ☐ fondus fluides, sans scintillement
+  ☐ Noir (écran et bouton rond de l'APC) ☐ fader 7 = Général, fader 8 = Couleurs, changer de grille ne change rien ☐ mini-barre : couper un projecteur ☐ alternance sur un son rythmé, réglage de l'avance
+  ☐ programmes 1–12 et « sur le son » (⚠︎ valeurs déduites du manuel) ☐ strobo ☐ ouvrir / fermer le banc d'essai DMX en jouant ☐ débrancher le boîtier en jouant : aucun son ne s'arrête ☐ ⌘Q : fondu au noir
+  ☐ LightKey ouvert en même temps : confirmer l'avertissement ☐ **copie d'un vrai spectacle : ⌘S, rien ne change** ☐ mettre les deux Mac à jour ensemble (format 4).
+  **Questions encore à trancher à l'essai** : fondu au noir à la fermeture par défaut (Q5), mini-barre qui agit sur l'état sans modifier le pad (Q6), durée du Noir 1,5 s (Q9), dernier son lancé = tempo (Q8).
 
 ## Risques suivis
 
@@ -451,3 +471,231 @@ Plan détaillé : `docs/plan-appairage-lumiere.md` ; décision : **ADR 0006** (r
 Le brouillon (module `LalabobImport`, `AbletonImporter`, menu Fichier › « Importer un Live Set Ableton… », ADR 0007) n'a jamais été
 compilé ni essayé : il est **retiré de `main`** et conservé tel quel sur la branche **`j8/import-ableton`** (issue de `j7/filtre-colonne`
 1.1.1). À reprendre plus tard : rebaser cette branche sur `main`, compiler, `make test`, essai avec le dossier `Bob play`.
+
+### J11 — Grilles Apple Music 🟡 code terminé, essai réel à faire (spec : `docs/spec-grilles-apple-music.md`, maquette : https://claude.ai/artifact/D4SxFzh7BsjY6vbmTasWoZ)
+Décisions (27/11/2026) : Apple Events (pas de compte développeur) ; grilles Music + lumière ; un morceau à la fois, fondu enchaîné de 1 s ;
+ré-appui = pause / reprise ; fin = silence (`play … once`) ; extrait de 30 s pour la pré-écoute ; dépôt multiple colonne par colonne ;
+Échap arrête Music avec un fondu de 0,3 s ; départ à un moment précis : plus tard.
+- **Étape 0 — socle (27/11/2026)** : volume d'Apple Music par AppleScript (`NSAppleScript`) au lieu de ScriptingBridge, erreur exacte affichée,
+  « Vérifier la connexion » (lit le volume) ; autorisation `com.apple.security.scripting-targets` (groupes d'accès déclarés par Music :
+  `playback`, `library.read`, `library.read-write`). Lecture du dictionnaire de Music (`com.apple.Music.sdef`) : `play … once`, `folder playlist`
+  + `parent`, `download`, `artwork` (`raw data`), `player position` / `player state` existent ; **aucune propriété « téléchargé »** pour un morceau :
+  à déduire (classe `file track` = local, `shared track` = nuage) ⚠︎ à vérifier sur le Mac. Prototype de capture du son : reporté à l'étape 5.
+- **Étape 1 — modèle et types de grille (27/11/2026, branche `j11/grilles-apple-music-modele`)** ✅ code. `GridKind` (standard / Apple Music),
+  `ColumnKind.music`, `Pad.music` (`MusicTrackRef`), format **version 3 écrite seulement si nécessaire** ; validation (types permis par grille,
+  identifiant hexadécimal) ; conversions (grille, colonne, pad ; un morceau ne devient rien d'autre). Colonnes lumière communes : une grille
+  Apple Music reçoit des colonnes Music. Moteur : `addGrid(kind:)`, `setGridKind`, `gridKindRemovedPads` (une annulation, refusé verrouillé),
+  type de colonne limité par la grille, fader physique ignoré sur une colonne Music. Interface : bouton + des onglets (Sons et lumière / Apple Music),
+  Grilles › Nouvelle grille Apple Music (⌥⌘T), clic droit sur l'onglet › Type de grille (confirmation qui nomme les pads supprimés), note rose
+  sur l'onglet, types de colonne proposés selon la grille, carte « Volume : 9e fader » sous une colonne Music. 19 tests (`MusicGridTests`,
+  `MusicGridEditingTests`). **Pas encore** : panneau des playlists, lecture (étapes 2 et 3). Interface compilée, pas regardée à l'œil.
+- **Étape 2 — panneau des playlists et dépôt (27/11/2026, branche `j11/grilles-apple-music-playlists`)** ✅ code. `MusicScripting` (une seule
+  façon d'adresser Music, texte échappé), `AppleMusicLibrary` (dossiers et playlists, morceaux, recherche dans la bibliothèque, téléchargement,
+  « Ouvrir Music » ; ne lance jamais Music tout seul), `MusicLibraryController` (arbre des dossiers, recherche, sélection Maj / ⌘, nuage,
+  « Téléchargés seulement »). Dépôt : `musicDropPositions` (case visée vers le bas, cases occupées sautées, puis colonne Music suivante),
+  `dropMusicTracks` (une annulation, teinte stable par morceau, reste signalé), aperçu numéroté pendant le glisser, jeton validé (`MusicDragToken`).
+  Interface : `MusicLibraryView` à la place de la bibliothèque sur une grille Apple Music ; panneau du bas d'un pad Music (morceau d'origine,
+  playlist, vignette, ce qui n'est pas disponible). 13 tests (fausse bibliothèque). **Rien n'a été essayé avec la vraie app Music** :
+  les scripts AppleScript (`AppleMusicLibrary`) n'ont pas de test automatique. **Pas encore** : lecture (étape 3), onglet Internet,
+  extraits, vraies pochettes (étape 4).
+- **Étape 3 — lecture (27/11/2026, branche `j11/grilles-apple-music-lecture`)** ✅ code. `AppleMusicPlayer` (AppleScript : `play … with once`,
+  pause, reprise, stop, position, état ; scripts compilés et lecture d'état vérifiées sur le vrai Music), `MusicPlaybackCoordinator` (un morceau à
+  la fois pour toute l'app ; ré-appui = pause / reprise ; autre pad = fondu enchaîné de 1 s par le volume de Music ; stop de colonne = fondu de 1 s ;
+  Échap = fondu de 0,3 s ; fin du morceau ou changement de morceau dans Music détectés 4×/s ; le 9e fader change la cible d'un fondu en cours ;
+  Music fermé / morceau introuvable → bandeau). L'état est publié comme celui d'un son : lueur, progression, LED qui pulse, bouton stop rouge des
+  colonnes Music sur l'APC. Contrôleur : un appui sur un pad Music le joue (verrouillé aussi). Disponibilité des pads (☁ nuage, « Introuvable »)
+  relue à l'affichage d'une grille Apple Music (script vérifié). Panneau du bas : lecture / pause, stop, temps, barre de position cliquable.
+  9 tests (faux lecteur). **Pas essayé en vrai** : lancer un morceau, fondu enchaîné à l'oreille, fin détectée.
+- **Étape 4 — extraits, recherche internet, pochettes (27/11/2026, branche `j11/grilles-apple-music-extraits`)** ✅ code. `ITunesCatalog` (recherche publique
+  d'Apple, sans clé : seul le texte cherché part ; seules les adresses https d'Apple sont suivies), onglet **Internet** du panneau (pochette, titre,
+  artiste, durée, extrait, « Ajouter… » qui ouvre le morceau dans l'app Music, car sans compte développeur Lalabob ne peut pas l'ajouter lui-même),
+  bouton ▶ d'**extrait de 30 s** sur chaque morceau (téléchargé une fois dans un cache, joué par la pré-écoute de Lalabob, sans toucher à Music ;
+  pour un morceau de la bibliothèque, l'extrait est cherché d'après le titre et l'artiste), **pochette** dans le panneau du bas (celle de Music par
+  AppleScript, vérifié : JPEG ; sinon celle du catalogue). Autorisation réseau (`network.client`). 7 tests (faux catalogue, réponse JSON réelle
+  reproduite). **Limite** : l'extrait d'un morceau de la bibliothèque peut être celui d'une autre version du même titre.
+- **Étape 5 — vumètre d'Apple Music, essai (27/11/2026, branche `j11/grilles-apple-music-finitions`)** ✅ code, **non essayé**. `ProcessAudioMeter`
+  (LalabobAudio) : capture du son de Music par `CATapDescription` (son non modifié), agrégat privé, crête par bloc sur le fil audio (sans verrou ni
+  allocation) ; activé par l'interrupteur « Vumètre d'Apple Music (essai) » du panneau ; le vumètre apparaît sous la colonne du morceau en cours.
+  À vérifier : autorisation d'enregistrement audio dans le bac à sable, et **si un morceau protégé est capté ou donne du silence**.
+- **Étape 6 — documentation** : `docs/GUIDE.md` (grilles Apple Music, dépannage), aide intégrée (rubrique « Grilles Apple Music »), ADR 0010.
+- **Pont audio (27/11/2026, branche `j11/pont-audio-apple-music`, ADR 0011)** ✅ code, **non essayé**. Option « Son de Music par Lalabob » :
+  `ProcessAudioBridge` capte Music (`CATapDescription`, `mutedWhenTapped` : Music muet pendant la capture, audible de nouveau si Lalabob s'arrête),
+  `AudioRingBuffer` (un écrivain, un lecteur, ~40 ms d'avance, rattrapage de dérive, gain lissé ; seule exception `@unchecked Sendable`, ADR 0011),
+  `attachExternal` (nœud source branché sur le mélangeur de la colonne du morceau, suit un changement de sortie). Le coordinateur fait ses fondus
+  dans Lalabob, branche le son sur la colonne du pad joué, et défait le pont si la capture s'arrête ou reste muette (morceau protégé ?).
+  Colonnes Music avec pont : fader, vumètre et filtre comme une colonne son (fader physique de l'APC aussi). Le prototype de vumètre seul est
+  remplacé. 15 tests (tampon, rendu hors ligne du moteur, coordinateur avec fausse capture). **À essayer** : ☐ autorisation demandée ☐ un morceau
+  d'abonnement passe-t-il (ou silence → option coupée) ? ☐ fader et filtre de la colonne ☐ fondu enchaîné à l'oreille ☐ changer de sortie en jouant
+  ☐ quitter Lalabob en plein morceau : Music redevient audible ☐ décalage audible ?
+- **Pont audio, retour d'essai (27/11/2026)** : le son passe (un morceau protégé **est** capté) mais **grésille**. Corrections : la capture suit
+  l'horloge de la **sortie choisie dans Lalabob** avec la compensation de dérive de macOS (`kAudioSubTapDriftCompensationKey`), fréquence réelle de
+  l'agrégat (et non celle annoncée par la capture), entrées de la sortie (ex. MOTU M2) sautées avant le son capté, lecture du tampon à **vitesse
+  ajustée** (±1 %, interpolation) au lieu de sauts, avance de ≈ 65 ms, capture relancée au changement de sortie ; **diagnostic** dans le panneau
+  (fréquences, coupures, sauts). 3 tests de plus. À réessayer.
+- **Pont audio, fidélité (28/11/2026, branche `j11/pont-audio-fidelite`, retour d'essai : écho et son « pas exactement le même »)** ✅ code, **non essayé à l'oreille**.
+  (1) Lecture du tampon **à vitesse fixe**, sans interpolation (la vitesse ajustée faisait onduler la hauteur et ternissait les aigus ; l'horloge est déjà suivie par la capture) ;
+  (2) **tous les processus audio de Music** captés (relevé : Music n'en a qu'un ; `bundleIDs` essayé puis retiré). **Cause de l'écho à l'essai : Audio Hijack captait aussi Music** (deux copies ; et la capture de Lalabob devenait muette, d'où l'option coupée) : aucune autre app ne doit capter Music, **avertissement** dans le panneau si Audio Hijack / Loopback / SoundSource / Piezo est ouvert (`CaptureAppConflicts`) ;
+  (3) avance 65 → ~43 ms. Tests : sinusoïde identique à la sortie du tampon, vitesse fixe. **À essayer** : ☐ plus d'écho ni de reverb ☐ comparer avec Music direct ☐ diagnostic « N processus captés » ☐ Audio Hijack fermé, option réactivée
+  ☐ fader de colonne à fond bas : plus aucun son de Music (sinon, une fuite reste) ☐ coupures / sauts toujours à 0.
+- **Lecture : arrêt au ré-appui, bug de synchro (27/11/2026, branche `j11/lecture-arret-synchro`)** ✅ code. (1) **Bug** (retour d'essai : en enchaînant,
+  un morceau lancé restait affiché arrêté alors que Music le jouait) : une lecture de l'état de Music partie avant un changement de morceau et revenue
+  après éteignait le nouveau pad (et arrêtait le suivi) ; de même, juste après `play`, Music annonce un instant l'ancien morceau. Corrigé : réponse
+  périmée ignorée (numéro de geste et morceau attendu), délai de grâce de 1,5 s après un départ, deux lectures de suite pour conclure à la fin. Deux
+  tests reproduisent le bug. (2) **Comportement** (décision du 27/11) : appui sur un morceau qui joue = **arrêt** en fondu de 1 s, appui suivant =
+  départ au début ; en pause, un appui le **reprend** ; la pause est dans la barre du bas et sur Espace ; bouton du pad = lecture / stop.
+
+### J12 — Visite guidée 🟡 faite et essayée dans l'app, essai avec la troupe à faire (branche `j12/tutoriel`, empilée sur `j11/lecture-arret-synchro`)
+Dossier : `docs/tutoriel/` (voir son `README.md`). Décisions (27/11/2026) : public de tous niveaux ; sons d'ambiance et de bruitage **CC0**
+(Freesound) seulement, car redistribués ; **visite guidée sur le modèle d'Impro Match** (étapes à gauche, copie de l'app à droite, un geste par
+étape, « Suivant » fait le geste) après l'abandon d'un premier tutoriel en longue page, jugé trop long et impossible à suivre en manipulant l'app.
+- **Fait** : 30 sons téléchargés, préparés (`sons/prepare_sons.py` : 48 kHz, niveau homogène, boucles sans clic vérifiées) et crédités
+  (`CREDITS.md`) ; spectacle d'entraînement **fabriqué** par `docs/tutoriel/generateur` avec `LalabobModel` (2 grilles, 30 pads).
+  Visite `docs/tutoriel/visite/index.html` : 14 étapes, 5 chapitres, copie recalée sur une capture de la vraie fenêtre, **vrais sons** (9, dans
+  `sons.js`) avec fader, filtre et vumètres qui marchent (Web Audio). Dans l'app : **Aide ▸ Visite guidée** (`App/TourView.swift`, proposée une
+  fois à l'ouverture du premier spectacle), « Essayer maintenant » ferme la visite et ouvre une copie neuve du spectacle d'entraînement ;
+  **Aide ▸ Ouvrir le spectacle d'entraînement** (`TrainingShow.freshCopy`). 4 tests (`TrainingShowTests`). **Essayé** : tout le parcours avec
+  « Suivant » et avec les vrais gestes (double-clic, Espace, Échap, fader) dans un navigateur ; dans l'app, la visite s'affiche, joue la pluie,
+  « Essayer maintenant » ouvre le spectacle et ferme la visite.
+- **À essayer** : ☐ les sons à l'oreille (voir `docs/tutoriel/sons-selection.md`) ☐ faire suivre la visite à un membre débutant de la troupe,
+  sans l'aider ☐ premier lancement sur un Mac neuf (la visite s'ouvre avec le premier spectacle).
+- **Limite connue** : au tout premier lancement, macOS montre d'abord la fenêtre « Ouvrir » ; la visite n'apparaît qu'une fois un spectacle ouvert
+  ou créé.
+- **Reste** : publication en ligne (dépôt public dédié + GitHub Pages, comme Impro Match).
+- **Refonte du 27/11/2026 (retour d'essai : « la colonne de gauche contraint tout, on a du mal à manipuler »)** : la copie occupe tout
+  l'écran, l'élément à utiliser est mis en lumière et une **bulle** le suit ; 17 bulles en 5 chapitres ; chapitre **lumière** refait
+  (pads Plein feu, Douche bleue, Contre rouge, Salle, Noir dans la copie ; une petite scène dans la bulle montre les faisceaux et
+  l'intensité). Essayée dans un navigateur (parcours entier, 1440 × 880 et 1024 × 680) et dans l'app (accueil, saut de chapitre,
+  double-clic réel sur Plein feu).
+- **Vocabulaire de la lumière (27/11/2026, `docs/LEXIQUE.md`)** : « cue » → **lumière**, « appairage » → **relier aux projecteurs**
+  (bouton **Relier**, « Reliée ✓ », « Délier », « C'est relié »), fader lumière → **Intensité 75 %** (le CC n'est plus affiché),
+  « Tester » → **Essayer**, nouvel appui « laisse allumé / allume ou éteint », « Port Lalabob Lumière actif » → **Liaison avec les
+  projecteurs prête**, canal LightKey → **canal des lumières** (réglage avancé), colonnes communes → **Mêmes lumières sur toutes les
+  grilles**. LightKey n'est plus nommé que pour sa mise en route, le dépannage et le banc d'essai. Textes seuls (interface, aide, guide,
+  DESIGN) ; identifiants du code inchangés. Compilé, 721 tests verts, vérifié à l'écran sur le spectacle d'entraînement.
+
+### J14 — Lumière autonome en DMX 📝 à l'étude (plan : `docs/plan-lumiere-dmx.md`)
+Proposition du 27/11/2026 : pour une petite salle (Chauvet DJ 4BAR LT BT, 4 projecteurs RVB, DMX 15 canaux ; boîtier FTDI type Open DMX), Lalabob pilote
+la lumière lui-même, **sans retirer LightKey** (mode lumière au choix). États lumineux sur les pads (couleur et intensité de chaque
+projecteur, strobo, fondu), carte de jeu sous les colonnes lumière (4 projecteurs, intensité, Noir). Rien n'est codé :
+relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPftVsPD9Zkd8CTT) : couleurs chacun / ensemble (roue), alternance au tempo du son, programme et micro de la barre, faders à rôle (Général, Couleurs) et mini-barre dans la carte Général (piste C), Noir en fondu sur le bouton rond de l'APC ; cadenas compact (bouton carré, icône seule) dans l'en-tête.
+- **Étape 0 — relevé et banc d'essai (27/11/2026, branche `j14/releve-dmx`)** ✅ : relevé recopié (`docs/hardware/chauvet-4bar-ltbt.md`), ADR 0012
+  (proposée), banc d'essai en ligne de commande `tools/banc-dmx` (Open DMX, 30 Hz). Le boîtier accepte 250 kbit/s et le break ; cadence mesurée
+  33,3 ms en moyenne, pire ≈ 40 ms. Sur la barre (adresse 50) : chenillard conforme, gradateur ✅, **perte du signal : la barre garde la dernière couleur**, strobo ✅. 
+- **Étape 1 — module `LalabobDMX` (27/11/2026, branche `j14/module-dmx`, empilée sur `j14/releve-dmx`)** ✅ code, essai sur la barre à faire.
+  `DMXFrame` (canaux 1…512, seuls les premiers canaux utiles partent, 24 au moins), `DMXPortDiscovery` (ports `cu.usbserial-…`, CH340, CP210x ;
+  boîtier choisi par numéro de série, sinon le premier), `POSIXSerialOpener` / `POSIXSerialLine` (réglages du banc en ligne de commande + accès
+  exclusif), `OpenDMXWriter` (break 120 µs, mark 16 µs, code de départ, attente de l'envoi), `DMXRefreshLoop` (un pas par rafraîchissement :
+  ouverture, envoi, débranchement → « en erreur », nouvel essai chaque seconde, la trame en cours repart au rebranchement), `DMXOutput` (fil
+  dédié `userInteractive`, 30 Hz par défaut, 1…44 ; état sous `Mutex` jamais tenu pendant un envoi ; `shutdown(finalFrame:)` envoie la trame
+  finale 5 fois puis ferme), protocole `DMXTransport` + `SilentDMX`. **Rebranchement par essai chaque seconde** (pas de notifications IOKit :
+  plus simple, et rien ne coûte tant que le boîtier est là). Autorisation `com.apple.security.device.serial` (`project.yml`).
+  **Banc d'essai DMX** dans l'app (Fenêtre ▸ Banc d'essai DMX) : `DMXTestBench` (Engine) + `App/DMXBenchView.swift` — état du boîtier, choix du
+  boîtier (mémorisé sur ce Mac, `dmxPortSerial`, repris par la console à l'étape 3), adresse (1…498, mémorisée), « 4 projecteurs en blanc », Noir,
+  un curseur par canal (noms du manuel). La sortie ne tourne que fenêtre ouverte ; fermer arrête le signal sans noir (la barre garde sa couleur).
+  Tests : 25 (`LalabobDMXTests`, faux port et octets du relevé) + 5 (`DMXTestBenchTests`) ; tout le package vert (751). App compilée et lancée :
+  **le bac à sable laisse ouvrir le boîtier** (« Boîtier USB-DMX AU0483EN · signal envoyé »), adresse 50 et « 4 projecteurs en blanc » envoyés
+  sans erreur (barre non regardée par l'agent).
+  **À essayer** : ☑ Fenêtre ▸ Banc d'essai DMX : « Boîtier USB-DMX AU0483EN · signal envoyé » (27/11/2026)
+  ☑ adresse 50, « 4 projecteurs en blanc » ☑ débrancher le boîtier pendant l'envoi : détecté ; le rebrancher : tout revient, y compris les
+  couleurs changées entre-temps (essai de l'utilisateur, 27/11/2026) ☒ LightKey ouvert en même temps : **les deux envoient à la barre**, aucune
+  erreur. Cause probable : LightKey parle à la puce FTDI directement par USB (pilote D2XX), sans passer par `/dev/cu.usbserial-…`, donc
+  l'accès exclusif du port série (`TIOCEXCL`) ne le voit pas. Lalabob ne peut pas le détecter. **Règle d'usage** : en mode Projecteurs, LightKey
+  ne doit pas piloter le boîtier (à écrire dans le guide et l'aide à l'étape 5). Un vrai boîtier Enttec Pro ne changerait rien à ce point.
+  ☐ régularité à l'œil (pas de scintillement) avec l'interface chargée.
+  **Note outillage** : `make test` utilise `swift test` ; avec les outils en ligne de commande sélectionnés (`xcode-select`), le module Testing
+  manque. Lancer `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer make test` (idem pour `make build`).
+- **Étape 2 — modèle DMX (27/11/2026, branche `j14/modele-dmx`, empilée sur `j14/module-dmx`)** ✅ code, aucun changement visible dans l'app.
+  `LalabobModel/Lighting.swift` : `LightingMode` (LightKey / DMX) et `LightingSettings` (mode + appareil, **gardés tous les deux** : revenir
+  en LightKey ne perd rien), `LightColor` (teinte 0–360° + saturation, jamais un RVB ; `rgb` = roue HSV), `FixtureProfile` (**données** :
+  canaux avec rôle et projecteur, strobo lent→rapide, programmes, « sur le son », gamma ; profil intégré `chauvet4BarLTBT`), `DMXRig`
+  (profil, adresse 1…498, fondu du noir 1,5 s, `onQuit` fondu au noir / laisser, couleurs favorites ≤ 16), `LightLook` (fondu d'entrée +
+  `colors` / `alternate` / `fixtureProgram` / `soundActive`), `HeadLook`, `ColorsLook` (Chacun / Ensemble, strobo `nil` par défaut),
+  `AlternateLook`. `LightCue.look` : une cue garde **sa note MIDI et son état** (chaque mode lit sa partie) ; `MIDIMessageSpec.unassigned`
+  pour une cue créée en DMX. `Show.lighting`. **Format version 4**, écrite seulement si le spectacle sert au DMX (mode, appareil réglé ou
+  un état lumineux) : `requiredFormatVersion` 4 / 3 / 2 ; un spectacle sans DMX ne change pas d'un octet (`lighting` non écrit).
+  Validation de tout ce qui vient d'un fichier (adresse, profil cohérent, nombres finis et bornés, projecteurs de l'état = ceux du profil,
+  états des colonnes mises de côté compris). 28 tests (`DMXModelTests`) ; deux anciens tests « version inconnue » passent de 4 à 5.
+  Tout le package vert, app compilée. **Écarts avec le plan** : `Show.lighting` est une structure (mode + appareil) et non un `.dmx(DMXRig)`
+  (pour ne rien perdre en changeant de mode) ; la correction des couleurs est un simple gamma du profil. ⚠︎ **Les valeurs des 12 programmes
+  de la barre (10 → 249 réparties à égalité) et de « sur le son » (250) sont déduites du manuel** : à confirmer au banc d'essai DMX avant
+  l'étape 4. **Une ancienne version de l'app ne lit pas la version 4** (mettre les deux Mac à jour ensemble avant d'enregistrer un spectacle DMX).
+  **À essayer** : ☐ ouvrir un vrai spectacle (copie !), ⌘S, rouvrir : rien ne change, `show.json` toujours en version 2 ou 3.
+- **Étape 3 — console et moteur (27/11/2026, branche `j14/console-dmx`, empilée sur `j14/modele-dmx`)** ✅ code, **aucune interface encore**
+  (le mode Projecteurs se choisit à l'étape 4 ; d'ici là, seuls les tests et `ShowController.setLightingMode` le mettent en marche).
+  `LightConsole` (Engine, pure) : état joué → trame à un instant t. Fondu d'entrée **depuis la lumière en cours** (fondu interrompu
+  compris, sans saut), Noir en fondu (« Fondu du noir » du spectacle), général (gradateur, en direct), rotation des couleurs (le blanc
+  reste blanc), strobo de l'état ou réglé en direct, projecteurs coupés / rallumés à la main en fondu (0,4 s, sans changer le pad),
+  programmes de la barre et « sur le son » (sensibilité 11…255 ⚠︎ à confirmer comme les programmes), **alternance** au tempo de repli
+  (le tempo du son viendra à l'étape 3b : `tempoBPM`). Canaux qui ne se mélangent pas (programme, strobo) : changés au début du fondu,
+  sauf vers le noir (un programme s'éteint par le gradateur, puis pilotage direct). **La trame est recalculée par la sortie DMX à chaque
+  rafraîchissement, sur son fil** (`DMXFrameSource`, `DMXClock`, `DMXTransport.setSource`) : un fondu avance même si l'interface rame.
+  `DMXSession` (Engine) : une console pour l'app, rattachée à la fenêtre active comme la session MIDI ; démarre la sortie en mode
+  Projecteurs (boîtier mémorisé par le banc d'essai), l'arrête sans noir en mode LightKey ; à la fermeture, **fondu au noir d'1 s au plus**
+  puis trame noire répétée, ou lumière laissée (`DMXRig.onQuit`), en même temps que l'extinction du contrôleur.
+  `ShowController` : en mode DMX, double-clic / Retour / Espace / contrôleur jouent l'**état lumineux** du pad (rien ne part vers LightKey) ;
+  « nouvel appui » (laisse allumé / allume ou éteint) ; **Essayer** rejoue toujours ; une cue sans état lumineux joue les 4 projecteurs
+  à la **couleur du pad** (`LightColor(approximating:)`) ; état des pads **connu** (celui que joue la console = allumé, LED qui pulse) ;
+  `blackout()` (actif verrouillé) ; **bouton rond d'une colonne lumière (APC) = Noir**, LED rouge ; faders des colonnes lumière par **rôle**
+  (`DMXFaderRole` : 1re = Général, 2e = Couleurs ; à l'écran et à la main, rien vers LightKey) ; « Relier aux projecteurs » refusé ;
+  Échap ne touche pas la lumière. `setLightingMode`, `setDMXRig` (⌘Z). App : `DMXSession` créée au lancement, rattachée à chaque fenêtre active.
+  Tests : 19 (`LightConsoleTests` : trames à t = 0, mi-fondu, fin), 20 (`DMXSessionTests`), 3 (`DMXFrameSourceTests`), 2 (couleur d'une teinte) ;
+  tout le package vert (822), app compilée.
+  **Décisions du 27/11/2026 (après le code)** : (1) **un seul Général et un seul fader Couleurs pour tout le spectacle** : bouger l'un recopie
+  son niveau sur la colonne de même rôle de chaque grille (`Show.alignDMXFaders`), et passer en Projecteurs aligne toutes les grilles sur la
+  grille affichée — changer de grille ne change jamais la lumière ; (2) **fader Couleurs relatif** : sa position au départ d'un état donne
+  les couleurs du pad, le bouger fait tourner toute la roue (toute la course = un tour, dans les deux sens) ; (3) **le banc d'essai DMX prend
+  la main** : l'ouvrir arrête la sortie du spectacle sans noir (la console continue de suivre le jeu), le fermer la rend
+  (`DMXSession.suspendForBench` / `resumeAfterBench`) ; (4) **menu Spectacle** : interrupteur « Projecteurs pilotés par Lalabob » et
+  « Noir », pour essayer la barre avant l'étape 4. Rôles des faders encore fixes (choix par colonne avec l'interface).
+  **À essayer** (Spectacle ▸ Projecteurs pilotés par Lalabob ; les pads lumière sans état jouent la couleur du pad) : ☐ fondus fluides sur la barre ☐ Noir au bouton rond de l'APC
+  ☐ fader 7 = général, fader 8 = couleurs (relatif) ☐ changer de grille : rien ne bouge ☐ ouvrir / fermer le banc d'essai DMX en jouant
+  ☐ ⌘Q : la barre s'éteint en fondu ☐ aucun son ne s'arrête.
+- **Étape 3b — tempo des sons (27/11/2026, branche `j14/tempo-sons`, empilée sur `j14/console-dmx`)** ✅ code, **sans interface** (affichage du
+  BPM et boutons de correction à l'étape 4). Décisions du 27/11 : analyse **automatique en arrière-plan** ; sous un seuil de confiance,
+  **« pas de tempo »** ; le tempo vient du **dernier son lancé** (puis du précédent qui joue encore, sinon tempo de repli) ; **« Avance de la
+  lumière »** réglable par spectacle (0 par défaut, 0…0,5 s).
+  `TempoDetector` (LalabobAudio, hors ligne) : flux spectral (Accelerate), autocorrélation avec préférence douce autour de 120 BPM, peigne pour
+  la position des temps, 120 premières secondes ; seuil de confiance 0,2, attaque minimale (une nappe tenue n'a pas de tempo). `TempoStore`
+  (Engine) : cache mémoire + disque comme les formes d'onde ; branché dans chaque fenêtre. Modèle : `BeatGrid`, `SoundTempo` (`AudioClip.tempo`,
+  seule la correction à la main est enregistrée, ignorée par les anciennes versions), `DMXRig.lightLead`. `ShowController` : `detectedTempos`,
+  `beatGrid(for:)`, `tempoSource` (boucles : la grille repart à chaque tour), `doubleTempo` / `halveTempo` / `setTempo` (pas de tempo, revenir
+  à la détection) / `tapTempo` (4 appuis, médiane ; sur un son qui joue, le dernier appui marque un temps), ⌘Z, refusés verrouillé.
+  `LightConsole.beatClock` : l'alternance bascule **sur les temps du son**, en avance de `lightLead`. Tests : 8 (détection, signaux fabriqués),
+  9 (moteur), 4 (modèle), 1 (console) ; tout le package vert, app compilée.
+  **Relevé sur la banque de la troupe** (`~/Music/Banque de sons Bob - Pad`, 163 sons, < 0,3 s chacun ; test `realSounds` avec
+  `LALABOB_TEMPO_DIR`) : morceaux rythmés justes (Alors on danse ≈ 120, Louxor ≈ 136, jingle techno 128, Let's Get Loud 131, Makeba 116) ;
+  ambiances écartées (mer, pluie, vent, feu, fontaine) ; **erreurs d'octave** possibles (Here Comes the Sun donné 64 au lieu de ~129 → ×2) ;
+  quelques faux tempos sur des sons réguliers (sonnettes, insectes, cigales → « pas de tempo » à la main).
+  **Limites** : chaque appui de « taper le tempo » après le 4e est une étape d'annulation ; le premier temps détecté est pris pour le début
+  d'une mesure (bascule « 1 mesure » parfois décalée d'un temps).
+  **À essayer** : ☐ un pad Alternance sur un morceau rythmé : bascules sur les temps ☐ régler l'avance à l'œil ☐ deux sons rythmés : le dernier
+  lancé mène ☐ son arrêté : tempo de repli.
+- **Étape 4 — interface (27/11/2026, branche `j14/interface-dmx`, empilée sur `j14/tempo-sons`)** ✅ code, en 5 commits (4a à 4e), **aucune vue n'a été regardée à l'œil**
+  (compilée seulement : `make build`). Tests : tout le package vert sauf la cible `LalabobAudioTests`, qui ne se termine pas sous `swift test` dans cet
+  environnement (non touchée ; à lancer par Xcode, voir la note outillage du J1) : 464 Engine, 178 Modèle, 57 pilotes, 28 DMX.
+  - **4a Réglages** : Spectacle › Réglages du spectacle… (déverrouillé) = deux grands choix « Logiciel lumière » / « Projecteurs pilotés par Lalabob » ; en mode
+    Projecteurs : adresse (1…498, rappel « MENU → 15Ch → d 050 »), boîtier de ce Mac et son état, fondu du noir, avance de la lumière, « En quittant Lalabob »,
+    « Essayer : 4 projecteurs en blanc » (`DMXSession.testWhite`), Noir, Banc d'essai DMX. Pastille « Projecteurs » dans l'en-tête (mode DMX) ; bouton Relier masqué
+    en DMX ; **cadenas compact** (bouton carré, icône seule). **Bug corrigé** : `setDMXRig` perdait `lightLead`.
+  - **4b Pads** : repère de 4 points (couleur et intensité, gris si éteint), ⇄ alternance, ϟ strobo, arc-en-ciel + P3 / MIC ; sous-titre par défaut (« Ensemble · 2 et 3 »,
+    « ⇄ 124 BPM · son en cours »…) quand le pad n'en a pas. `LightLook.summary` (modèle pur, testé). Pas de repère sur un pad plus bas que 44 pt ni sur un pad son et lumière.
+  - **4c Panneau du bas** (`App/LookEditor.swift`) : bande du haut (Essayer, titre, aperçu, fondu − / +, nouvel appui, couleur du pad) ; bande du bas : type (Couleurs ·
+    Alternance · Programme · Sur le son), Chacun / Ensemble, cartes de projecteurs, strobo (arrêté par défaut), alternance (A, B, bascule, fondu, tempo de repli), programme 1–12,
+    micro ; **roue des couleurs** (teinte + saturation, curseurs, couleurs du spectacle). `ShowController.setLook` / `setLookStyle` / `effectiveLook` / `toggleFavoriteColor` (⌘Z,
+    refusés verrouillé, état injouable refusé), `LightLook.converted(to:)` (garde ce qui se garde). Un glissé est un brouillon, une seule annulation au relâchement.
+    « Nouvel appui » d'un pad lumière seul accepté (`setLightRetrigger`).
+  - **4d Carte de jeu** : clic droit sur la carte d'un fader lumière = **rôle** (Général, Couleurs, Strobo, Aucun) ; `Column.faderRole` (**format 4** dès qu'un rôle est choisi,
+    sinon inchangé ; une colonne qui quitte la lumière l'oublie) ; deux colonnes au même rôle règlent la même chose ; une colonne qui prend un rôle reprend son niveau (la lumière
+    ne bouge pas). La carte **Général** porte la mini-barre : 4 projecteurs aux couleurs réelles de la barre (fondus compris), clic = couper / rallumer en fondu, bouton **Noir**,
+    tempo « ⇄ 124 » avec un point qui bat. `DMXFaderRole` est passé dans `LalabobModel`.
+  - **4e Aperçu en direct** : interrupteur « Aperçu » du panneau (mémorisé sur ce Mac, actif par défaut) ; chaque réglage, même un glissé, s'applique à la barre **sans fondu** et
+    sans désigner le pad comme joué ; en quittant le pad, retour **en fondu de 0,5 s** à la lumière d'avant ; un appui ou un Noir pendant l'aperçu l'emporte ; jamais verrouillé ni
+    en mode LightKey ; **régler (ou annuler par ⌘Z) le pad qui éclaire met la barre à jour**.
+  - **Pas fait** : pas de planche « Réglages » à l'identique de la maquette (mise en page libre) ; pas de commandes de la barre sans colonne Général (menu Lumière et panneau de repos,
+    « à maqueter ») ; la couleur des pads lumière n'est pas ambrée en DMX (contour à la teinte du pad) ; pas d'astuce DMX dans `Tips.swift` ; documentation (`GUIDE.md`, aide, `LEXIQUE.md`)
+    = étape 5. Un état modifié pendant un glissé revient à la valeur enregistrée si autre chose relance la console au même moment (rare).
+  - **À regarder à l'œil, puis à essayer sur la barre** : ☐ Réglages du spectacle : lisible, adresse, boîtier, « 4 projecteurs en blanc » ☐ pastille « Projecteurs » et cadenas carré dans
+    l'en-tête (largeur minimale 1320 pt) ☐ pad lumière d'un spectacle DMX : points, sous-titre ☐ panneau du bas à la largeur minimale (4 types, Chacun et Ensemble, roue) : rien de coupé,
+    hauteur ≤ 196 pt ☐ glisser un curseur : la barre suit sans fondu, ⌘Z revient d'un seul pas ☐ quitter le pad : retour en fondu ☐ régler le pad qui joue ☐ clic droit sur la carte d'un fader :
+    rôles ; fader 7 / 8 sur l'APC suivent le rôle choisi ☐ mini-barre : couper un projecteur, Noir ☐ tempo ⇄ sur un son rythmé ☐ **ouvrir un vrai spectacle (copie !) puis ⌘S : rien ne change**.
+- **Astuces (28/11/2026, branche `j14/astuces-recentes`)** : 3 astuces de plus dans `App/Tips.swift` — morceaux Apple Music sur les pads (déverrouillé), changer de grille depuis le contrôleur, Noir en mode Projecteurs (bouton rond de l'APC ; affichée aussi en mode LightKey, le texte précise « En mode Projecteurs »). **À regarder à l'œil** : ☐ textes lisibles dans la barre de repos à la largeur minimale.

@@ -62,6 +62,8 @@ public enum ControllerInput: Equatable, Sendable {
     case gridStep(delta: Int)
     /// Touche Shift enfoncée ou relâchée (APC mini mk2).
     case shift(pressed: Bool)
+    /// Fader hors grille (le 9e de l'APC mini mk2), valeur de 0 à 1 : sert au volume d'Apple Music, jamais aux colonnes.
+    case auxiliaryFader(value: Double)
 }
 
 /// Un pilote traduit entre le langage d'un contrôleur et la grille 8×8 de Lalabob.

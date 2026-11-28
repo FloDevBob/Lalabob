@@ -13,6 +13,7 @@ extension ShowController {
     /// Entre dans le mode d'appairage ou en sort. Refusé verrouillé.
     public func setPairingLights(_ active: Bool) {
         if active, refuseWhileLocked() { return }
+        if active, isDMXLighting { return }  // en mode Projecteurs, il n'y a rien à relier (Lalabob est la console)
         isPairingLights = active
         pairingNaming = nil
         pairingFader = nil
@@ -23,7 +24,7 @@ extension ShowController {
 
     /// La case est dans une colonne lumière ou mixte de la grille affichée : sa cue peut s'appairer.
     public func isLightCell(_ position: GridPosition) -> Bool {
-        position.isValid && currentGrid.columns[position.column].kind != .audio
+        position.isValid && currentGrid.columns[position.column].kind.hasLight
     }
 
     /// La cue de la case est marquée appairée.
@@ -92,7 +93,7 @@ extension ShowController {
     @discardableResult
     func pairFader(column: Int) -> Bool {
         guard isPairingLights else { return false }
-        let done = commit("Appairer le fader") { show, grid in
+        let done = commit("Relier le fader") { show, grid in
             guard (0..<PadGrid.size).contains(column), show.grids[grid].columns[column].kind == .light,
                 !show.grids[grid].columns[column].isFaderPaired
             else { return false }
@@ -106,7 +107,7 @@ extension ShowController {
     /// « Retirer l'appairage » du fader : ne touche pas à LightKey.
     @discardableResult
     public func unpairFader(column: Int) -> Bool {
-        commit("Retirer l'appairage du fader") { show, grid in
+        commit("Délier le fader") { show, grid in
             guard (0..<PadGrid.size).contains(column), show.grids[grid].columns[column].isFaderPaired else { return false }
             show.grids[grid].columns[column].isFaderPaired = false
             return true
@@ -122,8 +123,8 @@ extension ShowController {
     @discardableResult
     func pairCue(at position: GridPosition) -> Bool {
         guard isPairingLights else { return false }
-        let done = commit("Appairer la cue") { show, grid in
-            guard position.isValid, show.grids[grid].columns[position.column].kind != .audio else { return false }
+        let done = commit("Relier la lumière") { show, grid in
+            guard position.isValid, show.grids[grid].columns[position.column].kind.hasLight else { return false }
             var pad = show.grids[grid][position] ?? Self.blankLightPad()
             // Un pad son d'une colonne mixte reçoit sa cue : il devient son et lumière.
             var cue = pad.light ?? .blank
@@ -140,7 +141,7 @@ extension ShowController {
     /// « Retirer l'appairage » : ne touche pas à LightKey.
     @discardableResult
     public func unpairCue(at position: GridPosition) -> Bool {
-        commit("Retirer l'appairage") { show, grid in
+        commit("Délier la lumière") { show, grid in
             guard position.isValid, var pad = show.grids[grid][position], var cue = pad.light, cue.isPaired else {
                 return false
             }
@@ -162,7 +163,7 @@ extension ShowController {
     func nextUnpairedLightPosition(after position: GridPosition?) -> GridPosition? {
         // Colonne lumière : toutes les cases. Colonne mixte : seulement les pads qui ont déjà une cue (les autres cases sont des sons).
         let free = currentGrid.columns.indices
-            .filter { currentGrid.columns[$0].kind != .audio }
+            .filter { currentGrid.columns[$0].kind.hasLight }
             .flatMap { column in (0..<PadGrid.size).map { GridPosition(column: column, row: $0) } }
             .filter { currentGrid.columns[$0.column].kind == .light || pad(at: $0)?.light != nil }
             .filter { !isPaired(at: $0) }

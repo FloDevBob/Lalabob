@@ -12,6 +12,8 @@ public enum Icon: String, CaseIterable, Sendable {
     case cut, copy, duplicate, paste, trash
     case plus, close, folder, search, sidebar
     case sun, music, note, lock, lockOpen, volume, warning, wave, stopAll, spotlight, more, lightbulb
+    /// Cartes de fader lumière (mode Projecteurs) : Couleurs, Strobo. Dessinées dans le style Iconoir.
+    case palette, flash
 
     var assetName: String { "icon-\(rawValue)" }
 

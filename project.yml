@@ -17,8 +17,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    MARKETING_VERSION: "1.1.1"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "1.2.0"
+    CURRENT_PROJECT_VERSION: "4"
     ENABLE_HARDENED_RUNTIME: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     DEAD_CODE_STRIPPING: YES
@@ -33,6 +33,14 @@ targets:
     platform: macOS
     sources:
       - path: App
+      # Visite guidée (page HTML + sons, la même que celle publiée en ligne) et spectacle d'entraînement,
+      # copiés tels quels dans l'app (dossier « visite » et paquet Entrainement.lalabob).
+      - path: docs/tutoriel/visite
+        type: folder
+        buildPhase: resources
+      - path: docs/tutoriel/Entrainement.lalabob
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: LalabobKit
         product: LalabobModel
@@ -47,6 +55,16 @@ targets:
         com.apple.security.app-sandbox: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.files.bookmarks.app-scope: true
+        # Grilles Apple Music : recherche dans le catalogue, extraits de 30 s et pochettes (adresses d'Apple seulement).
+        com.apple.security.network.client: true
+        # Le 9e fader de l'APC règle le volume d'Apple Music (Apple Events vers Music seulement, ADR 0009).
+        com.apple.security.automation.apple-events: true
+        com.apple.security.temporary-exception.apple-events: [com.apple.Music]
+        # Groupes d'accès déclarés par Music (com.apple.Music.sdef) : la voie prévue pour une app sandboxée.
+        # Lumière en DMX (ADR 0012) : boîtier USB-DMX vu comme un port série (/dev/cu.usbserial-…).
+        com.apple.security.device.serial: true
+        com.apple.security.scripting-targets:
+          com.apple.Music: [com.apple.Music.playback, com.apple.Music.library.read, com.apple.Music.library.read-write]
     info:
       path: App/Info.plist
       properties:
@@ -56,6 +74,8 @@ targets:
         LSApplicationCategoryType: public.app-category.music
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSHumanReadableCopyright: "© 2026 Lalabob"
+        NSAudioCaptureUsageDescription: "Lalabob fait passer le son d'Apple Music par ses colonnes (volume, filtre, vumètre, sortie choisie). Rien n'est enregistré."
+        NSAppleEventsUsageDescription: Lalabob règle le volume d'Apple Music avec le 9e fader de l'APC mini mk2.
         # Document .lalabob : un paquet (dossier) avec show.json et Audio/.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: fr.flodevbob.lalabob.show

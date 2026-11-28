@@ -1,0 +1,191 @@
+import Foundation
+import LalabobAudio
+import LalabobModel
+import Testing
+
+@testable import LalabobEngine
+
+/// Fausse capture du son de Music (pont audio, ADR 0011).
+actor FakeCapture: MusicAudioCapturing {
+    var refuses = false
+    private(set) var starts = 0
+    private(set) var stops = 0
+    func refuse() { refuses = true }
+    func start(pid: pid_t, outputUID: String?, into ring: AudioRingBuffer) async throws -> ProcessAudioBridge.Info {
+        if refuses { throw ProcessAudioBridge.Failure.tapRefused(-1) }
+        starts += 1
+        return ProcessAudioBridge.Info(sampleRate: 48_000, tapSampleRate: 48_000, skippedBuffers: 0)
+    }
+    func stop() async { stops += 1 }
+}
+
+@MainActor
+@Suite("Pont audio Apple Music", .serialized)
+struct MusicBridgeTests {
+    let first = Pad.track(MusicTrackRef(persistentID: "0A", title: "Générique", duration: 160), tint: .rose)
+    let second = Pad.track(MusicTrackRef(persistentID: "0B", title: "Rappel", duration: 120), tint: .orange)
+
+    struct Rig {
+        let controller: ShowController
+        let music: MusicPlaybackCoordinator
+        let player: FakeMusicPlayer
+        let capture: FakeCapture
+        let audio: RecordingAudioEngine
+    }
+
+    private func makeRig(bridge: Bool = true, refuse: Bool = false, runningApps: [String] = []) async -> Rig {
+        var grid = PadGrid.emptyAppleMusic(name: "M")
+        grid[GridPosition(column: 0, row: 0)] = first
+        grid[GridPosition(column: 1, row: 0)] = second
+        let audio = RecordingAudioEngine()
+        let controller = ShowController(
+            show: Show(name: "S", grids: [grid]), audio: audio, audioDirectory: URL(filePath: "/tmp/lalabob-audio"),
+            defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, isLocked: true)
+        let player = FakeMusicPlayer()
+        await player.configure(library: ["0A", "0B"])
+        let capture = FakeCapture()
+        if refuse { await capture.refuse() }
+        let music = MusicPlaybackCoordinator(
+            player: player, capture: capture, defaults: UserDefaults(suiteName: "lalabob-tests-\(UUID().uuidString)")!, musicPID: { 42 },
+            runningBundleIDs: { runningApps })
+        music.crossfadeDuration = 0.1
+        music.stopFadeDuration = 0.05
+        music.stopAllFadeDuration = 0.05
+        music.rampStep = 0.01
+        music.pollInterval = .milliseconds(20)
+        music.bridgeGrace = 10  // les tests de sécurité le baissent
+        if bridge { music.setBridgeEnabled(true) }
+        controller.musicPlayer = music
+        return Rig(controller: controller, music: music, player: player, capture: capture, audio: audio)
+    }
+
+    private func attached(_ rig: Rig) async -> [Int] {
+        await rig.audio.commands.compactMap { if case .attachExternal(let column) = $0 { column } else { nil } }
+    }
+
+    @Test("Pont actif : la capture démarre, le son va dans la colonne du pad, puis suit le pad suivant")
+    func routes() async {
+        let rig = await makeRig()
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await self.attached(rig) == [0] })
+        #expect(await rig.capture.starts == 1)
+        #expect(rig.music.isBridging)
+        rig.controller.audition(at: GridPosition(column: 1, row: 0))
+        #expect(await waitUntil { await self.attached(rig) == [0, 1] })
+        #expect(await waitUntil { await rig.player.plays == ["0A", "0B"] })
+        // Fondu enchaîné fait dans Lalabob : le volume de Music ne descend pas à 0.
+        #expect(await !rig.player.volumes.contains(0))
+        #expect(await rig.capture.starts == 1)  // une seule capture pour tous les morceaux
+    }
+
+    @Test("Le fader physique d'une colonne Music agit quand le pont est actif, pas sinon")
+    func columnFader() async {
+        var rig = await makeRig()
+        #expect(rig.controller.moveHardwareFader(column: 0, value: 1) || rig.controller.moveHardwareFader(column: 0, value: 1))
+        rig = await makeRig(bridge: false)
+        #expect(!rig.controller.moveHardwareFader(column: 0, value: 0.5))
+    }
+
+    @Test("Capture refusée : message, et Music joue directement (fondus par son volume)")
+    func refused() async {
+        let rig = await makeRig(refuse: true)
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.player.plays == ["0A"] })
+        #expect(rig.music.bridgeProblem != nil)
+        #expect(!rig.music.isBridging)
+        #expect(await self.attached(rig).isEmpty)
+        rig.controller.audition(at: GridPosition(column: 1, row: 0))
+        #expect(await waitUntil { await rig.player.volumes.contains(0) })
+    }
+
+    @Test("La capture ne fournit plus rien pendant un morceau : le pont est défait, Music redevient audible")
+    func stale() async {
+        let rig = await makeRig()
+        rig.music.bridgeGrace = 0
+        rig.music.bridgeStaleLimit = 0.05
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.capture.stops == 1 })
+        #expect(!rig.music.isBridging)
+        #expect(rig.music.bridgeProblem?.contains("arrêtée") == true)
+        #expect(await waitUntil { await rig.audio.commands.contains(.detachExternal) })
+    }
+
+    @Test("Le son capté reste muet (morceau protégé ?) : pont défait et option désactivée")
+    func silent() async {
+        let rig = await makeRig()
+        rig.music.bridgeGrace = 0
+        rig.music.bridgeSilenceLimit = 0.1
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.player.plays == ["0A"] })
+        #expect(await waitUntil { await rig.music.isBridging })
+        try? await rig.player.seek(to: 5)
+        let zeros = [Float](repeating: 0, count: 256)
+        let feeder = Task {
+            while !Task.isCancelled {
+                zeros.withUnsafeBufferPointer { p in rig.music.ring.write(left: p.baseAddress!, right: p.baseAddress!, frames: 256) }
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+        }
+        defer { feeder.cancel() }
+        #expect(await waitUntil { await rig.capture.stops == 1 })
+        #expect(!rig.music.isBridgeEnabled)
+        #expect(rig.music.bridgeProblem?.contains("muet") == true)
+    }
+
+    @Test("Couper l'option arrête la capture")
+    func disable() async {
+        let rig = await makeRig()
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.music.isBridging })
+        rig.music.setBridgeEnabled(false)
+        #expect(await waitUntil { await rig.capture.stops == 1 })
+        #expect(!rig.music.isBridging)
+    }
+
+    @Test("Audio Hijack ouvert : avertissement dès l'activation, le pont démarre quand même")
+    func warnsAboutAudioHijack() async {
+        let rig = await makeRig(runningApps: ["com.apple.Music", "com.rogueamoeba.audiohijack"])
+        #expect(rig.music.bridgeWarning?.contains("Audio Hijack") == true)
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.music.isBridging })
+    }
+
+    @Test("Aucune app de capture : pas d'avertissement ; option coupée : avertissement retiré")
+    func noWarning() async {
+        let clean = await makeRig(runningApps: ["com.apple.Music", "com.apple.finder"])
+        #expect(clean.music.bridgeWarning == nil)
+        let hijacked = await makeRig(runningApps: ["com.rogueamoeba.audiohijack"])
+        hijacked.music.setBridgeEnabled(false)
+        #expect(hijacked.music.bridgeWarning == nil)
+    }
+
+    @Test("Le son capté reste muet avec Audio Hijack ouvert : le message le nomme")
+    func silenceNamesTheCulprit() async {
+        let rig = await makeRig(runningApps: ["com.rogueamoeba.audiohijack"])
+        rig.music.bridgeGrace = 0
+        rig.music.bridgeSilenceLimit = 0.1
+        rig.controller.audition(at: GridPosition(column: 0, row: 0))
+        #expect(await waitUntil { await rig.player.plays == ["0A"] })
+        #expect(await waitUntil { await rig.music.isBridging })
+        try? await rig.player.seek(to: 5)
+        let zeros = [Float](repeating: 0, count: 256)
+        let feeder = Task {
+            while !Task.isCancelled {
+                zeros.withUnsafeBufferPointer { p in rig.music.ring.write(left: p.baseAddress!, right: p.baseAddress!, frames: 256) }
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+        }
+        defer { feeder.cancel() }
+        #expect(await waitUntil { await rig.capture.stops == 1 })
+        #expect(!rig.music.isBridgeEnabled)
+        #expect(rig.music.bridgeProblem?.contains("Audio Hijack") == true)
+    }
+
+    @Test("Détection : identifiants connus, casse et agents compris ; les autres apps ignorées")
+    func detection() {
+        #expect(CaptureAppConflicts.names(in: ["com.rogueamoeba.AudioHijack"]) == ["Audio Hijack"])
+        #expect(CaptureAppConflicts.names(in: ["com.rogueamoeba.audiohijack.agent", "com.rogueamoeba.audiohijack"]) == ["Audio Hijack"])
+        #expect(CaptureAppConflicts.names(in: ["com.rogueamoeba.Loopback", "com.rogueamoeba.soundsource"]) == ["Loopback", "SoundSource"])
+        #expect(CaptureAppConflicts.names(in: ["com.apple.Music", "com.rogueamoeba.farrago"]).isEmpty)
+    }
+}
