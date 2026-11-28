@@ -699,3 +699,21 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
     hauteur ≤ 196 pt ☐ glisser un curseur : la barre suit sans fondu, ⌘Z revient d'un seul pas ☐ quitter le pad : retour en fondu ☐ régler le pad qui joue ☐ clic droit sur la carte d'un fader :
     rôles ; fader 7 / 8 sur l'APC suivent le rôle choisi ☐ mini-barre : couper un projecteur, Noir ☐ tempo ⇄ sur un son rythmé ☐ **ouvrir un vrai spectacle (copie !) puis ⌘S : rien ne change**.
 - **Astuces (28/11/2026, branche `j14/astuces-recentes`)** : 3 astuces de plus dans `App/Tips.swift` — morceaux Apple Music sur les pads (déverrouillé), changer de grille depuis le contrôleur, Noir en mode Projecteurs (bouton rond de l'APC ; affichée aussi en mode LightKey, le texte précise « En mode Projecteurs »). **À regarder à l'œil** : ☐ textes lisibles dans la barre de repos à la largeur minimale.
+
+### J16 — Volumes et filtres entre les grilles 🟡 code terminé, essai à l'oreille à faire (branche `j16/volumes-filtres-grilles`)
+Constat du 28/11/2026 : le moteur n'avait qu'un volume et un filtre par numéro de colonne ; en changeant de grille, un son qui jouait encore
+prenait d'un coup le volume et le filtre de la nouvelle grille. Décisions (28/11/2026) :
+- **Volume de colonne commun à toutes les grilles** (colonnes qui jouent du son : son, son et lumière, Music). Changer de grille ne le change pas ;
+  les faders de l'APC restent accrochés. Le dosage de chaque son = volume du pad. Une colonne **lumière** garde son intensité par grille ; si la même
+  colonne est son ici et lumière là, les deux réglages restent séparés. **Format inchangé** : `level` recopié sur chaque grille
+  (`Show.setSharedColumnLevel`, `LalabobModel/ColumnLevels.swift`) ; un ancien spectacle s'aligne sur la grille 1 à l'ouverture ; ⌘Z ne ramène plus le volume en arrière.
+- **Filtre propre à chaque colonne de chaque grille**, et **chaque son garde celui de sa grille** (piste A) : le moteur porte le filtre sur le nœud de
+  chaque voix (volume du pad + filtre), réglé d'après la colonne de sa grille (`setColumnFilter(grid:column:value:)`) ; le pont Apple Music a son propre
+  nœud. Les vumètres mesurent maintenant à la sortie du mélangeur de colonne (après le fader et les filtres des sons).
+  Essai écarté : un mélangeur + un filtre par colonne de grille, branchés à la demande — AVAudioEngine tient alors le lecteur pour « débranché » (relevé, exception à la lecture).
+- **Stop de colonne** : les sons de la colonne **de la grille affichée** seulement (déjà le cas). Échap arrête tout.
+Tests : `ColumnLevelsTests` (6), contrôleur (+3 volume, filtre par grille), rendu hors ligne `eachGridHasItsOwnFilter`. Tout le paquet vert ; les suites audio
+passent une par une (la cible audio complète ne se termine toujours pas sous `swift test`).
+**À essayer** : ☐ un son de la grille 1 joue, passer à la grille 2 : ni son volume ni son filtre ne bougent ☐ régler le potard sur la grille 2 : seul le son de la
+grille 2 change ☐ fader de l'APC après un changement de grille : il agit tout de suite ☐ ouvrir un ancien spectacle à volumes différents par grille ☐ pont Apple Music : filtre de sa grille
+☐ charge CPU avec beaucoup de pads (une voix porte maintenant 2 bandes de filtre en plus, en bypass au neutre).

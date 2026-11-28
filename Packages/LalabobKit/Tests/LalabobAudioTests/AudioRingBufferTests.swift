@@ -137,7 +137,7 @@ struct ExternalSourceOfflineTests {
         let ring = AudioRingBuffer(capacity: 96_000, latencyFrames: 24_000)
         let tone = [Float](repeating: 0.5, count: 48_000)
         tone.withUnsafeBufferPointer { p in ring.write(left: p.baseAddress!, right: p.baseAddress!, frames: tone.count) }
-        await engine.attachExternal(ring, sampleRate: 48_000, column: 2)
+        await engine.attachExternal(ring, sampleRate: 48_000, grid: UUID(), column: 2)
         await engine.setColumnLevel(2, level: 1)
         let out = try await engine.renderOffline(frames: 4096)
         #expect(ring.framesRead > 0, "le moteur doit tirer le son du tampon")

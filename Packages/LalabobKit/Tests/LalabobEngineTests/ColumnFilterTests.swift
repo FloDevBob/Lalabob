@@ -81,18 +81,28 @@ struct ColumnFilterControllerTests {
         #expect(controller.lockNotice == nil)
     }
 
-    @Test func switchingGridSendsItsFilters() async {
+    @Test("Chaque grille a son filtre : le moteur reçoit les deux, et changer de grille n'en renvoie aucun")
+    func eachGridKeepsItsOwnFilter() async {
         var second = PadGrid.empty(name: "G2")
         second.columns[4].filter = 0.45
+        let first = PadGrid.empty(name: "G1")
         let audio = RecordingAudioEngine()
-        let controller = makeController(audio, show: Show(name: "S", grids: [.empty(name: "G1"), second]))
+        let controller = makeController(audio, show: Show(name: "S", grids: [first, second]))
+        _ = await settledCommands(of: audio)
+        let atOpening = await audio.filterTargets
+        #expect(atOpening.contains(.init(grid: first.id, column: 4, value: 0)))
+        #expect(atOpening.contains(.init(grid: second.id, column: 4, value: 0.45)))
 
         controller.selectGrid(at: 1)
-        let sent = await settledCommands(of: audio)
-        #expect(sent.last(where: { if case .filter(4, _) = $0 { true } else { false } }) == .filter(4, 0.45))
+        _ = await settledCommands(of: audio)
+        #expect(await audio.filterTargets.count == atOpening.count)  // rien n'est refiltré au changement de grille
+
+        // Régler le potard de la grille 2 ne touche que la grille 2, même après être revenu sur la grille 1.
+        controller.setColumnFilter(4, value: -0.5)
         controller.selectGrid(at: 0)
-        let back = await settledCommands(of: audio)
-        #expect(back.last(where: { if case .filter(4, _) = $0 { true } else { false } }) == .filter(4, 0))
+        #expect(controller.currentGrid.columns[4].filter == 0)
+        _ = await settledCommands(of: audio)
+        #expect(await audio.filterTargets.last == .init(grid: second.id, column: 4, value: -0.5))
     }
 
     @Test func openingAShowSendsEveryAudioColumnFilter() async {

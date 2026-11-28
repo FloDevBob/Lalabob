@@ -13,8 +13,11 @@ public enum AudioEngineError: Error, Equatable, Sendable {
 
 /// Moteur audio de Lalabob, fondé sur AVAudioEngine.
 ///
-/// Graphe : un `AVAudioPlayerNode` par pad joué → un mélangeur par colonne (le fader)
-/// → le filtre de la colonne (`FilterCurve`) → le mélangeur principal → la sortie choisie.
+/// Graphe : un `AVAudioPlayerNode` par pad joué → son nœud de traitement (volume du pad **et filtre de la colonne de sa
+/// grille**, `FilterCurve`) → le mélangeur de la colonne (le fader, commun à toutes les grilles, et le vumètre) → le mélangeur
+/// principal → la sortie choisie. Le filtre est porté par chaque voix (décision du 28/11/2026) : changer de grille ne
+/// refiltre pas un son qui joue, et aucun nœud intermédiaire n'est branché dans un graphe en marche (AVAudioEngine tiendrait
+/// alors le lecteur pour débranché).
 ///
 /// Tout l'état vit dans l'acteur ; le thread de rendu audio n'exécute que le code d'Apple.
 /// Élagage et fondus des sons courts sont « cuits » dans les échantillons au chargement.
@@ -36,11 +39,13 @@ public actor AVAudioEngineController: AudioEngineControlling {
     private let log = Logger(subsystem: "fr.lalabob.app", category: "audio")
     private let engine = AVAudioEngine()
     private let columnMixers: [AVAudioMixerNode]
-    /// Filtre DJ de chaque colonne, juste après son fader : bande 0 = passe-bas, bande 1 = passe-haut.
-    /// Au neutre, les deux bandes sont en bypass : le son passe sans traitement.
-    private let columnFilters: [AVAudioUnitEQ]
-    /// Dernière position demandée pour chaque filtre (réappliquée après un redémarrage du moteur).
-    private var filterPositions: [Double]
+    /// Une colonne d'une grille : là où joue un son, et la clé de son filtre DJ.
+    private struct FilterSlot: Hashable {
+        var grid: PadGrid.ID
+        var column: Int
+    }
+    /// Position du filtre de chaque colonne de grille (−1 … +1), appliquée à chaque voix qui y joue.
+    private var filterPositions: [FilterSlot: Double] = [:]
     private let preloadLimit: TimeInterval
 
     private struct OfflineRendering {
@@ -55,8 +60,8 @@ public actor AVAudioEngineController: AudioEngineControlling {
     private var nextGeneration = 0
     private var selectedOutputUID: String?
     private var configurationObserver: NSObjectProtocol?
-    /// Pont audio : le nœud qui lit le tampon du son capté, et la colonne où il joue.
-    private var external: (node: AVAudioSourceNode, ring: AudioRingBuffer, format: AVAudioFormat, column: Int)?
+    /// Pont audio : le nœud qui lit le tampon du son capté, son filtre, et la colonne de grille où il joue.
+    private var external: (node: AVAudioSourceNode, filter: AVAudioUnitEQ, ring: AudioRingBuffer, format: AVAudioFormat, slot: FilterSlot)?
 
     // MARK: - Types internes
 
@@ -68,11 +73,13 @@ public actor AVAudioEngineController: AudioEngineControlling {
     }
 
     private struct Entry {
-        var column: Int
+        var slot: FilterSlot
         var clip: AudioClip
         var timing: ClipTiming
         var format: AVAudioFormat
         var source: Source
+
+        var column: Int { slot.column }
 
         var isStreamed: Bool {
             if case .streamed = source { return true }
@@ -82,12 +89,8 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
     private final class Voice {
         let player = AVAudioPlayerNode()
-        /// Gain du pad (dB) : un seul réglage global, aucune bande d'égalisation active.
-        let gainNode: AVAudioUnitEQ = {
-            let node = AVAudioUnitEQ(numberOfBands: 1)
-            node.bands[0].bypass = true
-            return node
-        }()
+        /// Gain du pad (dB, réglage global) et filtre DJ de la colonne de sa grille (bandes 0 et 1, en bypass au neutre).
+        let gainNode = AVAudioEngineController.makeFilter()
         let format: AVAudioFormat
         var state: PlaybackState = .idle
         var generation = 0
@@ -104,8 +107,6 @@ public actor AVAudioEngineController: AudioEngineControlling {
         (events, continuation) = AsyncStream.makeStream(of: PlaybackEvent.self, bufferingPolicy: .unbounded)
         self.preloadLimit = preloadLimit
         self.columnMixers = (0..<PadGrid.size).map { _ in AVAudioMixerNode() }
-        self.columnFilters = (0..<PadGrid.size).map { _ in Self.makeColumnFilter() }
-        self.filterPositions = Array(repeating: 0, count: PadGrid.size)
 
         let graphFormat: AVAudioFormat
         if case .offline(let rate, let maxFrames) = output {
@@ -121,17 +122,20 @@ public actor AVAudioEngineController: AudioEngineControlling {
         } else {
             graphFormat = engine.outputNode.inputFormat(forBus: 0)
         }
-        for (mixer, filter) in zip(columnMixers, columnFilters) {
+        for mixer in columnMixers {
             engine.attach(mixer)
-            engine.attach(filter)
-            engine.connect(mixer, to: filter, format: graphFormat)
-            engine.connect(filter, to: engine.mainMixerNode, format: graphFormat)
+            engine.connect(mixer, to: engine.mainMixerNode, format: graphFormat)
         }
-        Self.installMeters(on: columnFilters, meters: meters)
+        Self.installMeters(on: columnMixers, meters: meters)
     }
 
-    /// Filtre d'une colonne, neutre : deux bandes en bypass, réglées sur leur coupure « ouverte ».
-    private static func makeColumnFilter() -> AVAudioUnitEQ {
+    /// Le filtre de la colonne de grille `slot` sur un nœud de voix (ou du pont audio).
+    private func applyFilter(of slot: FilterSlot, to node: AVAudioUnitEQ) {
+        Self.apply(FilterCurve.mode(for: filterPositions[slot] ?? 0), to: node)
+    }
+
+    /// Nœud de traitement neutre : gain global 0 dB, deux bandes de filtre en bypass, réglées sur leur coupure « ouverte ».
+    fileprivate static func makeFilter() -> AVAudioUnitEQ {
         let node = AVAudioUnitEQ(numberOfBands: 2)
         let lowPass = node.bands[0]
         lowPass.filterType = .lowPass
@@ -164,7 +168,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
         }
     }
 
-    /// Une prise de mesure sur la sortie de chaque colonne, après son fader **et son filtre** (ce qu'on entend) : la crête
+    /// Une prise de mesure sur la sortie de chaque colonne, après son fader **et les filtres** de ses sons (ce qu'on entend) : la crête
     /// de chaque bloc va dans `meters`. La prise n'est pas le thread de rendu, mais elle reste légère : un `vDSP_maxmgv`
     /// par canal, une écriture atomique, ni allocation ni verrou.
     private static func installMeters(on columnOutputs: [AVAudioNode], meters: ColumnMeters) {
@@ -189,11 +193,11 @@ public actor AVAudioEngineController: AudioEngineControlling {
     public func configure(show: Show, audioDirectory: URL) throws {
         observeConfigurationChanges()
 
-        var wanted: [Pad.ID: (column: Int, clip: AudioClip)] = [:]
+        var wanted: [Pad.ID: (slot: FilterSlot, clip: AudioClip)] = [:]
         for grid in show.grids {
             for (c, column) in grid.columns.enumerated() where column.kind.hasAudio && c < columnMixers.count {
                 for case let pad? in column.slots {
-                    if let clip = pad.audio { wanted[pad.id] = (c, clip) }
+                    if let clip = pad.audio { wanted[pad.id] = (FilterSlot(grid: grid.id, column: c), clip) }
                 }
             }
         }
@@ -206,13 +210,16 @@ public actor AVAudioEngineController: AudioEngineControlling {
                 entries[id] = nil
                 continue
             }
-            if new.column != entry.column {
-                entries[id]?.column = new.column
+            if new.slot != entry.slot {
+                entries[id]?.slot = new.slot
+                if let voice = voices[id] { applyFilter(of: new.slot, to: voice.gainNode) }
+            }
+            if new.slot.column != entry.slot.column {
                 if let voice = voices[id], let moved = entries[id] {
                     // Rebrancher un lecteur l'arrête : on le relance là où il en était (micro-coupure possible).
                     let state = voice.state
                     engine.disconnectNodeOutput(voice.gainNode)
-                    engine.connect(voice.gainNode, to: columnMixers[new.column], format: voice.format)
+                    engine.connect(voice.gainNode, to: columnMixers[new.slot.column], format: voice.format)
                     resume(id, entry: moved, from: state, now: ProcessInfo.processInfo.systemUptime)
                 }
             }
@@ -235,7 +242,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
                 continue
             }
             do {
-                entries[id] = try load(clip: new.clip, column: new.column, directory: audioDirectory)
+                entries[id] = try load(clip: new.clip, slot: new.slot, directory: audioDirectory)
             } catch {
                 log.error("Son illisible \(new.clip.fileName) : \(error.localizedDescription)")
             }
@@ -276,13 +283,16 @@ public actor AVAudioEngineController: AudioEngineControlling {
         columnMixers[column].outputVolume = Float(Gain.faderLevel(level))
     }
 
-    /// Règle le filtre DJ d'une colonne (−1 passe-bas … 0 neutre … +1 passe-haut), en direct, son en cours compris.
-    /// Valeur hors bornes : bornée ; non numérique : neutre.
-    public func setColumnFilter(_ column: Int, value: Double) {
-        guard columnFilters.indices.contains(column) else { return }
-        let position = FilterCurve.clamped(value)
-        filterPositions[column] = position
-        Self.apply(FilterCurve.mode(for: position), to: columnFilters[column])
+    /// Règle le filtre DJ d'une colonne d'une grille (−1 passe-bas … 0 neutre … +1 passe-haut), en direct, sons en cours
+    /// compris : seulement ceux de cette grille. Valeur hors bornes : bornée ; non numérique : neutre.
+    public func setColumnFilter(grid: PadGrid.ID, column: Int, value: Double) {
+        guard columnMixers.indices.contains(column) else { return }
+        let slot = FilterSlot(grid: grid, column: column)
+        filterPositions[slot] = FilterCurve.clamped(value)
+        for (id, entry) in entries where entry.slot == slot {
+            if let voice = voices[id] { applyFilter(of: slot, to: voice.gainNode) }
+        }
+        if let current = external, current.slot == slot { applyFilter(of: slot, to: current.filter) }
     }
 
     /// Règle en direct le volume d'un pad (dB), son en cours de lecture compris ; sans effet sur un pad inconnu.
@@ -312,13 +322,17 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
     // MARK: - Observation
 
-    public func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) {
+    public func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, grid: PadGrid.ID, column: Int) {
         guard columnMixers.indices.contains(column), sampleRate > 0 else { return }
+        let slot = FilterSlot(grid: grid, column: column)
         if let current = external, current.ring === ring, current.format.sampleRate == sampleRate {
-            guard current.column != column else { return }
-            engine.disconnectNodeOutput(current.node)
-            engine.connect(current.node, to: columnMixers[column], format: current.format)
-            external?.column = column
+            guard current.slot != slot else { return }
+            applyFilter(of: slot, to: current.filter)
+            if current.slot.column != column {
+                engine.disconnectNodeOutput(current.filter)
+                engine.connect(current.filter, to: columnMixers[column], format: current.format)
+            }
+            external?.slot = slot
             return
         }
         detachExternal()
@@ -332,17 +346,24 @@ public actor AVAudioEngineController: AudioEngineControlling {
             ring.read(left: left, right: right, frames: Int(frameCount))
             return noErr
         }
+        let filter = Self.makeFilter()
+        applyFilter(of: slot, to: filter)
         engine.attach(node)
-        engine.connect(node, to: columnMixers[column], format: format)
-        external = (node, ring, format, column)
+        engine.attach(filter)
+        // De la source vers la sortie : un nœud n'est tenu pour branché que si sa chaîne l'est quand elle rejoint le graphe.
+        engine.connect(node, to: filter, format: format)
+        engine.connect(filter, to: columnMixers[column], format: format)
+        external = (node, filter, ring, format, slot)
         do { try startEngineIfNeeded() } catch { log.error("Pont audio : moteur à l'arrêt : \(error.localizedDescription)") }
         observeConfigurationChanges()
     }
 
     public func detachExternal() {
         guard let current = external else { return }
+        engine.disconnectNodeOutput(current.filter)
         engine.disconnectNodeOutput(current.node)
         engine.detach(current.node)
+        engine.detach(current.filter)
         external = nil
     }
 
@@ -392,7 +413,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
     // MARK: - Chargement
 
-    private func load(clip: AudioClip, column: Int, directory: URL) throws -> Entry? {
+    private func load(clip: AudioClip, slot: FilterSlot, directory: URL) throws -> Entry? {
         let file = try AVAudioFile(forReading: directory.appendingPathComponent(clip.fileName))
         let format = file.processingFormat
         let fileDuration = Double(file.length) / format.sampleRate
@@ -401,7 +422,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
 
         guard fileDuration <= preloadLimit else {
             if clip.loops { timing = timing.withoutFadeOut }
-            return Entry(column: column, clip: clip, timing: timing, format: format, source: .streamed(file))
+            return Entry(slot: slot, clip: clip, timing: timing, format: format, source: .streamed(file))
         }
 
         guard let raw = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(file.length)) else {
@@ -418,7 +439,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
             source = ClipRenderer.bake(raw, timing: timing, gainDB: 0).map { .buffered(intro: nil, body: $0) }
         }
         guard let source else { return nil }
-        return Entry(column: column, clip: clip, timing: timing, format: format, source: source)
+        return Entry(slot: slot, clip: clip, timing: timing, format: format, source: source)
     }
 
     // MARK: - Voix
@@ -432,6 +453,7 @@ public actor AVAudioEngineController: AudioEngineControlling {
         engine.connect(voice.player, to: voice.gainNode, format: entry.format)
         engine.connect(voice.gainNode, to: columnMixers[entry.column], format: entry.format)
         voice.gainNode.globalGain = Gain.engineDecibels(forPadGainDB: entry.clip.gainDB)
+        applyFilter(of: entry.slot, to: voice.gainNode)
         voices[pad] = voice
         return voice
     }
@@ -666,17 +688,15 @@ public actor AVAudioEngineController: AudioEngineControlling {
         engine.stop()
         meters.reset()
         let format = offline?.format ?? engine.outputNode.inputFormat(forBus: 0)
-        for (column, (mixer, filter)) in zip(columnMixers, columnFilters).enumerated() {
+        for mixer in columnMixers {
             engine.disconnectNodeOutput(mixer)
-            engine.disconnectNodeOutput(filter)
-            engine.connect(mixer, to: filter, format: format)
-            engine.connect(filter, to: engine.mainMixerNode, format: format)
-            Self.apply(FilterCurve.mode(for: filterPositions[column]), to: filter)  // réglage gardé d'une sortie à l'autre
+            engine.connect(mixer, to: engine.mainMixerNode, format: format)
         }
-        Self.installMeters(on: columnFilters, meters: meters)  // le format a pu changer avec la sortie : la prise de mesure est reposée
-        if let current = external {  // le pont audio suit le moteur sur la nouvelle sortie
-            engine.disconnectNodeOutput(current.node)
-            engine.connect(current.node, to: columnMixers[current.column], format: current.format)
+        Self.installMeters(on: columnMixers, meters: meters)  // le format a pu changer avec la sortie : la prise de mesure est reposée
+        if let current = external {  // le pont audio suit le moteur sur la nouvelle sortie, avec son filtre
+            engine.disconnectNodeOutput(current.filter)
+            engine.connect(current.filter, to: columnMixers[current.slot.column], format: current.format)
+            applyFilter(of: current.slot, to: current.filter)
         }
         do { try startEngineIfNeeded() } catch {
             log.error("Redémarrage du moteur impossible : \(error.localizedDescription)")

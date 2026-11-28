@@ -15,10 +15,10 @@ public actor SilentAudioEngine: AudioEngineControlling {
     public func stop(_ pad: Pad.ID) {}
     public func stopAll() {}
     public func setColumnLevel(_ column: Int, level: Double) {}
-    public func setColumnFilter(_ column: Int, value: Double) {}
+    public func setColumnFilter(grid: PadGrid.ID, column: Int, value: Double) {}
     public func setOutputDevice(uid: String?) {}
     public func setPadGain(_ pad: Pad.ID, gainDB: Double) {}
     public func seek(_ pad: Pad.ID, to elapsed: TimeInterval) {}
-    public func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) {}
+    public func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, grid: PadGrid.ID, column: Int) {}
     public func detachExternal() {}
 }

@@ -167,20 +167,17 @@ struct HardwareFaderTests {
         #expect(await waitUntil { await audio.commands.contains(.level(0, 0.2)) })
     }
 
-    @Test func changingTabDoesNotMakeTheVolumeJump() async {
+    @Test("Colonne son : le volume est commun aux grilles, le fader physique reste accroché en changeant de grille")
+    func changingTabKeepsTheSoundFaderHooked() async {
         let audio = RecordingAudioEngine()
         let controller = makeController(audio: audio)
+        #expect(controller.currentGrid.columns[0].level == 0.8)  // l'ancien 0,3 de la grille 2 est aligné sur la grille 1
         #expect(controller.moveHardwareFader(column: 0, value: 0.8))  // accroché sur l'onglet 1
-        controller.selectGrid(at: 1)  // niveau 0,3 ; le fader est resté à 0,8
-        #expect(controller.waitingFaders == [0: 0.8])
-
-        #expect(!controller.moveHardwareFader(column: 0, value: 0.82))
-        #expect(controller.currentGrid.columns[0].level == 0.3)  // pas de saut
-        #expect(!controller.moveHardwareFader(column: 0, value: 0.5))
-        #expect(controller.moveHardwareFader(column: 0, value: 0.32))  // il a rejoint 0,3
-        #expect(controller.currentGrid.columns[0].level == 0.32)
-        try? await Task.sleep(for: .milliseconds(100))
-        #expect(!(await audio.commands.contains(.level(0, 0.82))))
+        controller.selectGrid(at: 1)
+        #expect(controller.waitingFaders.isEmpty)
+        #expect(controller.moveHardwareFader(column: 0, value: 0.6))
+        #expect(controller.show.grids.map { $0.columns[0].level } == [0.6, 0.6])
+        #expect(await waitUntil { await audio.commands.contains(.level(0, 0.6)) })
     }
 
     @Test func aFaderAlreadyAtTheOtherTabLevelStaysHooked() {

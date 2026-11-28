@@ -178,11 +178,11 @@ public final class ShowController {
         case stop(Pad.ID)
         case stopAll
         case level(column: Int, level: Double)
-        case filter(column: Int, value: Double)
+        case filter(grid: PadGrid.ID, column: Int, value: Double)
         case output(String?)
         case padGain(Pad.ID, Double)
         case seek(Pad.ID, TimeInterval)
-        case attachExternal(AudioRingBuffer, Double, Int)
+        case attachExternal(AudioRingBuffer, Double, PadGrid.ID, Int)
         case detachExternal
     }
 
@@ -193,6 +193,8 @@ public final class ShowController {
         defaults: UserDefaults = .standard,
         isLocked: Bool = false
     ) {
+        var show = show
+        show.shareColumnLevels(preferring: 0)  // volume commun à toutes les grilles : les anciens spectacles prennent celui de la grille 1
         self.show = show
         self.isLocked = isLocked
         self.selectedGridIndex = 0
@@ -216,11 +218,12 @@ public final class ShowController {
                     case .stop(let id): await audio.stop(id)
                     case .stopAll: await audio.stopAll()
                     case .level(let column, let level): await audio.setColumnLevel(column, level: level)
-                    case .filter(let column, let value): await audio.setColumnFilter(column, value: value)
+                    case .filter(let grid, let column, let value): await audio.setColumnFilter(grid: grid, column: column, value: value)
                     case .output(let uid): try await audio.setOutputDevice(uid: uid)
                     case .padGain(let id, let db): await audio.setPadGain(id, gainDB: db)
                     case .seek(let id, let elapsed): await audio.seek(id, to: elapsed)
-                    case .attachExternal(let ring, let rate, let column): await audio.attachExternal(ring, sampleRate: rate, column: column)
+                    case .attachExternal(let ring, let rate, let grid, let column):
+                        await audio.attachExternal(ring, sampleRate: rate, grid: grid, column: column)
                     case .detachExternal: await audio.detachExternal()
                     }
                 } catch {
@@ -508,9 +511,12 @@ public final class ShowController {
 
     /// Pont audio : le son de Music joue dans la colonne de ce pad (grille où il se trouve), dans le moteur de cette fenêtre.
     func attachMusicBridge(_ ring: AudioRingBuffer, sampleRate: Double, pad: Pad.ID) {
-        guard let column = show.grids.lazy.compactMap({ grid in grid.columns.firstIndex { $0.slots.contains { $0?.id == pad } } }).first
+        guard
+            let (grid, column) = show.grids.lazy.compactMap({ grid in
+                grid.columns.firstIndex { $0.slots.contains { $0?.id == pad } }.map { (grid.id, $0) }
+            }).first
         else { return }
-        commands.yield(.attachExternal(ring, sampleRate, column))
+        commands.yield(.attachExternal(ring, sampleRate, grid, column))
     }
 
     func detachMusicBridge() {
@@ -688,7 +694,11 @@ public final class ShowController {
     private func applyColumnLevel(_ column: Int, level: Double) {
         guard (0..<PadGrid.size).contains(column) else { return }
         let level = Gain.faderLevel(level)
-        show.grids[selectedGridIndex].columns[column].level = level
+        if Show.hasSharedLevel(show.grids[selectedGridIndex].columns[column].kind) {
+            show.setSharedColumnLevel(level, column: column)  // le volume d'une colonne son vaut pour toutes les grilles
+        } else {
+            show.grids[selectedGridIndex].columns[column].level = level
+        }
         if show.isSharedLightColumn(column) { show.propagateSharedLight(from: selectedGridIndex) }
         if isDMXLighting { show.alignDMXFaders(from: selectedGridIndex, column: column) }
         onShowChange?(show)
@@ -753,8 +763,8 @@ public final class ShowController {
     /// Un retour au neutre en cours par colonne et par grille.
     @ObservationIgnored private var filterGlides: [FilterGlideKey: Task<Void, Never>] = [:]
 
-    /// Écrit le filtre d'une colonne de la grille `gridID` ; le moteur ne le reçoit que si c'est la grille affichée (les autres
-    /// lui sont renvoyées au changement d'onglet).
+    /// Écrit le filtre d'une colonne de la grille `gridID` et l'envoie au moteur, qui garde un filtre par colonne de grille :
+    /// les sons de cette grille le suivent, même si une autre grille est affichée.
     private func applyColumnFilter(_ column: Int, value: Double, inGrid gridID: PadGrid.ID) {
         guard let index = show.grids.firstIndex(where: { $0.id == gridID }),
             show.grids[index].columns[column].kind != .light
@@ -763,7 +773,7 @@ public final class ShowController {
         guard show.grids[index].columns[column].filter != value else { return }
         show.grids[index].columns[column].filter = value
         onShowChange?(show)
-        if index == selectedGridIndex { commands.yield(.filter(column: column, value: value)) }
+        commands.yield(.filter(grid: gridID, column: column, value: value))
     }
 
     /// Les niveaux affichés ont pu changer : un fader physique n'est accroché que s'il y est encore.
@@ -803,6 +813,8 @@ public final class ShowController {
 
     /// Remplace le spectacle ouvert (relecture d'un document).
     public func replaceShow(_ newShow: Show) {
+        var newShow = newShow
+        newShow.shareColumnLevels(preferring: 0)
         show = newShow
         onShowChange?(show)
         selectedGridIndex = 0
@@ -867,6 +879,10 @@ public final class ShowController {
 
     private func apply(_ newShow: Show, actionName: String) {
         let previous = show
+        // Le volume des colonnes est un réglage de jeu, hors annulation : ⌘Z ne le ramène pas en arrière, et une grille ou une
+        // colonne son qui apparaît prend le volume commun.
+        var newShow = newShow
+        newShow.applySharedColumnLevels(show.sharedColumnLevels(preferring: selectedGridIndex), preferring: selectedGridIndex)
         show = newShow
         if !show.grids.indices.contains(selectedGridIndex) { selectedGridIndex = show.grids.count - 1 }
         syncAudio()
@@ -893,14 +909,24 @@ public final class ShowController {
     private func syncAudio() {
         commands.yield(.configure(show))
         syncColumnLevels()
+        syncFilters()
         analyzeTempos()
     }
 
-    /// Niveaux et filtres de la grille affichée vers le moteur (ouverture, changement d'onglet, annulation).
+    /// Volumes des colonnes vers le moteur (ouverture, changement d'onglet, annulation). Ils sont communs à toutes les grilles :
+    /// changer d'onglet renvoie les mêmes valeurs.
     private func syncColumnLevels() {
         for (index, column) in currentGrid.columns.enumerated() where column.kind != .light {
             commands.yield(.level(column: index, level: column.level))
-            commands.yield(.filter(column: index, value: column.filter))
+        }
+    }
+
+    /// Filtres de toutes les colonnes son de toutes les grilles : chaque son passe par celui de sa grille.
+    private func syncFilters() {
+        for grid in show.grids {
+            for (index, column) in grid.columns.enumerated() where column.kind != .light {
+                commands.yield(.filter(grid: grid.id, column: index, value: column.filter))
+            }
         }
     }
 

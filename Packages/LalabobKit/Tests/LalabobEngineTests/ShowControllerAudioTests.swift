@@ -23,9 +23,19 @@ actor RecordingAudioEngine: AudioEngineControlling {
         case detachExternal
     }
 
+    /// Filtre réglé : la grille en plus de la colonne (`commands` ne garde que colonne et valeur).
+    struct FilterTarget: Equatable, Sendable {
+        var grid: PadGrid.ID
+        var column: Int
+        var value: Double
+    }
+
     nonisolated let events: AsyncStream<PlaybackEvent>
     private let continuation: AsyncStream<PlaybackEvent>.Continuation
     private(set) var commands: [Command] = []
+    private(set) var filterTargets: [FilterTarget] = []
+    /// Grille et colonne de chaque branchement du pont audio.
+    private(set) var externalTargets: [FilterTarget] = []
 
     init() {
         (events, continuation) = AsyncStream.makeStream(of: PlaybackEvent.self)
@@ -45,8 +55,14 @@ actor RecordingAudioEngine: AudioEngineControlling {
     func setOutputDevice(uid: String?) { commands.append(.output(uid)) }
     func setPadGain(_ pad: Pad.ID, gainDB: Double) { commands.append(.padGain(pad, gainDB)) }
     func seek(_ pad: Pad.ID, to elapsed: TimeInterval) { commands.append(.seek(pad, elapsed)) }
-    func setColumnFilter(_ column: Int, value: Double) { commands.append(.filter(column, value)) }
-    func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) { commands.append(.attachExternal(column: column)) }
+    func setColumnFilter(grid: PadGrid.ID, column: Int, value: Double) {
+        commands.append(.filter(column, value))
+        filterTargets.append(FilterTarget(grid: grid, column: column, value: value))
+    }
+    func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, grid: PadGrid.ID, column: Int) {
+        commands.append(.attachExternal(column: column))
+        externalTargets.append(FilterTarget(grid: grid, column: column, value: 0))
+    }
     func detachExternal() { commands.append(.detachExternal) }
 }
 
@@ -179,16 +195,49 @@ struct ShowControllerAudioTests {
         #expect(!sent.contains(.level(12, 0.5)))
     }
 
-    @Test func switchingGridSendsItsFaderLevels() async {
+    @Test("Le volume d'une colonne son est commun à toutes les grilles : changer de grille ne le change pas")
+    func faderLevelsAreSharedAcrossGrids() async {
         var second = PadGrid.empty(name: "G2")
-        second.columns[0].level = 0.25
+        second.columns[0].level = 0.25  // ancien spectacle : un volume par grille
         let show = Show(name: "S", grids: [.empty(name: "G1"), second])
         let audio = RecordingAudioEngine()
         let controller = makeController(audio, show: show)
+        // À l'ouverture, toutes les grilles prennent le volume de la grille 1.
+        #expect(controller.show.grids.map { $0.columns[0].level } == [0.8, 0.8])
 
         controller.selectGrid(at: 1)
+        controller.setColumnLevel(0, level: 0.3)
+        #expect(controller.show.grids.map { $0.columns[0].level } == [0.3, 0.3])
+        controller.selectGrid(at: 0)
+        #expect(controller.currentGrid.columns[0].level == 0.3)
         let sent = await commands(of: audio)
-        #expect(sent.contains(.level(0, 0.25)))
+        #expect(!sent.contains(.level(0, 0.25)))
+        #expect(sent.last(where: { if case .level(0, _) = $0 { true } else { false } }) == .level(0, 0.3))
+    }
+
+    @Test("L'intensité d'une colonne lumière reste propre à sa grille")
+    func lightFaderStaysPerGrid() {
+        let audio = RecordingAudioEngine()
+        let controller = makeController(audio, show: Show(name: "S", grids: [.empty(name: "G1"), .empty(name: "G2")]))
+        controller.setLightFader(column: 6, level: 0.2)
+        #expect(controller.show.grids[0].columns[6].level == 0.2)
+        #expect(controller.show.grids[1].columns[6].level == PadGrid.empty(name: "x").columns[6].level)
+    }
+
+    @Test("⌘Z ne ramène pas le volume en arrière ; une grille ajoutée prend le volume commun")
+    func sharedLevelsSurviveUndoAndNewGrids() {
+        let audio = RecordingAudioEngine()
+        let controller = makeController(audio, show: .new())
+        let undo = UndoManager()
+        controller.undoManager = undo
+        controller.isLocked = false
+        controller.setColumnLevel(2, level: 0.4)
+        controller.addGrid()
+        #expect(controller.show.grids.map { $0.columns[2].level } == [0.4, 0.4])
+        controller.setColumnLevel(2, level: 0.6)
+        undo.undo()  // annule l'ajout de la grille
+        #expect(controller.show.grids.count == 1)
+        #expect(controller.show.grids[0].columns[2].level == 0.6)
     }
 
     @Test func playbackEventsUpdateTheObservableState() async {
