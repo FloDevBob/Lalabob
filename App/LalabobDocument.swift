@@ -112,6 +112,7 @@ struct DocumentWindow: View {
     @Environment(\.appearsActive) private var appearsActive
     @Environment(MusicPlaybackCoordinator.self) private var musicPlayer
     @Environment(DMXSession.self) private var dmxSession
+    @Environment(\.openWindow) private var openWindow
     @State private var controller: ShowController?
     @State private var showsMissingAudio = false
     @State private var showsPairingReset = false
@@ -141,6 +142,9 @@ struct DocumentWindow: View {
                 showsPairingReset = document.missingAudio.isEmpty && !document.lightPairingsReset.isEmpty
             }
             attachIfActive()
+            // Un spectacle s'ouvre (nouveau, récent, entraînement, restauré) : la fenêtre d'accueil a fini son travail.
+            Welcome.close()
+            AppLifecycle.openWelcome = { [openWindow] in openWindow(id: Welcome.windowID) }
         }
         .onChange(of: appearsActive) { attachIfActive() }
         .onDisappear {

@@ -43,4 +43,11 @@ struct ContrastTests {
     func vividColorStandsOutFromTheWindow(_ tint: Tint) {
         #expect(Self.contrast(tint.spec.vivid, Self.window) >= 3)
     }
+
+    @Test("Texte blanc sur le bouton principal de la fenêtre d'accueil (Surface.primaryAction)")
+    func primaryActionButton() {
+        #expect(Self.contrast(RGB(hex: 0xFFFFFF), RGB(hex: 0x4D70A6)) >= 4.5)
+        // La couleur d'accent d'origine ne suffit pas : c'est pourquoi le bouton l'assombrit.
+        #expect(Self.contrast(RGB(hex: 0xFFFFFF), RGB(hex: 0x5D80B5)) < 4.5)
+    }
 }

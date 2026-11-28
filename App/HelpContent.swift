@@ -60,6 +60,8 @@ enum HelpContent {
         blocks: [
             .paragraph(
                 "Lalabob est la régie son et lumière de la troupe : une grille de 8 colonnes de 8 pads. Les **6 colonnes de gauche** lancent des sons, les **2 colonnes de droite** allument et éteignent les **projecteurs**."),
+            .paragraph(
+                "Au lancement, la fenêtre **Bienvenue dans Lalabob** fait le point sur le matériel : pour le **son**, le **contrôleur** et la **lumière**, une étiquette dit « Prêt » ou ce qu'il reste à faire, avec une phrase qui explique quoi brancher. Elle propose aussi la visite guidée et vos **3 derniers spectacles**. Fenêtre ▸ Bienvenue dans Lalabob (⇧⌘1) la rouvre."),
             .steps([
                 "Branchez votre contrôleur (**AKAI APC mini mk2** ou **Novation Launchpad Mini MK3**). L'indicateur vert « Connecté » apparaît en haut à droite.",
                 "Choisissez la **sortie audio** dans la barre d'en-tête.",

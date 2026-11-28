@@ -36,6 +36,11 @@ public enum Surface {
     public static let musicAccent = Color(hex: 0xFF5A8C)
     /// Boucle activée (bouton de transport).
     public static let loopAccent = Color(hex: 0x3DDC6E)
+    /// Bouton principal (« Nouveau spectacle » de la fenêtre d'accueil) : la couleur d'accent de l'app (#5D80B5) assombrie
+    /// pour qu'un texte blanc reste lisible (5,0 : 1 ; l'accent d'origine ne donne que 4,0 : 1).
+    public static let primaryAction = Color(hex: 0x4D70A6)
+    /// Case libre dans l'aperçu d'un spectacle (fenêtre d'accueil).
+    public static let thumbnailEmpty = Color(hex: 0x22252B)
 }
 
 /// Dimensions de la maquette.

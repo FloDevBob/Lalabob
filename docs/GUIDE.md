@@ -3,6 +3,10 @@
 Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation Launchpad Mini MK3** (grille, sans fader). La version complète est dans l'app : **Aide ▸ Aide de Lalabob** (⌘?). Pour apprendre en cinq minutes : **Aide ▸ Visite guidée**.
 
 ## Avant la représentation
+Au lancement, la fenêtre **Bienvenue dans Lalabob** fait le point : **Avant de jouer** dit, pour le son, le contrôleur et la lumière, ce qui est
+prêt (étiquette verte) et ce qui manque (une phrase dit quoi faire). À droite : la visite guidée, le spectacle d'entraînement et les 3 derniers
+spectacles (clic = ouvrir). On la rouvre par **Fenêtre ▸ Bienvenue dans Lalabob** (⇧⌘1) ; « Afficher cette fenêtre au lancement » la désactive.
+
 1. Brancher le contrôleur (Launchpad ou APC mini mk2) : l'indicateur vert apparaît dans l'en-tête.
 2. Choisir la **sortie audio** dans l'en-tête.
 3. Lumière avec LightKey : entrée **et** sortie « Lalabob Lumière » activées, contrôleur physique **désactivé**.

@@ -90,10 +90,10 @@ la carte n'apparaît pas. Aucun récent : la zone affiche « Vos spectacles appa
 - Une scène `Window("Bienvenue dans Lalabob", id: "welcome")` à côté du `DocumentGroup`, `windowResizability(.contentSize)`,
   `.windowStyle(.hiddenTitleBar)`, `.defaultLaunchBehavior(.presented)` (macOS 15+) **seulement si la préférence est cochée**.
 - Empêcher la fenêtre « Ouvrir » de macOS au lancement : `AppLifecycle.applicationShouldOpenUntitledFile(_:) -> false`, et vérifier qu'aucune
-  fenêtre « Ouvrir » ne s'affiche quand même (comportement du `DocumentGroup` sur macOS 26 : ⚠︎ **à prototyper en premier**, c'est le seul vrai risque).
+  fenêtre « Ouvrir » ne s'affiche quand même. **Prototypé le 28/11/2026** : il faut aussi `NSShowAppCentricOpenPanelInsteadOfUntitledFile = false` (domaine d'enregistrement, rien d'écrit dans les préférences). Lancée en arrière-plan (`open -g`), l'app n'affiche pas l'accueil.
 - Actions : `@Environment(\.newDocument)`, `@Environment(\.openDocument)` (récents, entraînement via `Tour.openTrainingShow`),
   `NSDocumentController.shared.openDocument(nil)` pour « Ouvrir un spectacle… », `openWindow(id: Tour.windowID)` pour la visite,
-  puis `dismissWindow(id: "welcome")`.
+  puis fermeture de l'accueil par `Welcome.close()` (AppKit : `dismissWindow` depuis la fenêtre d'un spectacle ne la ferme pas).
 - Préférence : `UserDefaults` `showWelcomeAtLaunch` (vrai par défaut).
 
 ### État du matériel : un modèle pur, testé
@@ -105,10 +105,10 @@ Faits et où les trouver :
 | --- | --- |
 | Sortie de Lalabob | `UserDefaults` `ShowController.outputDefaultsKey` (`audioOutputUID`) si cette sortie est branchée, sinon la sortie par défaut du Mac (`AudioOutputDevices.defaultOutputDeviceID`, à rendre publique avec son nom) |
 | Sortie = haut-parleurs du Mac ? | Type de transport `kAudioDeviceTransportTypeBuiltIn` **et** source « haut-parleur » (`kAudioDevicePropertyDataSource` = `'ispk'`) ; prise casque = source `'hdpn'` ou périphérique « Écouteurs externes » sur Apple Silicon. ⚠︎ à relever sur le Mac de régie (noms et sources réels) |
-| Changements de sortie | `AudioOutputDevices.changes()` (+ écoute de la sortie par défaut) |
+| Changements | tout est relu **chaque seconde** tant que la fenêtre est ouverte (`HardwareStatus`) : plus simple que des écouteurs par source, et peu coûteux |
 | Contrôleur | `ControllerSession` : modèle actif (`active?.model`), à exposer en propriété observable. **La session doit démarrer au lancement de l'app**, pas à l'ouverture de la première fenêtre de spectacle (aujourd'hui `midiSession?.start()` est dans le `onAppear` du document) |
 | Boîtier USB-DMX | `DMXPortDiscovery.candidates(deviceNames:)` sur le contenu de `/dev`, relu chaque seconde tant que la fenêtre est ouverte (comme `DMXRefreshLoop`) ; sans ouvrir le port |
-| LightKey ouvert | `NSWorkspace.shared.runningApplications` (identifiant de LightKey ⚠︎ à relever) + notifications `didLaunchApplication` / `didTerminateApplication` |
+| LightKey ouvert | `NSRunningApplication.runningApplications(withBundleIdentifier: "de.monospc.Lightkey")` (relevé le 28/11/2026), relu chaque seconde |
 | Ouvrir LightKey | `NSWorkspace.shared.openApplication(at:configuration:)` d'après l'identifiant ; LightKey absent du Mac : le lien n'apparaît pas, la phrase devient « Branchez le boîtier USB-DMX, ou installez LightKey. » |
 
 **Honnêteté des statuts** (ADR 0006) : « LightKey ouvert » ne dit pas que LightKey écoute « Lalabob Lumière ». On ne prétend rien de plus ;
