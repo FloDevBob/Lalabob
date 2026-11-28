@@ -36,8 +36,8 @@ struct ColumnFilterOfflineTests {
         let engine = AVAudioEngineController(output: .offline(sampleRate: rate, maxFrames: 4096))
         try await engine.configure(show: Show(name: "Test", grids: [grid]), audioDirectory: dir)
         await engine.setColumnLevel(0, level: 1)
-        if let previous { await engine.setColumnFilter(0, value: previous) }
-        await engine.setColumnFilter(0, value: position)
+        if let previous { await engine.setColumnFilter(grid: grid.id, column: 0, value: previous) }
+        await engine.setColumnFilter(grid: grid.id, column: 0, value: position)
         if rebuildFirst { await engine.rebuild() }  // changement de sortie : le filtre doit rester branché et réglé
         await engine.trigger(pad.id)
         let out = try await engine.renderOffline(frames: 16384)
@@ -112,5 +112,34 @@ struct ColumnFilterOfflineTests {
         let wild = try await render(position: .nan)
         #expect(wild.allSatisfy { $0.isFinite })
         #expect(abs(highShare(wild) - 2) < 0.15)  // valeur invalide : neutre
+    }
+
+    @Test("Chaque son passe par le filtre de sa grille : la même colonne d'une autre grille reste intacte")
+    func eachGridHasItsOwnFilter() async throws {
+        let dir = try makeTemporaryDirectory()
+        try writeNoise(in: dir)
+        var first = PadGrid.empty(name: "G1")
+        var second = PadGrid.empty(name: "G2")
+        let filtered = Pad(title: "Bruit 1", tint: .blanc, audio: AudioClip(fileName: "bruit.wav", loops: true))
+        let intact = Pad(title: "Bruit 2", tint: .blanc, audio: AudioClip(fileName: "bruit.wav", loops: true))
+        first.columns[0].slots[0] = filtered
+        second.columns[0].slots[0] = intact
+        let engine = AVAudioEngineController(output: .offline(sampleRate: rate, maxFrames: 4096))
+        try await engine.configure(show: Show(name: "Test", grids: [first, second]), audioDirectory: dir)
+        await engine.setColumnLevel(0, level: 1)
+        await engine.setColumnFilter(grid: first.id, column: 0, value: -1)  // passe-bas, grille 1 seulement
+
+        await engine.trigger(intact.id)
+        let out = try await engine.renderOffline(frames: 16384)
+        let open = stride(from: 4096 * 2, to: out.count, by: 2).map { out[$0] }
+        #expect(abs(highShare(open) - 2) < 0.15)  // grille 2 : spectre plat
+
+        await engine.stop(intact.id)
+        _ = try await engine.renderOffline(frames: 8192)
+        await engine.trigger(filtered.id)
+        let out2 = try await engine.renderOffline(frames: 16384)
+        let low = stride(from: 4096 * 2, to: out2.count, by: 2).map { out2[$0] }
+        #expect(energy(low) > 0)
+        #expect(highShare(low) < 0.1 * highShare(open))  // grille 1 : plus d'aigus
     }
 }

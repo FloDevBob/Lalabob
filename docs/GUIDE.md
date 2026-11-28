@@ -18,8 +18,8 @@ Matériel de la troupe : **AKAI APC mini mk2** (grille + faders) et **Novation L
 | Espace / Retour | Pause-reprise / lecture du pad sélectionné |
 | **Échap** | **Tout arrêter** (fondu de 40 ms) |
 | Bouton ■ de la colonne / bouton rouge sous la colonne (APC) | Arrête tous les sons de cette colonne |
-| Faders | Volume des sons ; intensité des projecteurs pour les 2 colonnes de droite |
-| Potard à côté du fader (colonnes sons) | **Filtre** : centre = son intact ; vers la gauche, il reste les basses ; vers la droite, il reste les aigus. Double-clic = retour au neutre en douceur (1,5 s) |
+| Faders | Volume des sons, **le même dans toutes les grilles** (changer de grille ne le change pas) ; intensité des projecteurs pour les 2 colonnes de droite (propre à chaque grille) |
+| Potard à côté du fader (colonnes sons) | **Filtre** : centre = son intact ; vers la gauche, il reste les basses ; vers la droite, il reste les aigus. Double-clic = retour au neutre en douceur (1,5 s). **Propre à chaque grille** : un son garde le filtre de sa grille, même si on en affiche une autre |
 | ⌘1 … ⌘9 | Changer de grille |
 
 Un son ne s'arrête jamais tout seul. Débrancher le contrôleur ne coupe rien : les clics à l'écran continuent de marcher.

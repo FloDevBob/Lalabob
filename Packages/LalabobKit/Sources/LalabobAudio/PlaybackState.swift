@@ -48,8 +48,9 @@ public protocol AudioEngineControlling: Sendable {
     func stopAll() async
     func setColumnLevel(_ column: Int, level: Double) async
 
-    /// Règle en direct le filtre DJ d'une colonne : −1 passe-bas, 0 neutre (son intact), +1 passe-haut (`FilterCurve`).
-    func setColumnFilter(_ column: Int, value: Double) async
+    /// Règle en direct le filtre DJ d'une colonne **d'une grille** : −1 passe-bas, 0 neutre (son intact), +1 passe-haut
+    /// (`FilterCurve`). Chaque son passe par le filtre de sa propre grille : changer de grille ne refiltre pas un son qui joue.
+    func setColumnFilter(grid: PadGrid.ID, column: Int, value: Double) async
 
     /// Déplace la tête de lecture d'un pad : `elapsed` secondes depuis le début de la partie jouée.
     /// Joue : continue de là ; en pause : reste en pause à cette position ; arrêté : démarre de là.
@@ -61,9 +62,9 @@ public protocol AudioEngineControlling: Sendable {
     /// Choisit la sortie audio (`nil` = sortie par défaut du système). Les sons en cours reprennent là où ils en étaient.
     func setOutputDevice(uid: String?) async throws
 
-    /// Pont audio (ADR 0011) : joue le son de `ring` (stéréo, `sampleRate`) dans le mélangeur de `column` (fader, filtre, vumètre).
-    /// Rappeler avec le même tampon et une autre colonne y déplace le son.
-    func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, column: Int) async
+    /// Pont audio (ADR 0011) : joue le son de `ring` (stéréo, `sampleRate`) dans la colonne `column` de la grille `grid`
+    /// (son filtre, puis le fader et le vumètre de la colonne). Rappeler avec le même tampon et une autre colonne y déplace le son.
+    func attachExternal(_ ring: AudioRingBuffer, sampleRate: Double, grid: PadGrid.ID, column: Int) async
     /// Retire la source du pont audio.
     func detachExternal() async
 }

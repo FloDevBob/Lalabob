@@ -52,9 +52,9 @@ Champ de recherche · Favoris (dossiers épinglés) · liste des fichiers du dos
   - En pause : contour atténué, icône pause, barre de progression figée et estompée.
   - Lumière active : contour + badge « ON ».
   - Sélectionné : contour blanc 2 px. Cible de dépôt : contour pointillé blanc ; badge « Copie » si ⌥.
-- Sous chaque colonne : **fader vertical** (poignée blanche arrondie), vumètre (vert, ambre au-delà de 82 %),
+- Sous chaque colonne : **fader vertical** (poignée blanche arrondie), vumètre (vert, ambre au-delà de 82 %) ; le fader d'une colonne son est **commun à toutes les grilles** (décision du 28/11/2026), celui d'une colonne lumière propre à sa grille ;
   valeur en dB (sons) ou « Intensité 75 % » (lumière, icône soleil dont l'opacité suit le niveau ; le CC n'est plus affiché).
-- Colonne son : à droite du fader, le **potard de filtre** (36 pt, 28 pt quand la piste des faders rétrécit). Repère au sommet = neutre ; un arc à la couleur de la colonne part du sommet
+- Colonne son : à droite du fader, le **potard de filtre** (36 pt, 28 pt quand la piste des faders rétrécit), **propre à la colonne de sa grille** : un son garde le filtre de sa grille même quand une autre est affichée ; le bouton ■ n'arrête que les sons de la grille affichée. Repère au sommet = neutre ; un arc à la couleur de la colonne part du sommet
   vers la gauche (passe-bas : il reste les basses) ou vers la droite (passe-haut : il reste les aigus). Étiquette dessous, sur deux lignes : « Neutre », ou « Bas » / « Haut » et la coupure
   (« Bas 800 Hz », « Haut 2 kHz »). Glisser vers le haut ou la droite = passe-haut, vers le bas ou la gauche = passe-bas ; double-clic = **retour au neutre en glissant (1,5 s, l'aiguille suit ; toucher le potard l'interrompt)** ; flèches du clavier ; VoiceOver réglable.
   Actif même verrouillé (on règle en jouant). Curseur : main ouverte / fermée, comme le fader. Le vumètre mesure après le filtre.
