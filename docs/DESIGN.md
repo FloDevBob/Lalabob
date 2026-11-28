@@ -119,6 +119,12 @@ Choisi par spectacle (Spectacle › Réglages du spectacle…, déverrouillé) ;
 - **Sous une colonne Music** : carte « Volume : 9e fader » ; avec le pont audio, fader, vumètre et filtre comme une colonne son ; bouton ■ (fondu de sortie).
 - **Panneau du bas** : lecture / pause, stop, temps, titre, morceau d'origine et playlist, **pochette** (116 pt), barre de position cliquable, ce qui n'est pas disponible.
 
+### Fenêtre d'accueil (28/11/2026, maquette https://claude.ai/artifact/PBWK8eEPvzXV6o3RDscfm7, spec `docs/spec-fenetre-accueil.md`)
+960 × 520, au lancement (mesures : voir la spec). En-tête : icône, « Lalabob » (Fredoka), « Régie son et lumière pour l'impro », **Ouvrir un spectacle…** et **Nouveau spectacle**
+(accent #4D70A6). À gauche, carte **Avant de jouer** : Son · Contrôleur · Lumière, chacun avec ce qui est détecté, une étiquette en mots (« Prêt »,
+« À brancher », « À préparer ») et une phrase qui suit l'état (lien « ouvrez LightKey », pas de bouton) ; case « Afficher cette fenêtre au lancement ».
+À droite, carte ambre **Découvrir Lalabob** (Commencer la visite, Spectacle d'entraînement), puis une liste des 3 **spectacles récents** (vignette 40 pt = aperçu 8 × 8 de la 1re grille). Tous les boutons font 32 pt de haut.
+
 ## Interactions
 
 - **Clic et double-clic (01/11/2026, verrouillé ou non)** : un **clic** sélectionne le pad (verrouillé : le panneau de jeu s'ouvre pour un son), un **double-clic** le joue ; seul le contrôleur physique joue d'un appui. Évite un départ de son sur un clic accidentel.

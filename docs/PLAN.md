@@ -699,3 +699,11 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
     hauteur ≤ 196 pt ☐ glisser un curseur : la barre suit sans fondu, ⌘Z revient d'un seul pas ☐ quitter le pad : retour en fondu ☐ régler le pad qui joue ☐ clic droit sur la carte d'un fader :
     rôles ; fader 7 / 8 sur l'APC suivent le rôle choisi ☐ mini-barre : couper un projecteur, Noir ☐ tempo ⇄ sur un son rythmé ☐ **ouvrir un vrai spectacle (copie !) puis ⌘S : rien ne change**.
 - **Astuces (28/11/2026, branche `j14/astuces-recentes`)** : 3 astuces de plus dans `App/Tips.swift` — morceaux Apple Music sur les pads (déverrouillé), changer de grille depuis le contrôleur, Noir en mode Projecteurs (bouton rond de l'APC ; affichée aussi en mode LightKey, le texte précise « En mode Projecteurs »). **À regarder à l'œil** : ☐ textes lisibles dans la barre de repos à la largeur minimale.
+
+### J15 — Fenêtre d'accueil 📝 spec validée, à implémenter (spec : `docs/spec-fenetre-accueil.md`)
+Décision du 28/11/2026 : au lancement, une fenêtre **Bienvenue** (960 × 520) remplace la fenêtre « Ouvrir » de macOS et l'ouverture d'office de la visite guidée.
+À gauche **Avant de jouer** (son : où sort le son ; contrôleur ; lumière : boîtier USB-DMX ou LightKey), statuts en mots et phrases qui suivent l'état ;
+à droite **Découvrir Lalabob** (visite guidée, spectacle d'entraînement) et les **3 spectacles récents** avec un aperçu 8 × 8 de leur première grille.
+Maquette : https://claude.ai/artifact/PBWK8eEPvzXV6o3RDscfm7 (planche « Version retenue »).
+- **Premier pas** : prototyper la suppression de la fenêtre « Ouvrir » avec le `DocumentGroup` (seul vrai risque), puis `WelcomeChecklist` et `ShowThumbnail` (tests d'abord).
+- **À relever sur le Mac de régie** : nom et source CoreAudio de la prise casque / des haut-parleurs ; identifiant de LightKey.
