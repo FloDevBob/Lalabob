@@ -14,6 +14,23 @@ public struct AudioOutputDevice: Identifiable, Hashable, Sendable {
     }
 }
 
+/// La sortie où joue Lalabob, avec de quoi savoir si c'est le Mac lui-même (fenêtre d'accueil).
+public struct AudioOutputInfo: Equatable, Sendable {
+    public let uid: String
+    public let name: String
+    /// `kAudioDevicePropertyTransportType` (« bltn » pour une sortie intégrée au Mac).
+    public let transportType: UInt32
+    /// `kAudioDevicePropertyDataSource` côté sortie (« ispk » haut-parleurs, « hdpn » prise casque), `nil` si non déclaré.
+    public let dataSource: UInt32?
+
+    public init(uid: String, name: String, transportType: UInt32, dataSource: UInt32?) {
+        self.uid = uid
+        self.name = name
+        self.transportType = transportType
+        self.dataSource = dataSource
+    }
+}
+
 /// Liste des sorties audio du Mac et surveillance des branchements.
 public enum AudioOutputDevices {
     public static func available() -> [AudioOutputDevice] {
@@ -39,6 +56,18 @@ public enum AudioOutputDevices {
                     AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
             }
         }
+    }
+
+    /// La sortie où Lalabob joue : la sortie choisie (`preferredUID`) si elle est branchée, sinon la sortie par défaut du Mac
+    /// (c'est la règle du moteur audio). `nil` si le Mac n'a aucune sortie.
+    public static func current(preferredUID: String?) -> AudioOutputInfo? {
+        guard let id = preferredUID.flatMap(deviceID(forUID:)) ?? defaultOutputDeviceID(),
+            let uid = string(kAudioDevicePropertyDeviceUID, of: id),
+            let name = string(kAudioObjectPropertyName, of: id)
+        else { return nil }
+        return AudioOutputInfo(
+            uid: uid, name: name, transportType: uint32(kAudioDevicePropertyTransportType, of: id) ?? 0,
+            dataSource: uint32(kAudioDevicePropertyDataSource, of: id, scope: kAudioObjectPropertyScopeOutput))
     }
 
     // MARK: - Utilisé par le moteur
@@ -84,6 +113,16 @@ public enum AudioOutputDevices {
         guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, raw) == noErr else { return 0 }
         let list = UnsafeMutableAudioBufferListPointer(raw.assumingMemoryBound(to: AudioBufferList.self))
         return list.reduce(0) { $0 + Int($1.mNumberChannels) }
+    }
+
+    private static func uint32(
+        _ selector: AudioObjectPropertySelector, of object: AudioObjectID,
+        scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal
+    ) -> UInt32? {
+        var address = AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
+        var value: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        return AudioObjectGetPropertyData(object, &address, 0, nil, &size, &value) == noErr ? value : nil
     }
 
     private static func string(_ selector: AudioObjectPropertySelector, of object: AudioObjectID) -> String? {

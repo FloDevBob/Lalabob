@@ -9,8 +9,6 @@ import WebKit
 enum Tour {
     /// Identifiant de la fenêtre « Visite guidée ».
     static let windowID = "tour"
-    /// Préférence : vrai une fois la visite proposée au premier lancement.
-    static let offeredKey = "tourOffered"
 
     /// La page de la visite (hors ligne) ; ses sons sont dans `sons.js`, à côté.
     static var page: URL? {
@@ -42,7 +40,7 @@ enum Tour {
     }
 }
 
-/// Fenêtre « Visite guidée » (menu Aide, et premier lancement) : la page web, une copie de Lalabob sur laquelle
+/// Fenêtre « Visite guidée » (menu Aide, et fenêtre d'accueil) : la page web, une copie de Lalabob sur laquelle
 /// on agit. « Essayer maintenant », à la fin, ferme la visite et ouvre le spectacle d'entraînement.
 struct TourView: View {
     @Environment(\.openDocument) private var openDocument
@@ -62,20 +60,6 @@ struct TourView: View {
         .frame(minWidth: 980, minHeight: 620)
         .background(Surface.window)
         .preferredColorScheme(.dark)
-    }
-}
-
-/// Propose la visite au tout premier lancement de l'app (une seule fois).
-struct FirstLaunchTour: ViewModifier {
-    @Environment(\.openWindow) private var openWindow
-
-    func body(content: Content) -> some View {
-        content.task {
-            let defaults = UserDefaults.standard
-            guard !defaults.bool(forKey: Tour.offeredKey) else { return }
-            defaults.set(true, forKey: Tour.offeredKey)
-            openWindow(id: Tour.windowID)
-        }
     }
 }
 

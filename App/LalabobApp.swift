@@ -13,6 +13,34 @@ final class AppLifecycle: NSObject, NSApplicationDelegate {
     /// La lumière DMX de l'app.
     static var dmx: DMXSession?
 
+    /// Ouvre la fenêtre d'accueil (renseigné par les vues, qui ont `openWindow`).
+    static var openWelcome: (() -> Void)?
+
+    /// Démarre la session MIDI pour toute l'app, dès la fenêtre d'accueil : elle dit quel contrôleur est branché avant
+    /// qu'un spectacle soit ouvert. Sans effet si elle tourne déjà.
+    static func startSessions(midi: ControllerSession?) {
+        if let midi { session = midi }
+        midi?.start()
+    }
+
+    /// Fenêtre d'accueil au lancement : pas de fenêtre « Ouvrir » ni de spectacle sans titre à la place. Les réglages
+    /// passent par le domaine d'enregistrement (rien d'écrit dans les préférences) : décocher « Afficher au lancement »
+    /// rend le comportement habituel de macOS.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.register(defaults: ["NSShowAppCentricOpenPanelInsteadOfUntitledFile": !Welcome.showsAtLaunch])
+    }
+
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        !Welcome.showsAtLaunch
+    }
+
+    /// Clic sur l'icône du Dock sans fenêtre ouverte : la fenêtre d'accueil plutôt qu'un spectacle vide.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard !flag, Welcome.showsAtLaunch, let openWelcome = Self.openWelcome else { return true }
+        openWelcome()
+        return false
+    }
+
     func applicationShouldTerminate(_ application: NSApplication) -> NSApplication.TerminateReply {
         guard Self.session != nil || Self.dmx != nil else { return .terminateNow }
         let session = Self.session, dmx = Self.dmx
@@ -69,18 +97,29 @@ struct LalabobApp: App {
                 .environment(dmxSession)
                 .preferredColorScheme(.dark)
                 .frame(minWidth: 1320, minHeight: 720)  // bibliothèque (273) + 8 colonnes de même largeur tiennent sans être coupées
-                .modifier(FirstLaunchTour())
                 .onAppear {
                     AppLifecycle.session = midiSession
                     AppLifecycle.dmx = dmxSession
                     // Le banc d'essai DMX prend le boîtier tant qu'il est ouvert ; le spectacle le reprend ensuite.
                     dmxBench.willOpen = { [dmxSession] in dmxSession.suspendForBench() }
                     dmxBench.didClose = { [dmxSession] in dmxSession.resumeAfterBench() }
-                    midiSession?.start()
+                    AppLifecycle.startSessions(midi: midiSession)
                 }
         }
         .windowStyle(.hiddenTitleBar)
         .commands { LalabobCommands() }
+
+        // Fenêtre d'accueil : au lancement (si la préférence le veut) et par Fenêtre › Bienvenue dans Lalabob (⇧⌘1).
+        Window("Bienvenue dans Lalabob", id: Welcome.windowID) {
+            WelcomeView()
+                .environment(\.midiSession, midiSession)
+                .preferredColorScheme(.dark)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultLaunchBehavior(Welcome.showsAtLaunch ? .presented : .suppressed)
+        .restorationBehavior(.disabled)
+        .keyboardShortcut("1", modifiers: [.command, .shift])
 
         Window("Aide de Lalabob", id: LalabobCommands.helpWindowID) {
             HelpView()

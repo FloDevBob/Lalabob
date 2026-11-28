@@ -699,3 +699,21 @@ relevé du matériel fait, maquette faite (https://claude.ai/artifact/CZZXroPPft
     hauteur ≤ 196 pt ☐ glisser un curseur : la barre suit sans fondu, ⌘Z revient d'un seul pas ☐ quitter le pad : retour en fondu ☐ régler le pad qui joue ☐ clic droit sur la carte d'un fader :
     rôles ; fader 7 / 8 sur l'APC suivent le rôle choisi ☐ mini-barre : couper un projecteur, Noir ☐ tempo ⇄ sur un son rythmé ☐ **ouvrir un vrai spectacle (copie !) puis ⌘S : rien ne change**.
 - **Astuces (28/11/2026, branche `j14/astuces-recentes`)** : 3 astuces de plus dans `App/Tips.swift` — morceaux Apple Music sur les pads (déverrouillé), changer de grille depuis le contrôleur, Noir en mode Projecteurs (bouton rond de l'APC ; affichée aussi en mode LightKey, le texte précise « En mode Projecteurs »). **À regarder à l'œil** : ☐ textes lisibles dans la barre de repos à la largeur minimale.
+
+### J15 — Fenêtre d'accueil 🟡 code terminé, essai réel à faire (branche `j15/fenetre-accueil`, spec : `docs/spec-fenetre-accueil.md`)
+Décision du 28/11/2026 : au lancement, une fenêtre **Bienvenue** (960 × 520) remplace la fenêtre « Ouvrir » de macOS et l'ouverture d'office de la visite guidée.
+À gauche **Avant de jouer** (son : où sort le son ; contrôleur ; lumière : boîtier USB-DMX ou LightKey), statuts en mots et phrases qui suivent l'état ;
+à droite **Découvrir Lalabob** (visite guidée, spectacle d'entraînement) et les **3 spectacles récents** avec un aperçu 8 × 8 de leur première grille.
+Maquette : https://claude.ai/artifact/PBWK8eEPvzXV6o3RDscfm7 (planche « Version retenue »).
+- **Fait (28/11/2026)** : `ShowThumbnail` (LalabobModel), `WelcomeChecklist` / `HardwareStatus` / `HardwareProbe` / `RecentShowPreview` / `AudioOutputKind`
+  (`LalabobEngine/Welcome.swift`), `AudioOutputDevices.current(preferredUID:)`, `ControllerSession.connectedModel` (contrôleur connu sans spectacle ouvert),
+  `Surface.primaryAction` (#4D70A6) ; `App/WelcomeView.swift`, scène `Window` « Bienvenue dans Lalabob » (⇧⌘1, `defaultLaunchBehavior` selon la préférence),
+  `AppLifecycle` : plus de fenêtre « Ouvrir » ni de spectacle sans titre au lancement, clic sur le Dock sans fenêtre = accueil ; la session MIDI démarre dès l'accueil ;
+  la visite guidée ne s'ouvre plus d'office (`FirstLaunchTour` retiré). 22 tests (`ShowThumbnailTests`, `WelcomeTests`) + 1 contraste ; tout le package vert (sauf `LalabobAudioTests`, non lancée).
+- **Vu dans l'app (28/11/2026)** : lancement → accueil seul (960 × 520), états réels de ce Mac (haut-parleurs, pas de contrôleur, rien pour la lumière), ouvrir un spectacle ferme l'accueil,
+  le spectacle apparaît ensuite dans les récents avec son aperçu (« 30 sons · 2 grilles · Aujourd'hui »).
+- **Relevés** : haut-parleurs = transport « bltn », source « ispk », `BuiltInSpeakerDevice` (MacBook Pro) ; LightKey = `de.monospc.Lightkey`.
+  **À relever encore** : la prise casque avec une enceinte branchée (source « hdpn » attendue).
+- **Limites** : lancée en arrière-plan (`open -g`), l'app n'affiche pas l'accueil (comportement de SwiftUI) ; `dismissWindow` ne ferme pas l'accueil depuis la fenêtre d'un spectacle, d'où `Welcome.close()` (AppKit) ;
+  la session MIDI démarre à l'accueil : un Launchpad passe en mode Programmeur (LED éteintes) avant l'ouverture d'un spectacle.
+- **Essai réel (à cocher)** : voir la check-list de la spec.

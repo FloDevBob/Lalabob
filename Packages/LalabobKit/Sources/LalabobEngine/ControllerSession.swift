@@ -42,6 +42,8 @@ public final class ControllerSession {
     static let musicVolumeKey = "musicVolumeEnabled"
     @ObservationIgnored private var volumeRelay: MediaVolumeRelay?
     @ObservationIgnored private var mediaVolume: (any MediaVolumeControlling)?
+    /// Le contrôleur branché, même sans spectacle ouvert (fenêtre d'accueil) ; `nil` si aucun.
+    public private(set) var connectedModel: ControllerModel?
     /// Le spectacle qui reçoit les appuis et dont les LED reflètent la grille.
     public private(set) var attachedController: ShowController?
     @ObservationIgnored private let transport: any MIDITransport
@@ -251,6 +253,7 @@ public final class ControllerSession {
         if let old = active {
             await transport.stopListening(to: old.source)
             active = nil
+            connectedModel = nil
             lastLEDs = [:]
             lastHardwareFaders = [:]  // au rebranchement, on ne sait plus où sont les faders
             attachedController?.seedHardwareFaders([:])
@@ -263,6 +266,7 @@ public final class ControllerSession {
         await transport.listen(to: found.source)
         let driver = found.model.driver(settings: ledSettings(for: found.model))
         active = Active(model: found.model, driver: driver, source: found.source, destination: found.destination)
+        connectedModel = found.model
         lastLEDs = [:]
         lastStopColumns = nil
         lastGridButtons = nil
